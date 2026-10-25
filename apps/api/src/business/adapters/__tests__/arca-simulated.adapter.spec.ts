@@ -10,6 +10,7 @@ const request = (overrides: Partial<FiscalAuthorizationRequest> = {}): FiscalAut
   concept: 1,
   docType: 99,
   docNumber: '0',
+  receiverVatCondition: 5,
   netAmount: 1000,
   exemptAmount: 0,
   ivaAmount: 210,

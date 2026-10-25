@@ -67,6 +67,16 @@ Defaults de producto (decididos por el orquestador, no pedidos explícitamente):
 ### S11: Posicionamiento — café take away
 Usuario: "La diferencia con nuestra competencia q esto seria mas para cafe take away no para restaurnte o lo demas"
 
+### S12: Facturación ARCA + caja y turnos
+Usuario: "Si" (a "¿Arrancamos con facturación ARCA junto con caja y turnos?"). Respuestas a las decisiones:
+- Conexión ARCA: "Delegación al CUIT de UNNA (Recomendado)".
+- Homologación: "Q es un  CUIT con certificado de homologación ??" → explicado; se construye con ARCA simulado detrás de un puerto hasta tener credenciales (prueba real pendiente).
+- Caja: "No, caja abierta obligatoria (Recomendado)".
+- Comprobantes: "B, C y A (Recomendado)".
+Reglas de diseño (orquestador):
+- Caja: un turno abierto por sucursal; fondo inicial, ingresos/retiros, cierre con esperado vs declarado por medio de pago; cada pago queda asociado al turno; sin caja abierta no se crean pedidos ni se cobran; cierre y pagos serializados.
+- Facturación: responsable inscripto emite A (cliente con CUIT) o B; monotributo/exento emite C; IVA discriminado por alícuota en A/B; numeración secuencial por (punto de venta, tipo) a partir del último autorizado, bajo bloqueo; CAE y vencimiento guardados; QR ARCA; si ARCA rechaza o falla, el pedido sigue pagado y el comprobante se puede reintentar. Ticket no fiscal con numeración secuencial (ya no aleatoria).
+
 ## Architecture Constraints (MANDATORIOS)
 
 - **Hexagonal Architecture**: Domain core aislado, ports/adapters para infraestructura (DB, HTTP, external APIs)
@@ -140,6 +150,12 @@ unna/
 | T29b | S10 | worker | UI de catálogo (/dashboard/catalogo) | 5a8e7c3 |
 | T29c | S10 | worker | UI de POS (/dashboard/pos) | 3341df9 |
 | T29d | S10 | worker | Lock del pedido en addItem/removeItem/applyDiscount/changeStatus (la ruta DELETE de ítem ya existía) | 831fcf5 |
+| T30a | S12 | inline | Contratos: modelos Prisma (CashSession, CashMovement, Payment.cashSessionId, campos fiscales del Receipt, secuencias) y puertos de dominio | see commit |
+| T30b | S12 | worker | Caja backend: agregado CashSession, adapter, casos de uso, endpoints; pedidos y pagos exigen caja abierta | pending |
+| T30c | S12 | worker | Facturación backend: reglas A/B/C, IVA por alícuota, numeración secuencial, QR, ARCA simulado, emisión | pending |
+| T30d | S12 | inline | Integración: módulo, smoke real (caja, facturas, carreras de numeración y cierre) | pending |
+| T30e | S12 | worker | Web: caja (abrir, movimientos, cerrar) y POS con comprobante fiscal (CAE, QR) | pending |
+| T30f | S12 | worker | Adaptador ARCA real (WSAA + WSFEv1) con tests de XML; prueba en homologación bloqueada por credenciales | pending |
 
 ## Log
 
@@ -173,3 +189,4 @@ unna/
 **L29**: PR #18 ya estaba mergeado (0460397) cuando llegó la aclaración; comparación reescrita para el segmento café take away (S11): necesidades del segmento, cobertura de Fudo vs especialistas (Frambuesa, Nikao, GestResto; también Payper, Madi Digital, bcnsoft), precios para un café (Fudo $36.000 con facturación), diferenciales (modo hora pico, pedido anticipado + aviso de "listo", sellos incluidos, ARCA+QR en el cobro, costo por taza) y prioridades de producto reordenadas. Hallazgo: "café take away" define el mercado pero no diferencia por sí solo. Abierto: landing y manual de marca siguen diciendo "Todo tu restaurante".
 **L30**: Usuario: "Si modifica take away. y decime q feuture faltan". Lema decidido: "El sistema para cafés take away." / "Vendé rápido en el mostrador, cobrá fácil y controlá tu caja y tu stock." Cambiados: metadatos del layout, footer, dashboard, crear-cuenta, ejemplos de formularios ("Ej: Café del Centro"), esencia del manual de marca; nueva `public/og-image.jpg`. Hallazgo: la landing (copia de fu.do) afirmaba "35.000+ restaurantes", "#1", "350M+ transacciones", testimonios y "Terminal UNNA" que no son de UNNA, y referenciaba imágenes inexistentes → reescritura (worker) que separa "Disponible hoy" de "Próximamente".
 **L31**: Lema ajustado: "controlá tu caja y tu stock" → "controlá tus cobros y tu stock", porque caja y turnos todavía es "Próximamente" y la frase prometía algo inexistente (señalado por el worker de la landing). S1 reescrito al alcance vigente. Landing nueva: 12 tests; web 129/129.
+**L32**: Usuario aprobó ARCA + caja y turnos (S12). Rama feat/arca-cash desde develop (76f7ac8).

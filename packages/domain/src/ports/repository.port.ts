@@ -106,6 +106,8 @@ export interface PaymentRecord {
   status: string;
   reference?: string;
   processedAt?: Date;
+  /** Cash register session the payment was taken in (S12). */
+  cashSessionId?: string;
   createdAt: Date;
 }
 
@@ -114,10 +116,20 @@ export interface PaymentRepositoryPort {
   findByOrderId(orderId: string): Promise<PaymentRecord[]>;
 }
 
+/** Cash session lookups available inside the order-lock transaction (S12). */
+export interface LockedCashSessionsPort {
+  /**
+   * Open session of the sucursal, read with a shared lock (SELECT ... FOR SHARE) so the session
+   * cannot be closed while the payment that references it is being written. Null when none is open.
+   */
+  findOpenBySucursalForPayment(businessId: string, sucursalId: string): Promise<{ id: string } | null>;
+}
+
 /** Order and payment repositories bound to the transaction that holds the order lock. */
 export interface LockedOrderRepositories {
   orders: OrderRepositoryPort;
   payments: PaymentRepositoryPort;
+  cashSessions: LockedCashSessionsPort;
 }
 
 export interface SalesUnitOfWorkPort {

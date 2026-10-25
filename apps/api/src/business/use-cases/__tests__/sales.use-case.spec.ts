@@ -1,5 +1,5 @@
 import { SalesUseCase } from '../sales.use-case';
-import { LockedOrderRepositories, Money, Order, PaymentRecord, SalesUnitOfWorkPort } from '@unna/domain';
+import { CashSessionRepositoryPort, LockedOrderRepositories, Money, Order, PaymentRecord, SalesUnitOfWorkPort } from '@unna/domain';
 import { fake } from './test-doubles';
 
 const m = (cents: number) => Money.fromCents(cents);
@@ -16,8 +16,10 @@ const outsideLock = () => {
   return fake<never>({ findByIdAndBusinessId: refuse, findByOrderId: refuse, save: refuse });
 };
 
-/** Runs each call after the previous one, like the row lock, over an in-memory order and its payments. */
-const lockingUnitOfWork = (state: { order: Order; payments: PaymentRecord[] }) => {
+type PaymentState = { order: Order; payments: PaymentRecord[]; cashSessionId?: string | null };
+
+/** Runs each call after the previous one, like the row lock, over an in-memory order, its payments and the open cash session. */
+const lockingUnitOfWork = (state: PaymentState) => {
   let held = false;
   let queue: Promise<unknown> = Promise.resolve();
   const guard = () => {
@@ -35,6 +37,13 @@ const lockingUnitOfWork = (state: { order: Order; payments: PaymentRecord[] }) =
       findByOrderId: async () => { guard(); return [...state.payments]; },
       save: async (p: PaymentRecord) => { guard(); state.payments.push(p); },
     }),
+    cashSessions: {
+      findOpenBySucursalForPayment: jest.fn(async () => {
+        guard();
+        const id = state.cashSessionId === undefined ? 'cash-1' : state.cashSessionId;
+        return id ? { id } : null;
+      }),
+    },
   };
   const withOrderLock = jest.fn(<T>(_orderId: string, _businessId: string, work: (r: LockedOrderRepositories) => Promise<T>) => {
     const run = queue.then(async () => {
@@ -48,7 +57,7 @@ const lockingUnitOfWork = (state: { order: Order; payments: PaymentRecord[] }) =
     queue = run.catch(() => undefined);
     return run;
   });
-  return { unitOfWork: fake<SalesUnitOfWorkPort>({ withOrderLock }), withOrderLock };
+  return { unitOfWork: fake<SalesUnitOfWorkPort>({ withOrderLock }), withOrderLock, cashSessions: repositories.cashSessions };
 };
 
 const product = {
@@ -56,8 +65,15 @@ const product = {
   canBeSold: () => true,
 };
 
-const paymentSales = (state: { order: Order; payments: PaymentRecord[] }) => {
-  const { unitOfWork, withOrderLock } = lockingUnitOfWork(state);
+/** Cash sessions as createOrder sees them: one open session for suc-1 of biz-A. */
+const openCash = () =>
+  fake<CashSessionRepositoryPort>({
+    findOpenBySucursal: jest.fn(async (businessId: string, sucursalId: string) =>
+      businessId === 'biz-A' && sucursalId === 'suc-1' ? { id: 'cash-1' } : null),
+  });
+
+const paymentSales = (state: PaymentState) => {
+  const { unitOfWork, withOrderLock, cashSessions } = lockingUnitOfWork(state);
   const sales = new SalesUseCase(
     outsideLock(),
     outsideLock(),
@@ -66,8 +82,9 @@ const paymentSales = (state: { order: Order; payments: PaymentRecord[] }) => {
     fake({ findByIdAndBusinessId: async () => null }),
     fake({}),
     unitOfWork,
+    outsideLock(),
   );
-  return { sales, withOrderLock };
+  return { sales, withOrderLock, cashSessions };
 };
 
 describe('SalesUseCase', () => {
@@ -87,6 +104,7 @@ describe('SalesUseCase', () => {
       fake({ findByIdAndBusinessId: async () => null }),
       fake({ findById: async () => ({ id: 'biz-A', sucursales: [{ id: 'suc-1', name: 'Central', isActive: true }] }) }),
       fake({}),
+      openCash(),
     );
 
     const result = await sales.createOrder({ businessId: 'biz-A', sucursalId: 'suc-1', type: 'takeaway', items: [{ productId: 'p', quantity: 1 }] });
@@ -110,6 +128,7 @@ describe('SalesUseCase', () => {
         fake({ findByIdAndBusinessId: async () => group }),
         fake({ findById: async () => ({ id: 'biz-A', sucursales: [{ id: 'suc-1', name: 'Central', isActive: true }] }) }),
         fake({}),
+        openCash(),
       );
     };
     const order = (sales: SalesUseCase) =>
@@ -295,6 +314,66 @@ describe('SalesUseCase', () => {
 
       expect(missingOrder.error!.message).toBe('Pedido no encontrado');
       expect(missingItem.error!.message).toBe('Item no encontrado');
+      expect(state.order).toBe(original);
+    });
+  });
+
+  describe('cash session (S12)', () => {
+    const salesForOrders = (orders: { save: jest.Mock }, cashSessions: CashSessionRepositoryPort) =>
+      new SalesUseCase(
+        fake(orders),
+        fake({}),
+        fake({}),
+        fake({ findByIdAndBusinessId: async () => product }),
+        fake({ findByIdAndBusinessId: async () => null }),
+        fake({ findById: async () => ({ id: 'biz-A', sucursales: [{ id: 'suc-1', name: 'Central', isActive: true }, { id: 'suc-2', name: 'Norte', isActive: true }] }) }),
+        fake({}),
+        cashSessions,
+      );
+
+    it('creates an order only when the sucursal has an open cash session', async () => {
+      const orders = { save: jest.fn(async () => undefined) };
+      const cashSessions = openCash();
+
+      const result = await salesForOrders(orders, cashSessions).createOrder({ businessId: 'biz-A', sucursalId: 'suc-1', type: 'takeaway', items: [{ productId: 'p', quantity: 1 }] });
+
+      expect(result.ok).toBe(true);
+      expect(cashSessions.findOpenBySucursal).toHaveBeenCalledWith('biz-A', 'suc-1');
+      expect(orders.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects creating an order without an open cash session and writes nothing', async () => {
+      const orders = { save: jest.fn(async () => undefined) };
+
+      const result = await salesForOrders(orders, openCash()).createOrder({ businessId: 'biz-A', sucursalId: 'suc-2', type: 'takeaway', items: [{ productId: 'p', quantity: 1 }] });
+
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe('Abrí la caja para empezar a vender');
+      expect(orders.save).not.toHaveBeenCalled();
+    });
+
+    it('links each payment to the open session of the order sucursal, looked up inside the order lock', async () => {
+      const state: PaymentState = { order: openOrder(), payments: [], cashSessionId: 'cash-7' };
+      const { sales, cashSessions } = paymentSales(state);
+
+      const result = await sales.registerPayment({ businessId: 'biz-A', orderId: state.order.id, amount: 400, method: 'card' });
+
+      expect(result.ok).toBe(true);
+      expect(cashSessions.findOpenBySucursalForPayment).toHaveBeenCalledWith('biz-A', 'suc-1');
+      expect(state.payments).toEqual([expect.objectContaining({ amount: 400, method: 'card', cashSessionId: 'cash-7' })]);
+      expect(result.value!.payments[0].cashSessionId).toBe('cash-7');
+    });
+
+    it('rejects a payment without an open cash session and writes nothing', async () => {
+      const original = openOrder();
+      const state: PaymentState = { order: original, payments: [], cashSessionId: null };
+      const { sales } = paymentSales(state);
+
+      const result = await sales.registerPayment({ businessId: 'biz-A', orderId: original.id, amount: 1000, method: 'cash' });
+
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe('Abrí la caja para cobrar');
+      expect(state.payments).toEqual([]);
       expect(state.order).toBe(original);
     });
   });

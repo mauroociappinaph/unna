@@ -9,6 +9,7 @@ import {
   ReceiptRepositoryPort,
   SalesUnitOfWorkPort,
   LockedOrderRepositories,
+  LockedCashSessionsPort,
   Address,
   Order,
   OrderItem,
@@ -24,12 +25,12 @@ const toAddress = (json: Prisma.JsonValue | null): Address | undefined =>
   json ? Address.create(json as unknown as Parameters<typeof Address.create>[0]) : undefined;
 
 /** The root client or the client of an open interactive transaction. */
-type Db = Prisma.TransactionClient;
+export type Db = Prisma.TransactionClient;
 /** Runs a batch of writes so they commit together. */
-type AtomicWrites = (writes: Prisma.PrismaPromise<unknown>[]) => Promise<unknown>;
+export type AtomicWrites = (writes: Prisma.PrismaPromise<unknown>[]) => Promise<unknown>;
 
 /** Inside an open transaction the writes already commit together; run them in order. */
-const inOpenTransaction: AtomicWrites = async (writes) => {
+export const inOpenTransaction: AtomicWrites = async (writes) => {
   for (const write of writes) await write;
 };
 
@@ -187,6 +188,7 @@ class PrismaPaymentRepository implements PaymentRepositoryPort {
         status: p.status,
         reference: p.reference ?? null,
         processedAt: p.processedAt ?? null,
+        cashSessionId: p.cashSessionId ?? null,
         createdAt: p.createdAt,
       },
     });
@@ -203,6 +205,7 @@ class PrismaPaymentRepository implements PaymentRepositoryPort {
       status: r.status,
       reference: r.reference ?? undefined,
       processedAt: r.processedAt ?? undefined,
+      cashSessionId: r.cashSessionId ?? undefined,
       createdAt: r.createdAt,
     }));
   }
@@ -215,6 +218,20 @@ export class PrismaPaymentRepositoryAdapter extends PrismaPaymentRepository {
   }
 }
 
+class PrismaLockedCashSessions implements LockedCashSessionsPort {
+  constructor(private readonly db: Db) {}
+
+  // FOR SHARE lets payments of the same session run side by side but makes a close (FOR UPDATE)
+  // wait for them; a payment that waited on a close re-reads the row, sees it closed and gets null.
+  async findOpenBySucursalForPayment(businessId: string, sucursalId: string): Promise<{ id: string } | null> {
+    const rows = await this.db.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM cash_sessions
+      WHERE "businessId" = ${businessId} AND "sucursalId" = ${sucursalId} AND status = 'open'
+      LIMIT 1 FOR SHARE`;
+    return rows[0] ?? null;
+  }
+}
+
 @Injectable()
 export class PrismaSalesUnitOfWorkAdapter implements SalesUnitOfWorkPort {
   constructor(private readonly prisma: PrismaService) {}
@@ -223,7 +240,11 @@ export class PrismaSalesUnitOfWorkAdapter implements SalesUnitOfWorkPort {
     return this.prisma.$transaction(async (tx) => {
       // Row lock held until the transaction ends; a missing order locks nothing and the work reports it.
       await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} AND "businessId" = ${businessId} FOR UPDATE`;
-      return work({ orders: new PrismaOrderRepository(tx, inOpenTransaction), payments: new PrismaPaymentRepository(tx) });
+      return work({
+        orders: new PrismaOrderRepository(tx, inOpenTransaction),
+        payments: new PrismaPaymentRepository(tx),
+        cashSessions: new PrismaLockedCashSessions(tx),
+      });
     });
   }
 }

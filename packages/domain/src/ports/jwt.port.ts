@@ -5,6 +5,12 @@ export interface JwtPayload {
   businessId?: string;
 }
 
+export interface ResetTokenPayload {
+  sub: string;
+  email: string;
+  type: 'password_reset' | 'email_verification';
+}
+
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
@@ -18,4 +24,6 @@ export interface JwtPort {
   verifyAccessToken(token: string): JwtPayload | null;
   verifyRefreshToken(token: string): JwtPayload | null;
   decodeToken(token: string): JwtPayload | null;
+  generateResetToken(payload: ResetTokenPayload): string;
+  verifyResetToken(token: string): ResetTokenPayload;
 }

@@ -1,6 +1,7 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ResendEmailAdapter } from './resend-email.adapter';
+import { EmailPort } from '@unna/domain';
 
 @Global()
 @Module({
@@ -20,7 +21,11 @@ import { ResendEmailAdapter } from './resend-email.adapter';
       inject: [ConfigService],
     },
     ResendEmailAdapter,
+    {
+      provide: 'EmailPort',
+      useExisting: ResendEmailAdapter,
+    },
   ],
-  exports: [ResendEmailAdapter],
+  exports: [ResendEmailAdapter, 'EmailPort'],
 })
 export class EmailModule {}

@@ -2,6 +2,8 @@ import { Controller, Post, Body, HttpCode, HttpStatus, UsePipes, ValidationPipe 
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterUseCase, RegisterCommand } from './use-cases/register.use-case';
 import { LoginUseCase, LoginCommand } from './use-cases/login.use-case';
+import { ForgotPasswordUseCase, ForgotPasswordCommand } from './use-cases/forgot-password.use-case';
+import { ResetPasswordUseCase, ResetPasswordCommand } from './use-cases/reset-password.use-case';
 import { Result, isOk, isErr } from '@unna/domain';
 import { IsString, IsEmail, MinLength, MaxLength, Matches, IsBoolean, Validate, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
 
@@ -68,6 +70,29 @@ export class LoginDto implements LoginCommand {
   password!: string;
 }
 
+export class ForgotPasswordDto implements ForgotPasswordCommand {
+  @IsEmail({}, { message: 'Ingresá un e-mail válido. Ej.: nombre@gmail.com' })
+  email!: string;
+}
+
+export class ResetPasswordDto implements ResetPasswordCommand {
+  @IsString()
+  @MinLength(1, { message: 'Token es obligatorio' })
+  token!: string;
+
+  @IsString()
+  @MinLength(8, { message: 'Debe contener mínimo 8 caracteres, mayúsculas, minúsculas y un número.' })
+  @Matches(/[A-Z]/, { message: 'Debe contener mínimo 8 caracteres, mayúsculas, minúsculas y un número.' })
+  @Matches(/[a-z]/, { message: 'Debe contener mínimo 8 caracteres, mayúsculas, minúsculas y un número.' })
+  @Matches(/[0-9]/, { message: 'Debe contener mínimo 8 caracteres, mayúsculas, minúsculas y un número.' })
+  password!: string;
+
+  @IsString()
+  @MinLength(1, { message: 'Este campo es obligatorio' })
+  @Validate(PasswordsMatchConstraint)
+  confirmPassword!: string;
+}
+
 export class AuthResponseDto {
   accessToken!: string;
   refreshToken!: string;
@@ -80,12 +105,18 @@ export class AuthResponseDto {
   };
 }
 
+export class MessageResponseDto {
+  message!: string;
+}
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly registerUseCase: RegisterUseCase,
     private readonly loginUseCase: LoginUseCase,
+    private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
+    private readonly resetPasswordUseCase: ResetPasswordUseCase,
   ) {}
 
   @Post('register')
@@ -109,6 +140,35 @@ export class AuthController {
   async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     const result = await this.loginUseCase.execute(dto);
     return this.handleResult(result);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ApiOperation({ summary: 'Solicitar recuperación de contraseña' })
+  @ApiResponse({ status: 200, type: MessageResponseDto })
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<MessageResponseDto> {
+    const result = await this.forgotPasswordUseCase.execute(dto);
+    if (isErr(result)) {
+      const { HttpException } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+    return { message: 'Si el email existe, recibirás un link para restablecer tu contraseña.' };
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ApiOperation({ summary: 'Restablecer contraseña con token' })
+  @ApiResponse({ status: 200, type: MessageResponseDto })
+  @ApiResponse({ status: 400, description: 'Token inválido o contraseñas no coinciden' })
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<MessageResponseDto> {
+    const result = await this.resetPasswordUseCase.execute(dto);
+    if (isErr(result)) {
+      const { HttpException } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+    return { message: 'Contraseña actualizada correctamente. Ya podés iniciar sesión.' };
   }
 
   private handleResult<T extends { user: any; tokens: any }>(result: Result<T, Error>): AuthResponseDto {

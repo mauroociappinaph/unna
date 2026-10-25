@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { JwtPort, JwtPayload, TokenPair } from '@unna/domain';
+import { JwtPort, JwtPayload, TokenPair, ResetTokenPayload } from '@unna/domain';
 
 @Injectable()
 export class JwtAdapter implements JwtPort {
@@ -58,6 +58,23 @@ export class JwtAdapter implements JwtPort {
       return this.jwtService.decode(token) as JwtPayload | null;
     } catch {
       return null;
+    }
+  }
+
+  generateResetToken(payload: ResetTokenPayload): string {
+    return this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_RESET_SECRET') || this.configService.get('JWT_SECRET'),
+      expiresIn: '1h',
+    });
+  }
+
+  verifyResetToken(token: string): ResetTokenPayload {
+    try {
+      return this.jwtService.verify<ResetTokenPayload>(token, {
+        secret: this.configService.get('JWT_RESET_SECRET') || this.configService.get('JWT_SECRET'),
+      });
+    } catch (error) {
+      throw new Error('Token inválido o expirado');
     }
   }
 }

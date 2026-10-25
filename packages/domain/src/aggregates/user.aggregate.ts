@@ -3,6 +3,7 @@ import { Email } from '../value-objects/email';
 import { Password } from '../value-objects/password';
 import { PersonName } from '../value-objects/person-name';
 import { Phone } from '../value-objects/phone';
+import { UserRole, USER_ROLES, ROLE_HIERARCHY, hasRole, canManageRole } from '../value-objects/role';
 import { UserRegisteredEvent, UserLoggedInEvent } from '../events/auth-events';
 
 export interface UserProps {
@@ -13,7 +14,7 @@ export interface UserProps {
   businessName: string;
   isActive: boolean;
   emailVerified: boolean;
-  roles: string[];
+  roles: UserRole[];
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -79,8 +80,14 @@ export class User extends AggregateRoot<UserProps> {
     return this.props.isActive;
   }
 
-  public get roles(): string[] {
-    return this.props.roles;
+  public get roles(): UserRole[] {
+    return this.props.roles as UserRole[];
+  }
+
+  public get highestRole(): UserRole {
+    return this.props.roles.reduce((highest: UserRole, role: UserRole) =>
+      ROLE_HIERARCHY[role] > ROLE_HIERARCHY[highest] ? role : highest
+    );
   }
 
   public get lastLoginAt(): Date | null {
@@ -118,6 +125,32 @@ export class User extends AggregateRoot<UserProps> {
   public verifyEmail(): void {
     this.props.emailVerified = true;
     this.props.updatedAt = new Date();
+  }
+
+  public addRole(role: UserRole): void {
+    if (!USER_ROLES.includes(role)) {
+      throw new Error(`Rol inválido: ${role}`);
+    }
+    if (!this.props.roles.includes(role)) {
+      this.props.roles.push(role);
+      this.props.updatedAt = new Date();
+    }
+  }
+
+  public removeRole(role: UserRole): void {
+    const index = this.props.roles.indexOf(role);
+    if (index !== -1) {
+      this.props.roles.splice(index, 1);
+      this.props.updatedAt = new Date();
+    }
+  }
+
+  public hasRole(requiredRole: UserRole): boolean {
+    return hasRole(this.props.roles as UserRole[], requiredRole);
+  }
+
+  public canManage(targetRole: UserRole): boolean {
+    return canManageRole(this.props.roles as UserRole[], targetRole);
   }
 
   protected validate(): void {

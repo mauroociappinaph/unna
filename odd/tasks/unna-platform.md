@@ -24,6 +24,7 @@ Replicar https://fu.do/es-ar/crear-cuenta/ con formulario validado:
 
 ### S3: Backend API (NestJS + Supabase)
 - Autenticación: registro, login, JWT, refresh tokens
+- **Auth avanzado**: recuperar contraseña, verificación email, roles/permisos (owner, admin, manager, cashier, waiter)
 - Validación server-side mirrorando reglas del frontend
 - Persistencia en Supabase (PostgreSQL)
 - Arquitectura hexagonal + DDD + SRP + DRY
@@ -78,10 +79,19 @@ unna/
 | T7 | S4 | frontend | Next.js App + Tailwind + Shared UI Components (Button, Input, Checkbox, Form) | |
 | T8 | S1 | frontend | Landing Page: Hero, 3 Pilares, Funcionalidades, Testimonios, Stats, Business Types, CTA | |
 | T9 | S2 | frontend | Register Page: Formulario con Zod validation, React Hook Form, API integration | |
-| T10 | S1,S2 | integration | E2E: Registro completo frontend→backend→DB | |
-| T11 | - | polish | README, .env.example, Docker compose, CI/CD básico | |
+| T10 | S1,S2 | integration | E2E: Registro completo frontend→backend→DB |
+| T11 | - | polish | README, .env.example, Docker compose, CI/CD básico |
+| T12 | S3 | backend | Auth avanzado: ForgotPassword + ResetPassword UseCases + endpoints |
+| T13 | S3 | backend | Auth avanzado: VerifyEmail UseCase + endpoint + emailVerified en User |
+| T14 | S3 | backend | Auth avanzado: Roles/Permisos (UserRole VO, hierarchy, hasRole, canManage) |
+| T15 | S3 | backend | Auth avanzado: Tests unit + E2E para forgot/reset/verify/roles |
 
 ## Log
 
 **L1**: Usuario solicita replicar fu.do (landing + registro) con NestJS, Supabase, Next.js, React. Arquitectura hexagonal + DDD + SRP + DRY obligatoria.
 **L2**: Nombre del proyecto cambiado a **UNNA** (una sola plataforma).
+**L3**: Fix 3 auth bugs: confirmPassword validation, acceptTerms boolean, phone 500→400 via DomainExceptionFilter.
+**L4**: Auth avanzado Phase 1: EmailPort + ResendAdapter (Commit 1/5).
+**L5**: Auth avanzado Phase 1: ForgotPassword + ResetPassword UseCases + endpoints (Commit 2/5).
+**L6**: Auth avanzado Phase 1: VerifyEmail UseCase + endpoint + emailVerified migration (Commit 3/5).
+**L7**: Auth avanzado Phase 1: Roles/Permisos (UserRole VO, hierarchy, hasRole, canManage) (Commit 4/5).

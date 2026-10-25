@@ -14,6 +14,7 @@ import { BcryptHashingAdapter } from './adapters/hashing.adapter';
 import { PrismaUserRepositoryAdapter } from './adapters/user.repository.adapter';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtStrategy } from '../common/strategies/jwt.strategy';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { JwtStrategy } from '../common/strategies/jwt.strategy';
     ResetPasswordUseCase,
     VerifyEmailUseCase,
     JwtStrategy,
+    RolesGuard,
     {
       provide: 'UserRepositoryPort',
       useClass: PrismaUserRepositoryAdapter,
@@ -49,6 +51,6 @@ import { JwtStrategy } from '../common/strategies/jwt.strategy';
       useClass: JwtAdapter,
     },
   ],
-  exports: [RegisterUseCase, LoginUseCase, ForgotPasswordUseCase, ResetPasswordUseCase, VerifyEmailUseCase, 'UserRepositoryPort', 'HashingPort', 'JwtPort'],
+  exports: [RegisterUseCase, LoginUseCase, ForgotPasswordUseCase, ResetPasswordUseCase, VerifyEmailUseCase, RolesGuard, 'UserRepositoryPort', 'HashingPort', 'JwtPort'],
 })
 export class AuthModule {}

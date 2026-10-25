@@ -7,6 +7,7 @@ import { RegisterUseCase } from './use-cases/register.use-case';
 import { LoginUseCase } from './use-cases/login.use-case';
 import { ForgotPasswordUseCase } from './use-cases/forgot-password.use-case';
 import { ResetPasswordUseCase } from './use-cases/reset-password.use-case';
+import { VerifyEmailUseCase } from './use-cases/verify-email.use-case';
 import { AuthController } from './auth.controller';
 import { JwtAdapter } from './adapters/jwt.adapter';
 import { BcryptHashingAdapter } from './adapters/hashing.adapter';
@@ -33,6 +34,7 @@ import { JwtStrategy } from '../common/strategies/jwt.strategy';
     LoginUseCase,
     ForgotPasswordUseCase,
     ResetPasswordUseCase,
+    VerifyEmailUseCase,
     JwtStrategy,
     {
       provide: 'UserRepositoryPort',
@@ -47,6 +49,6 @@ import { JwtStrategy } from '../common/strategies/jwt.strategy';
       useClass: JwtAdapter,
     },
   ],
-  exports: [RegisterUseCase, LoginUseCase, ForgotPasswordUseCase, ResetPasswordUseCase, 'UserRepositoryPort', 'HashingPort', 'JwtPort'],
+  exports: [RegisterUseCase, LoginUseCase, ForgotPasswordUseCase, ResetPasswordUseCase, VerifyEmailUseCase, 'UserRepositoryPort', 'HashingPort', 'JwtPort'],
 })
 export class AuthModule {}

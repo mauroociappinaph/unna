@@ -12,6 +12,7 @@ export interface UserProps {
   phone: Phone;
   businessName: string;
   isActive: boolean;
+  emailVerified: boolean;
   roles: string[];
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -39,6 +40,7 @@ export class User extends AggregateRoot<UserProps> {
       phone,
       businessName,
       isActive: true,
+      emailVerified: false,
       roles: ['owner'],
       lastLoginAt: null,
       createdAt: now,
@@ -85,6 +87,10 @@ export class User extends AggregateRoot<UserProps> {
     return this.props.lastLoginAt;
   }
 
+  public get emailVerified(): boolean {
+    return this.props.emailVerified;
+  }
+
   public get createdAt(): Date {
     return this.props.createdAt;
   }
@@ -106,6 +112,11 @@ export class User extends AggregateRoot<UserProps> {
 
   public deactivate(): void {
     this.props.isActive = false;
+    this.props.updatedAt = new Date();
+  }
+
+  public verifyEmail(): void {
+    this.props.emailVerified = true;
     this.props.updatedAt = new Date();
   }
 

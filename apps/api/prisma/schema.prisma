@@ -15,6 +15,7 @@ model User {
   phone         String
   businessName  String
   isActive      Boolean  @default(true)
+  emailVerified Boolean  @default(false)
   roles         String[] @default(["owner"])
   lastLoginAt   DateTime?
   createdAt     DateTime @default(now())

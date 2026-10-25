@@ -4,6 +4,7 @@ import { RegisterUseCase, RegisterCommand } from './use-cases/register.use-case'
 import { LoginUseCase, LoginCommand } from './use-cases/login.use-case';
 import { ForgotPasswordUseCase, ForgotPasswordCommand } from './use-cases/forgot-password.use-case';
 import { ResetPasswordUseCase, ResetPasswordCommand } from './use-cases/reset-password.use-case';
+import { VerifyEmailUseCase, VerifyEmailCommand } from './use-cases/verify-email.use-case';
 import { Result, isOk, isErr } from '@unna/domain';
 import { IsString, IsEmail, MinLength, MaxLength, Matches, IsBoolean, Validate, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
 
@@ -93,6 +94,12 @@ export class ResetPasswordDto implements ResetPasswordCommand {
   confirmPassword!: string;
 }
 
+export class VerifyEmailDto implements VerifyEmailCommand {
+  @IsString()
+  @MinLength(1, { message: 'Token es obligatorio' })
+  token!: string;
+}
+
 export class AuthResponseDto {
   accessToken!: string;
   refreshToken!: string;
@@ -117,6 +124,7 @@ export class AuthController {
     private readonly loginUseCase: LoginUseCase,
     private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
+    private readonly verifyEmailUseCase: VerifyEmailUseCase,
   ) {}
 
   @Post('register')
@@ -169,6 +177,21 @@ export class AuthController {
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
     return { message: 'Contraseña actualizada correctamente. Ya podés iniciar sesión.' };
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ApiOperation({ summary: 'Verificar email con token' })
+  @ApiResponse({ status: 200, type: MessageResponseDto })
+  @ApiResponse({ status: 400, description: 'Token inválido o expirado' })
+  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<MessageResponseDto> {
+    const result = await this.verifyEmailUseCase.execute(dto);
+    if (isErr(result)) {
+      const { HttpException } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+    return { message: 'Email verificado correctamente. Ya podés iniciar sesión.' };
   }
 
   private handleResult<T extends { user: any; tokens: any }>(result: Result<T, Error>): AuthResponseDto {

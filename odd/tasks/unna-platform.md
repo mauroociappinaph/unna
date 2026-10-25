@@ -50,6 +50,9 @@ Flow completo tras registro para configurar el negocio:
 ### S7: Ventas / POS
 "T24: Ventas/POS module (orders, payments, receipts)"
 
+### S8: Lint en CI antes de promover a producción
+"Re organiza trodas las ramas, dejemo main como la de produccion , develop como la de desarrollo y borra todas las obsoleta" — opción elegida: "Primero arreglar lint: Configurar ESLint y corregir los ~300 errores previos antes de promover."
+
 ## Architecture Constraints (MANDATORIOS)
 
 - **Hexagonal Architecture**: Domain core aislado, ports/adapters para infraestructura (DB, HTTP, external APIs)
@@ -109,6 +112,9 @@ unna/
 | T22 | S5 | integration | Tests unit + E2E onboarding completo | dbcc245 |
 | T23 | S6 | backend | Catálogo: categorías, productos, modificadores, listas de precios, stock (dominio + Prisma + API) | 6578d11, e28e1cd, 8b44f4d |
 | T24 | S7 | backend | Ventas/POS: pedidos, pagos (split), comprobantes; precios server-side; guard de dueño | 6578d11, 846d915, e28e1cd, 6a7adf0 |
+| T27a | S8 | worker | Lint apps/api/src/business (197) | a5f65e7 |
+| T27b | S8 | worker | Lint apps/api/src/{auth,common,email} + packages (75) | e887951, 81d611d |
+| T27c | S8 | worker | Lint apps/web (25) | 082760e |
 
 ## Log
 
@@ -130,3 +136,5 @@ unna/
 **L16**: Smoke HTTP real (schema aislado) encontró: onboarding 500 (`deleteMany` en `upsert.create`, previo T17), `PATCH settings` 500 (VOs no reconstituidos, previo T18), items/descuento modificables tras pago parcial (T24). Riesgo de pérdida de datos: el adapter de negocio recreaba sucursales en cada save y `Order/Receipt→Sucursal` era Cascade → pasan a Restrict y upsert por sucursal. Resultado final 31/31; suites api 22, domain 74, web 42, e2e auth 12 (schema aislado).
 **L17**: Verificación independiente (gentle-ai-verify): S6 FAIL por cross-tenant (dueño de B, con su propio businessId e ids de A, leía/sobrescribía stock, movimientos, productos por categoría; parentId/modifierGroupIds/components/uploadImage sin validar negocio), S7 CONCERN (cancelar con pago parcial, orderNumber `@unique` global con colisiones, FK P2003 → 500). Corregido con TDD (RED observado): validación de pertenencia en CategoryUseCase/ProductUseCase/StockUseCase, cancelación rechazada con pagos registrados, `@@unique([businessId, orderNumber])` + reintento ante colisión, P2002/P2003 → 409 en `unwrap` y filtro global, upload de imagen con `memoryStorage` (antes rechazaba toda imagen: el validador de magic numbers no tiene buffer con diskStorage) y escritura sólo tras validar producto. Tests nuevos: `catalog-tenant.use-case.spec.ts` (9), `sales.use-case.spec.ts` (2). Smoke ampliado 46/46; suites api 33, domain 74, web 42, e2e auth 12. Pendiente: race de pagos concurrentes sin transacción, numeración secuencial de comprobantes (T26), DTOs class-validator en catálogo, DELETE de sucursal inexistente devuelve 200 (previo T18), `uploads/` sin `.gitignore`.**L18**: Usuario: "Hacelo" (commits). Rama `feat/t21-t24-catalog-sales` desde `main`: 4c0421c rebranding FUDO→UNNA (trabajo previo, commit aparte), dbcc245 web T21/T22/T18, 6578d11 dominio T23/T24, 846d915 fix adapter de negocio (riesgo de datos, commit propio), e28e1cd schema, 8b44f4d API catálogo T23 (verificado aislado: tsc 0, 31 tests), 6a7adf0 API ventas T24. Los slices superan ~400 líneas (≈9.7k en total): para revisión conviene PRs encadenados por commit.
 **L19**: Usuario: "Si jace push pr encadentado y merge a develop p la rama princiapl". `origin/main` y `origin/develop` sólo tenían un `.gitkeep` sin historia común; se une con merge `--allow-unrelated-histories` (rama `chore/connect-history`). CI local antes del push: build web fallaba (metadata en página `'use client'` de onboarding; `useSearchParams` sin Suspense en horarios) → corregido dentro de dbcc245 (fixup). Lint de CI falla en todo el repo por ausencia de configuración ESLint (previo, fuera de alcance).
+**L20**: Usuario: "Re organiza trodas las ramas, dejemo main como la de produccion , develop como la de desarrollo y borra todas las obsoleta". Cadena #1–#8 mergeada en develop (02fe7c3); quedan sólo main y develop; borradas unna-mvp y ramas de la cadena (todas contenidas en develop). Al preguntar si promover develop→main, eligió "Primero arreglar lint". Config `.eslintrc.json` raíz (eslint:recommended + @typescript-eslint/recommended + next/core-web-vitals en web) en rama chore/eslint-setup; ~300 errores previos, se corrigen sin bajar reglas.
+**L21**: Lint corregido con 3 workers en paralelo (superficies disjuntas), sin bajar reglas ni `eslint-disable`: business 197, auth/common/email+packages 75, web 25 → 0 errores (quedan 2 warnings `exhaustive-deps`). Hallazgos: `HorarioEditor` nunca llamaba `onSubmit` ("Guardar horarios" no guardaba, T18) → fix TDD 22788a6; `findByOwnerId` con `toDomain` sin bind → corregido en a5f65e7. Integración: lint 4/4, build 4/4, tsc ×4, tests domain 74, shared 9, web 44, api 33, smoke HTTP 46/46 (schema aislado, eliminado). Pendiente: `removeStock` sin `type` por defecto, tipo de `Order.create` exige `status`/`orderId` que completa el propio método (obliga a un cast).

@@ -53,6 +53,9 @@ Flow completo tras registro para configurar el negocio:
 ### S8: Lint en CI antes de promover a producción
 "Re organiza trodas las ramas, dejemo main como la de produccion , develop como la de desarrollo y borra todas las obsoleta" — opción elegida: "Primero arreglar lint: Configurar ESLint y corregir los ~300 errores previos antes de promover."
 
+### S9: Deuda técnica pendiente
+Opción elegida por el usuario: "Deuda técnica pendiente: Pagos concurrentes en transacción, tipo de movimiento de stock por defecto, tipos de Order.create, warnings del dashboard." (respuesta a "¿Con qué seguimos en la app?").
+
 ## Architecture Constraints (MANDATORIOS)
 
 - **Hexagonal Architecture**: Domain core aislado, ports/adapters para infraestructura (DB, HTTP, external APIs)
@@ -115,6 +118,13 @@ unna/
 | T27a | S8 | worker | Lint apps/api/src/business (197) | a5f65e7 |
 | T27b | S8 | worker | Lint apps/api/src/{auth,common,email} + packages (75) | e887951, 81d611d |
 | T27c | S8 | worker | Lint apps/web (25) | 082760e |
+| T28a | S9 | worker | Pagos: chequeo de saldo + guardado en transacción con lock del pedido (sin sobrepago concurrente) | 203ecca |
+| T28b | S9 | worker | Order.create sin status/orderId en el input (sin casts en ventas); dirección del comprobante reconstituida | 203ecca |
+| T28c | S9 | worker | DTOs class-validator para bodies del catálogo (sin errores internos en 400) | f4b40cc |
+| T28d | S9 | inline | removeStock: type por defecto 'out' | de72f1a |
+| T28e | S9 | inline | DELETE sucursal inexistente → 404 | de72f1a |
+| T28f | S9 | inline | Warnings exhaustive-deps del dashboard | 3e7f444 |
+| T28g | S9 | inline | uploads/ en .gitignore | see L23 |
 
 ## Log
 
@@ -138,3 +148,5 @@ unna/
 **L19**: Usuario: "Si jace push pr encadentado y merge a develop p la rama princiapl". `origin/main` y `origin/develop` sólo tenían un `.gitkeep` sin historia común; se une con merge `--allow-unrelated-histories` (rama `chore/connect-history`). CI local antes del push: build web fallaba (metadata en página `'use client'` de onboarding; `useSearchParams` sin Suspense en horarios) → corregido dentro de dbcc245 (fixup). Lint de CI falla en todo el repo por ausencia de configuración ESLint (previo, fuera de alcance).
 **L20**: Usuario: "Re organiza trodas las ramas, dejemo main como la de produccion , develop como la de desarrollo y borra todas las obsoleta". Cadena #1–#8 mergeada en develop (02fe7c3); quedan sólo main y develop; borradas unna-mvp y ramas de la cadena (todas contenidas en develop). Al preguntar si promover develop→main, eligió "Primero arreglar lint". Config `.eslintrc.json` raíz (eslint:recommended + @typescript-eslint/recommended + next/core-web-vitals en web) en rama chore/eslint-setup; ~300 errores previos, se corrigen sin bajar reglas.
 **L21**: Lint corregido con 3 workers en paralelo (superficies disjuntas), sin bajar reglas ni `eslint-disable`: business 197, auth/common/email+packages 75, web 25 → 0 errores (quedan 2 warnings `exhaustive-deps`). Hallazgos: `HorarioEditor` nunca llamaba `onSubmit` ("Guardar horarios" no guardaba, T18) → fix TDD 22788a6; `findByOwnerId` con `toDomain` sin bind → corregido en a5f65e7. Integración: lint 4/4, build 4/4, tsc ×4, tests domain 74, shared 9, web 44, api 33, smoke HTTP 46/46 (schema aislado, eliminado). Pendiente: `removeStock` sin `type` por defecto, tipo de `Order.create` exige `status`/`orderId` que completa el propio método (obliga a un cast).
+**L22**: Usuario: "deja todo en develop y sigamos con la app". PR #10 (develop→main) cerrado: main exige 1 aprobación con enforce_admins y no hay otro colaborador. A "¿Con qué seguimos en la app?" eligió "Deuda técnica pendiente". Rama chore/tech-debt; numeración secuencial de comprobantes queda para T26.
+**L23**: T28 completo. Pagos serializados por pedido (transacción + `SELECT … FOR UPDATE`) verificado contra Postgres: 10 pagos concurrentes que superan la mitad del saldo → 1 aceptado, 9 rechazados ("saldo pendiente"), 1 guardado; 5 concurrentes que suman el saldo → todos aceptados y pedido pagado. DTOs del catálogo (body malformado → 400 de validación; `priceDelta` negativo permitido, corregido sobre la versión del worker). T28f destapó un bug real: horarios ignoraba `?sucursal=` (closure viejo) → fix TDD. T28g `.gitignore` en el commit de cierre. Verificación: lint 4/4, build 4/4, tsc ×4, tests domain 74, shared 9, web 47, api 108, smoke 52/52. Pendiente conocido: addItem/removeItem/applyDiscount/cancel siguen sin el lock del pedido; timeout de transacción de Prisma (5 s) bajo mucha contención.

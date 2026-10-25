@@ -48,3 +48,6 @@ prisma/migrations/.migration_lock.toml
 *.pem
 .vercel
 .netlify
+
+# Local product image uploads (written by the API at runtime)
+apps/api/uploads/

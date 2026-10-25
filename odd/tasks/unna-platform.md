@@ -179,11 +179,11 @@ unna/
 | T31b | S13 | worker | Web: POS modo hora pico + favoritos en catálogo | e109b4d |
 | T31c | S13 | worker | Web: pantalla de barra + pantalla pública | 6d999ab |
 | T31d | S13 | inline | Integración, smoke real (incl. aislamiento del endpoint público), PRs | see L36 |
-| T32a | S14 | worker | API: separar casos de uso, controladores y adaptadores del catálogo en un archivo por clase | |
-| T32b | S14 | worker | Web: dividir POS (hooks/componentes) y lib/api.ts por recurso | |
-| T32c | S14 | worker | Dominio: OrderItem y ReceiptItem en archivos propios | |
-| T32d | S14 | inline | Errores tipados (NotFound) en lugar del regex de texto; integración, smoke, revisión y PRs | |
-| T31e | S13 | inline | Fix renovación de sesión concurrente (revisión); propuestas aprobadas: dashboard sin chrome público, POS en "Para llevar" | 02ceca2, 2c71785 |
+| T32a | S14 | worker | API: separar casos de uso, controladores y adaptadores del catálogo en un archivo por clase | de521bd |
+| T32b | S14 | worker | Web: dividir POS (hooks/componentes) y lib/api.ts por recurso | 267c657 |
+| T32c | S14 | worker | Dominio: OrderItem y ReceiptItem en archivos propios | 6a0521e |
+| T32d | S14 | inline | Errores tipados (NotFound) en lugar del regex de texto; integración, smoke, revisión y PRs | cbf77f9 |
+| T31e | S13 | inline | Fix renovación de sesión concurrente (revisión); propuestas aprobadas: dashboard sin chrome público, POS en "Para llevar" | 02ceca2, 2c71785, 1fc3bda |
 
 ## Log
 
@@ -223,3 +223,4 @@ unna/
 **L35**: Cadena T30 mergeada (#21–#25, develop cfc7e27); runs de push en develop: todos success. Usuario: "Asegurate que pasen todas las actions despues de todos los push y merge" → cada merge se verifica también con el run de push en develop (Lint & TypeCheck, Tests, Build). S13 arranca en feat/peak-hour.
 **L36**: S13 completo. Usuario: "Agrega el  @nestjs/throttler" → 6.7.1 fijo, solo en el endpoint público (120/min por IP, PUBLIC_BOARD_RATE_LIMIT; TRUST_PROXY para IP real detrás del proxy). Integración: refresh de sesión en la barra (pantalla de todo el día; regresión del login detectada antes de commitear y fijada con test), pantalla pública sin header/footer del sitio (SiteChrome). Navegador: barra (columnas, "Empezar" mueve el pedido), pantalla pública sin sesión (solo número y primer nombre; token inválido → "Pantalla no disponible"; nada en localStorage), POS con favoritos (fijado primero, luego más vendidos); bug de números desbordando la tarjeta en /pantalla corregido (1024/1280/1920 px). Verificación: tests sin caché domain 171, shared 9, api 270, web 207; smoke 82/82. Propuestas abiertas: quitar header/footer públicos del dashboard; POS arranca en "Para llevar".
 **L37**: Revisión nativa de S13 en 3 cortes (corte entero excedía el presupuesto): backend, POS y barra/pantalla aprobados, 24 observaciones no bloqueantes. Corregida la renovación de sesión concurrente (02ceca2). Usuario: "para las fos propuestas tendoy el ok. y hace revisiom nativa" → 2c71785. Usuario pregunta por archivos >400 líneas y patrones; auditoría: 7 archivos >400 (product-catalog.use-case 729 con 5 clases, product.repository.adapter 554 con 6, catalog.controller 453 con 5, pos/page 475 con 26 estados, receipt 441, order 433, api.ts 408), 404 por regex de texto en use-case-result.ts:42. Elige "Refactor antes del merge" → S14.
+**L38**: S14 completo. Archivos de código >400 líneas: 0 (product-catalog.use-case 729 → 5 archivos, mayor 191; product.repository.adapter 554 → 131 + 5 adaptadores; catalog.controller 453 → 5 controladores; pos/page 475 → 144 + 5 hooks y 5 componentes; api.ts 408 → 21 + lib/api-client por recurso; order.ts 310; receipt.ts 358). 404 por tipo (NotFoundError del dominio) en vez del regex "no encontrad"; RED 2 fallos → GREEN; grep sin restos. Integración: lint/build/tsc 4/4, tests sin caché domain 172, shared 9, api 278, web 214; smoke 82/82. Revisión nativa en 5 cortes (fix+propuestas, dominio, API, web, errores): todos aprobados; observación de resiliencia aplicada (timeout del refresh compartido, 1fc3bda). Pendientes de backlog: migraciones Prisma desde el init (cambios con db push), filtro de validación por fragmentos de texto, corte de medianoche en la barra.

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  NotFoundError,
   BusinessRepositoryPort,
   CashSessionRepositoryPort,
   LockedOrderRepositories,
@@ -40,6 +41,7 @@ interface Result<T> {
 
 const ok = <T>(value: T): Result<T> => ({ ok: true, value });
 const fail = <T>(message: string): Result<T> => ({ ok: false, error: new Error(message) });
+const notFound = <T>(message: string): Result<T> => ({ ok: false, error: new NotFoundError(message) });
 
 const formatCents = (cents: number) => Money.fromCents(cents).format();
 
@@ -76,9 +78,9 @@ export class SalesUseCase {
     if (!command.items?.length) return fail('El pedido debe tener al menos un item');
 
     const business = await this.businesses.findById(command.businessId);
-    if (!business) return fail('Negocio no encontrado');
+    if (!business) return notFound('Negocio no encontrado');
     const sucursal = business.sucursales.find((s) => s.id === command.sucursalId && s.isActive);
-    if (!sucursal) return fail('Sucursal no encontrada');
+    if (!sucursal) return notFound('Sucursal no encontrada');
     if (!(await this.cashSessions.findOpenBySucursal(command.businessId, sucursal.id))) {
       return fail('Abrí la caja para empezar a vender');
     }
@@ -133,7 +135,7 @@ export class SalesUseCase {
     return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async (repositories) => {
       const order = await this.findModifiable(repositories, command.businessId, command.orderId);
       if (!order.ok) return order;
-      if (!order.value!.items.some((i) => i.id === command.itemId)) return fail<Order>('Item no encontrado');
+      if (!order.value!.items.some((i) => i.id === command.itemId)) return notFound<Order>('Item no encontrado');
       const updated = order.value!.removeItem(command.itemId);
       await repositories.orders.save(updated);
       return ok(updated);
@@ -154,7 +156,7 @@ export class SalesUseCase {
   async changeStatus(command: { businessId: string; orderId: string; action: string; reason?: string }): Promise<Result<Order>> {
     return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async ({ orders, payments }) => {
       const order = await orders.findByIdAndBusinessId(command.orderId, command.businessId);
-      if (!order) return fail<Order>('Pedido no encontrado');
+      if (!order) return notFound<Order>('Pedido no encontrado');
 
       let updated: Order;
       switch (command.action) {
@@ -206,7 +208,7 @@ export class SalesUseCase {
     // until this payment, linked to it, commits.
     return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async ({ orders, payments, cashSessions }) => {
       const order = await orders.findByIdAndBusinessId(command.orderId, command.businessId);
-      if (!order) return fail('Pedido no encontrado');
+      if (!order) return notFound('Pedido no encontrado');
       if (['cancelled', 'refunded'].includes(order.status)) return fail('No se puede cobrar un pedido cancelado o reembolsado');
       if (order.paymentStatus === 'completed') return fail('El pedido ya está pagado');
       const cashSession = await cashSessions.findOpenBySucursalForPayment(command.businessId, order.sucursalId);
@@ -249,14 +251,14 @@ export class SalesUseCase {
 
   async listPayments(command: { businessId: string; orderId: string }): Promise<Result<PaymentRecord[]>> {
     const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
-    if (!order) return fail('Pedido no encontrado');
+    if (!order) return notFound('Pedido no encontrado');
     return ok(await this.payments.findByOrderId(order.id));
   }
 
   /** Reads the order through the lock-bound repositories and checks it still accepts changes. */
   async getOrder(businessId: string, orderId: string): Promise<Result<Order>> {
     const order = await this.orders.findByIdAndBusinessId(orderId, businessId);
-    return order ? ok(order) : fail('Pedido no encontrado');
+    return order ? ok(order) : notFound('Pedido no encontrado');
   }
 
   async listOrders(businessId: string, filters: OrderListFilters): Promise<Result<Order[]>> {
@@ -269,7 +271,7 @@ export class SalesUseCase {
     orderId: string,
   ): Promise<Result<Order>> {
     const order = await orders.findByIdAndBusinessId(orderId, businessId);
-    if (!order) return fail('Pedido no encontrado');
+    if (!order) return notFound('Pedido no encontrado');
     if (!order.canBeModified() || order.paymentStatus !== 'pending') {
       return fail('El pedido ya no se puede modificar');
     }
@@ -286,7 +288,7 @@ export class SalesUseCase {
       return fail<NewOrderLine>('La cantidad debe ser un entero positivo');
     }
     const product = await this.products.findByIdAndBusinessId(line.productId, businessId);
-    if (!product) return fail<NewOrderLine>(`Producto ${line.productId} no encontrado`);
+    if (!product) return notFound<NewOrderLine>(`Producto ${line.productId} no encontrado`);
     if (!product.canBeSold()) return fail<NewOrderLine>(`El producto "${product.name}" no está disponible para la venta`);
 
     const groups = await Promise.all(
@@ -299,7 +301,7 @@ export class SalesUseCase {
       const group = groups.find((g) => g?.id === choice.modifierGroupId && g.isActive);
       if (!group) return fail<NewOrderLine>(`El modificador ${choice.modifierGroupId} no aplica a "${product.name}"`);
       const option = group.options.find((o) => o.id === choice.optionId && o.isActive);
-      if (!option) return fail<NewOrderLine>(`Opción ${choice.optionId} no encontrada en "${group.name}"`);
+      if (!option) return notFound<NewOrderLine>(`Opción ${choice.optionId} no encontrada en "${group.name}"`);
       modifiers.push({ modifierGroupId: group.id, optionId: option.id, name: option.name, priceDelta: option.priceDelta });
     }
 

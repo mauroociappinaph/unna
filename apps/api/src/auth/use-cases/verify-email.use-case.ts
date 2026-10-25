@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UserRepositoryPort, JwtPort, EmailPort } from '@unna/domain';
-import { Result, ok, err } from '@unna/domain';
+import { NotFoundError, Result, ok, err } from '@unna/domain';
 
 export interface VerifyEmailCommand {
   token: string;
@@ -31,7 +31,7 @@ export class VerifyEmailUseCase {
 
     const user = await this.userRepository.findById(payload.sub);
     if (!user) {
-      return err(new Error('Usuario no encontrado.'));
+      return err(new NotFoundError('Usuario no encontrado.'));
     }
 
     if (user.email.value !== payload.email) {

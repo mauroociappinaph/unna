@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UserRepositoryPort, JwtPort, HashingPort } from '@unna/domain';
 import { Password } from '@unna/domain';
-import { Result, ok, err } from '@unna/domain';
+import { NotFoundError, Result, ok, err } from '@unna/domain';
 
 export interface ResetPasswordCommand {
   token: string;
@@ -38,7 +38,7 @@ export class ResetPasswordUseCase {
 
     const user = await this.userRepository.findById(payload.sub);
     if (!user) {
-      return err(new Error('Usuario no encontrado.'));
+      return err(new NotFoundError('Usuario no encontrado.'));
     }
 
     if (user.email.value !== payload.email) {

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  NotFoundError,
   BusinessRepositoryPort,
   CashAmounts,
   CashMovementType,
@@ -17,6 +18,7 @@ interface Result<T> {
 
 const ok = <T>(value: T): Result<T> => ({ ok: true, value });
 const fail = <T>(message: string): Result<T> => ({ ok: false, error: new Error(message) });
+const notFound = <T>(message: string): Result<T> => ({ ok: false, error: new NotFoundError(message) });
 
 /** Domain rules throw; report them as a failed result so nothing after them is written. */
 const attempt = <T>(change: () => T): Result<T> => {
@@ -39,8 +41,8 @@ export class CashUseCase {
 
   async open(command: { businessId: string; sucursalId: string; openingAmount: number; openedBy: string }): Promise<Result<CashSession>> {
     const business = await this.businesses.findById(command.businessId);
-    if (!business) return fail('Negocio no encontrado');
-    if (!business.sucursales.some((s) => s.id === command.sucursalId && s.isActive)) return fail('Sucursal no encontrada');
+    if (!business) return notFound('Negocio no encontrado');
+    if (!business.sucursales.some((s) => s.id === command.sucursalId && s.isActive)) return notFound('Sucursal no encontrada');
 
     const session = attempt(() => CashSession.create(command));
     if (!session.ok) return session;
@@ -61,7 +63,7 @@ export class CashUseCase {
 
   async get(businessId: string, sessionId: string): Promise<Result<CashSession>> {
     const session = await this.sessions.findByIdAndBusinessId(sessionId, businessId);
-    return session ? ok(session) : fail(NOT_FOUND);
+    return session ? ok(session) : notFound(NOT_FOUND);
   }
 
   async list(businessId: string, filters: CashSessionListFilters): Promise<Result<CashSession[]>> {
@@ -78,7 +80,7 @@ export class CashUseCase {
   }): Promise<Result<CashSession>> {
     return this.unitOfWork.withSessionLock(command.sessionId, command.businessId, async (sessions) => {
       const session = await sessions.findByIdAndBusinessId(command.sessionId, command.businessId);
-      if (!session) return fail<CashSession>(NOT_FOUND);
+      if (!session) return notFound<CashSession>(NOT_FOUND);
       const updated = attempt(() => session.addMovement(command));
       if (!updated.ok) return updated;
       await sessions.save(updated.value!);
@@ -97,7 +99,7 @@ export class CashUseCase {
   }): Promise<Result<CashSession>> {
     return this.unitOfWork.withSessionLock(command.sessionId, command.businessId, async (sessions) => {
       const session = await sessions.findByIdAndBusinessId(command.sessionId, command.businessId);
-      if (!session) return fail<CashSession>(NOT_FOUND);
+      if (!session) return notFound<CashSession>(NOT_FOUND);
       if (!session.isOpen) return fail<CashSession>('La caja ya está cerrada');
       const payments = await sessions.findPaymentsBySession(session.id);
       const closed = attempt(() => session.close({ ...command, payments }));

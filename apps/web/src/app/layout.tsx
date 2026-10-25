@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { Header } from '@/components/layout';
-import { Footer } from '@/components/layout';
+import { SiteChrome } from '@/components/layout/SiteChrome';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -66,11 +65,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-sans antialiased">
-        <div className="flex min-h-screen flex-col">
-          <Header />
-          <main className="flex-1 pt-16">{children}</main>
-          <Footer />
-        </div>
+        <SiteChrome>{children}</SiteChrome>
       </body>
     </html>
   );

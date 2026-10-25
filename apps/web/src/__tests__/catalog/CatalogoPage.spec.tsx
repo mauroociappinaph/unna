@@ -18,6 +18,7 @@ jest.mock('@/lib/api', () => ({
     createProduct: jest.fn(),
     updateProduct: jest.fn(),
     deleteProduct: jest.fn(),
+    setProductFavorite: jest.fn(),
     listModifierGroups: jest.fn(),
     createModifierGroup: jest.fn(),
     addModifierOption: jest.fn(),
@@ -112,6 +113,72 @@ describe('Catalogo page', () => {
 
       expect(screen.queryByRole('row', { name: /Milanesa/ })).not.toBeInTheDocument();
       expect(screen.getByRole('row', { name: /Gaseosa/ })).toBeInTheDocument();
+    });
+
+    describe('favorites', () => {
+      const pinned = shapes['PUT products/:id (favorite)'].body as Product;
+
+      function deferred<T>() {
+        let resolve!: (value: T) => void;
+        let reject!: (reason: unknown) => void;
+        const promise = new Promise<T>((res, rej) => {
+          resolve = res;
+          reject = rej;
+        });
+        return { promise, resolve, reject };
+      }
+
+      it('pins a product with the star, showing it pinned before the API answers', async () => {
+        const user = userEvent.setup();
+        const request = deferred<Product>();
+        mocked.setProductFavorite.mockReturnValue(request.promise);
+        render(<CatalogoPage />);
+        const row = await screen.findByRole('row', { name: /Milanesa/ });
+        const star = within(row).getByRole('button', { name: 'Fijar Milanesa en favoritos' });
+        expect(star).toHaveAttribute('aria-pressed', 'false');
+
+        await user.click(star);
+
+        expect(mocked.setProductFavorite).toHaveBeenCalledWith(businessId, milanesa.id, true);
+        const pressed = within(row).getByRole('button', { name: 'Quitar Milanesa de favoritos' });
+        expect(pressed).toHaveAttribute('aria-pressed', 'true');
+        request.resolve(pinned);
+        await waitFor(() => expect(pressed).toBeEnabled());
+        expect(within(row).getByRole('button', { name: 'Quitar Milanesa de favoritos' })).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(mocked.updateProduct).not.toHaveBeenCalled();
+      });
+
+      it('unpins a pinned product', async () => {
+        const user = userEvent.setup();
+        mocked.listProducts.mockResolvedValue([{ ...milanesa, isFavorite: true }, soda]);
+        mocked.setProductFavorite.mockResolvedValue({ ...pinned, isFavorite: false });
+        render(<CatalogoPage />);
+        const row = await screen.findByRole('row', { name: /Milanesa/ });
+
+        await user.click(within(row).getByRole('button', { name: 'Quitar Milanesa de favoritos' }));
+
+        expect(mocked.setProductFavorite).toHaveBeenCalledWith(businessId, milanesa.id, false);
+        expect(await within(row).findByRole('button', { name: 'Fijar Milanesa en favoritos' })).toHaveAttribute('aria-pressed', 'false');
+      });
+
+      it('rolls the star back and shows the error when the API rejects', async () => {
+        const user = userEvent.setup();
+        const request = deferred<Product>();
+        mocked.setProductFavorite.mockReturnValue(request.promise);
+        render(<CatalogoPage />);
+        const row = await screen.findByRole('row', { name: /Milanesa/ });
+
+        await user.click(within(row).getByRole('button', { name: 'Fijar Milanesa en favoritos' }));
+        expect(within(row).getByRole('button', { name: 'Quitar Milanesa de favoritos' })).toBeInTheDocument();
+        request.reject(validationError('Producto no encontrado'));
+
+        expect(await screen.findByText('Producto no encontrado')).toBeInTheDocument();
+        const star = within(row).getByRole('button', { name: 'Fijar Milanesa en favoritos' });
+        expect(star).toHaveAttribute('aria-pressed', 'false');
+        expect(star).toBeEnabled();
+        expect(within(screen.getByRole('row', { name: /Gaseosa/ })).getByRole('button', { name: 'Fijar Gaseosa en favoritos' })).toBeInTheDocument();
+      });
     });
 
     it('creates a product sending the price in cents and the selected modifier groups', async () => {

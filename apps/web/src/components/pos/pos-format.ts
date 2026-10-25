@@ -1,4 +1,6 @@
-import type { IvaCondition, OrderAction, OrderStatus, OrderType, PaymentMethod, Receipt, ReceiptType } from '@/lib/api-types';
+import type {
+  IvaCondition, OrderAction, OrderItem, OrderLineInput, OrderStatus, OrderType, PaymentMethod, Receipt, ReceiptType,
+} from '@/lib/api-types';
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   dine_in: 'Salón',
@@ -63,6 +65,22 @@ export const IVA_CONDITION_LABELS: Record<IvaCondition, string> = {
   exento: 'Exento',
   consumidor_final: 'Consumidor final',
 };
+
+/** Catalog order of products and categories: display order, then name. */
+export function compareByDisplayOrder(a: { displayOrder: number; name: string }, b: { displayOrder: number; name: string }): number {
+  return a.displayOrder - b.displayOrder || a.name.localeCompare(b.name);
+}
+
+/** The line to send again when repeating an order: same product, quantity, modifiers and notes. */
+export function toOrderLine(item: OrderItem): OrderLineInput {
+  const modifiers = item.modifiers.map(({ modifierGroupId, optionId }) => ({ modifierGroupId, optionId }));
+  return {
+    productId: item.productId,
+    quantity: item.quantity,
+    ...(item.notes ? { notes: item.notes } : {}),
+    ...(modifiers.length > 0 ? { modifiers } : {}),
+  };
+}
 
 /** "0003-00000001" once numbered; the stored receipt number otherwise. */
 export function receiptNumberLabel(receipt: Receipt): string {

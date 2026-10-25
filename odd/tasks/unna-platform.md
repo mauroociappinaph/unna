@@ -88,6 +88,14 @@ Reglas de diseño (orquestador):
 - Barra: por sucursal, solo pedidos cobrados y no cerrados de hoy, en columnas Nuevos / En preparación / Listos, con acciones que usan los estados existentes; se actualiza sola.
 - Pantalla pública: sin sesión, con un token secreto por sucursal que el dueño genera y puede regenerar; muestra solo número corto del pedido, primer nombre del cliente y estado (en preparación / listo), de hoy y cobrados. Endpoint público: riesgo de seguridad.
 
+### S14: Refactor de arquitectura (sin cambio de comportamiento)
+Usuario: "Hay archivo s de mas de 400 lineas y estas usando los patrones de Hexagonal srp dry y ddd ??" → elige "Refactor antes del merge".
+Reglas (orquestador):
+- Ningún archivo de código de más de 400 líneas; un archivo por clase de caso de uso, controlador y adaptador del catálogo.
+- Hexagonal/DDD: el "no encontrado" deja de detectarse por texto ("no encontrad"); los casos de uso devuelven errores tipados y el filtro HTTP mapea por tipo, con los mismos mensajes y códigos HTTP que hoy.
+- SRP en web: el POS se divide en hooks/componentes con una responsabilidad; `lib/api.ts` se divide por recurso manteniendo su API pública.
+- Comportamiento idéntico: mismos tests verdes sin cambiar sus aserciones, smoke 82/82.
+
 ## Architecture Constraints (MANDATORIOS)
 
 - **Hexagonal Architecture**: Domain core aislado, ports/adapters para infraestructura (DB, HTTP, external APIs)
@@ -167,10 +175,15 @@ unna/
 | T30d | S12 | inline | Integración: módulo, smoke real (caja, facturas, carreras de numeración y cierre) | df544d5, 8fde4ef |
 | T30e | S12 | worker | Web: caja (abrir, movimientos, cerrar) y POS con comprobante fiscal (CAE, QR) | 481962e |
 | T30f | S12 | worker | Adaptador ARCA real (WSAA + WSFEv1) con tests de XML; prueba en homologación bloqueada por credenciales | 8fde4ef |
-| T31a | S13 | worker | Backend: favoritos, más vendidos, cola de barra, token de pantalla y endpoint público | pending |
-| T31b | S13 | worker | Web: POS modo hora pico + favoritos en catálogo | pending |
-| T31c | S13 | worker | Web: pantalla de barra + pantalla pública | pending |
-| T31d | S13 | inline | Integración, smoke real (incl. aislamiento del endpoint público), PRs | pending |
+| T31a | S13 | worker | Backend: favoritos, más vendidos, cola de barra, token de pantalla y endpoint público | e5570f1, 8837894 |
+| T31b | S13 | worker | Web: POS modo hora pico + favoritos en catálogo | e109b4d |
+| T31c | S13 | worker | Web: pantalla de barra + pantalla pública | 6d999ab |
+| T31d | S13 | inline | Integración, smoke real (incl. aislamiento del endpoint público), PRs | see L36 |
+| T32a | S14 | worker | API: separar casos de uso, controladores y adaptadores del catálogo en un archivo por clase | de521bd |
+| T32b | S14 | worker | Web: dividir POS (hooks/componentes) y lib/api.ts por recurso | 267c657 |
+| T32c | S14 | worker | Dominio: OrderItem y ReceiptItem en archivos propios | 6a0521e |
+| T32d | S14 | inline | Errores tipados (NotFound) en lugar del regex de texto; integración, smoke, revisión y PRs | cbf77f9 |
+| T31e | S13 | inline | Fix renovación de sesión concurrente (revisión); propuestas aprobadas: dashboard sin chrome público, POS en "Para llevar" | 02ceca2, 2c71785, 1fc3bda |
 
 ## Log
 
@@ -208,3 +221,6 @@ unna/
 **L33**: T30b/T30c integrados. Módulo: InvoicingUseCase, ReceiptIssueUnitOfWorkPort, ReceiptRepositoryPort → adaptador fiscal, FiscalAuthorizerPort por fábrica que impide el simulador con NODE_ENV=production (4 tests). Borrado el camino viejo (SalesUseCase.issueReceipt/getReceipt/listReceipts, Receipt.issue(), PrismaReceiptRepositoryAdapter). Smoke contra Postgres 70/70: venta sin caja 400, 5 aperturas simultáneas → 1, cierre esperado=apertura+efectivo+ingresos−retiros con diferencia 0, factura B (CAE, IVA = total, QR verificado), factura A (docType 80), C desde RI → 400 sin escribir, 8 facturas B concurrentes → números consecutivos sin huecos, ticket secuencial. Salvedad: en la carrera cierre vs pagos ganó siempre el cierre (0 aceptados/5 rechazados): invariante cumplido pero sin intercalación demostrada; se ajusta la prueba. Usuario: "dale" a node-forge para el adaptador ARCA real.
 **L34**: T30 completo (falta prueba real en homologación: bloqueada por certificado del usuario; el certificado de ARCA es gratis). node-forge 1.4.0 fijo, solo para firmar (GHSA-86w9-cpqp-85rv afecta la verificación, sin fix). Agregado RG 5616 (CondicionIVAReceptorId): factura A exige condición del cliente; B/C sin condición = consumidor final. Carrera cierre vs pagos con intercalación demostrada (pagos escalonados: 1/4, 2/3, 3/2 aceptados/rechazados, invariante OK). Integración final: lint 4/4, build 4/4, tsc ×4, tests domain 140, shared 9, api 214, web 151, smoke 70/70. Pendientes: ticket de WSAA en memoria (se pierde al reiniciar / varias instancias), invalidar ticket ante token rechazado (Err 600–602), identificación obligatoria en B sobre el umbral, imagen QR en el comprobante (requiere dependencia).
 **L35**: Cadena T30 mergeada (#21–#25, develop cfc7e27); runs de push en develop: todos success. Usuario: "Asegurate que pasen todas las actions despues de todos los push y merge" → cada merge se verifica también con el run de push en develop (Lint & TypeCheck, Tests, Build). S13 arranca en feat/peak-hour.
+**L36**: S13 completo. Usuario: "Agrega el  @nestjs/throttler" → 6.7.1 fijo, solo en el endpoint público (120/min por IP, PUBLIC_BOARD_RATE_LIMIT; TRUST_PROXY para IP real detrás del proxy). Integración: refresh de sesión en la barra (pantalla de todo el día; regresión del login detectada antes de commitear y fijada con test), pantalla pública sin header/footer del sitio (SiteChrome). Navegador: barra (columnas, "Empezar" mueve el pedido), pantalla pública sin sesión (solo número y primer nombre; token inválido → "Pantalla no disponible"; nada en localStorage), POS con favoritos (fijado primero, luego más vendidos); bug de números desbordando la tarjeta en /pantalla corregido (1024/1280/1920 px). Verificación: tests sin caché domain 171, shared 9, api 270, web 207; smoke 82/82. Propuestas abiertas: quitar header/footer públicos del dashboard; POS arranca en "Para llevar".
+**L37**: Revisión nativa de S13 en 3 cortes (corte entero excedía el presupuesto): backend, POS y barra/pantalla aprobados, 24 observaciones no bloqueantes. Corregida la renovación de sesión concurrente (02ceca2). Usuario: "para las fos propuestas tendoy el ok. y hace revisiom nativa" → 2c71785. Usuario pregunta por archivos >400 líneas y patrones; auditoría: 7 archivos >400 (product-catalog.use-case 729 con 5 clases, product.repository.adapter 554 con 6, catalog.controller 453 con 5, pos/page 475 con 26 estados, receipt 441, order 433, api.ts 408), 404 por regex de texto en use-case-result.ts:42. Elige "Refactor antes del merge" → S14.
+**L38**: S14 completo. Archivos de código >400 líneas: 0 (product-catalog.use-case 729 → 5 archivos, mayor 191; product.repository.adapter 554 → 131 + 5 adaptadores; catalog.controller 453 → 5 controladores; pos/page 475 → 144 + 5 hooks y 5 componentes; api.ts 408 → 21 + lib/api-client por recurso; order.ts 310; receipt.ts 358). 404 por tipo (NotFoundError del dominio) en vez del regex "no encontrad"; RED 2 fallos → GREEN; grep sin restos. Integración: lint/build/tsc 4/4, tests sin caché domain 172, shared 9, api 278, web 214; smoke 82/82. Revisión nativa en 5 cortes (fix+propuestas, dominio, API, web, errores): todos aprobados; observación de resiliencia aplicada (timeout del refresh compartido, 1fc3bda). Pendientes de backlog: migraciones Prisma desde el init (cambios con db push), filtro de validación por fragmentos de texto, corte de medianoche en la barra.

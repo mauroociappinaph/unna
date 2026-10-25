@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@nestjs/common';
+import { NotFoundError } from '@unna/domain';
 
 export interface UseCaseResult<T> {
   ok: boolean;
@@ -8,7 +9,7 @@ export interface UseCaseResult<T> {
 
 /**
  * Runs a use case and maps its outcome to HTTP: failed results and domain errors become
- * 404 (when the message says something was not found) or 400, never a 500.
+ * 404 (for a NotFoundError) or 400, never a 500.
  */
 export async function unwrap<T>(pending: Promise<UseCaseResult<T>>): Promise<T> {
   let result: UseCaseResult<T>;
@@ -20,9 +21,9 @@ export async function unwrap<T>(pending: Promise<UseCaseResult<T>>): Promise<T> 
     if (conflict) throw conflict;
     // Other infrastructure errors (Prisma, network) stay 500 so internals are not exposed.
     if (error?.constructor?.name?.startsWith('PrismaClient')) throw error;
-    throw toHttpError((error as Error).message);
+    throw toHttpError(error as Error);
   }
-  if (!result.ok) throw toHttpError(result.error?.message ?? 'Operación inválida');
+  if (!result.ok) throw toHttpError(result.error ?? new Error('Operación inválida'));
   return result.value as T;
 }
 
@@ -38,6 +39,6 @@ export function toConflict(error: unknown): ConflictException | null {
   }
 }
 
-function toHttpError(message: string): HttpException {
-  return /no encontrad/i.test(message) ? new NotFoundException(message) : new BadRequestException(message);
+function toHttpError(error: Error): HttpException {
+  return error instanceof NotFoundError ? new NotFoundException(error.message) : new BadRequestException(error.message);
 }

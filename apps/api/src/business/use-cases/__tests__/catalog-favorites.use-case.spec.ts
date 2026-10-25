@@ -1,5 +1,5 @@
 import { Money, Product, TopSeller } from '@unna/domain';
-import { ProductUseCase } from '../product-catalog.use-case';
+import { ProductUseCase } from '../product.use-case';
 import { fake } from './test-doubles';
 
 const BUSINESS = 'biz-A';

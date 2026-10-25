@@ -95,6 +95,8 @@ export interface Product {
   taxRate: number;
   displayOrder: number;
   isActive: boolean;
+  /** Pinned by the owner to the POS favorites strip. */
+  isFavorite: boolean;
   images: string[];
   modifierGroupIds: string[];
   components: Array<{ productId: string; quantity: number }>;
@@ -117,6 +119,13 @@ export interface ProductInput {
   taxRate?: number;
   displayOrder?: number;
   modifierGroupIds?: string[];
+}
+
+/** GET products/top-sellers: units sold in paid orders of the last days. */
+export interface TopSeller {
+  productId: string;
+  name: string;
+  quantity: number;
 }
 
 export interface StockLevel {

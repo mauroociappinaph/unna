@@ -115,6 +115,12 @@ export default function DashboardPage() {
                   action: 'Abrir POS',
                   href: '/dashboard/pos',
                 },
+                {
+                  title: 'Barra',
+                  desc: 'Seguí los pedidos cobrados en Nuevos, En preparación y Listos, y activá la pantalla de pedidos para tus clientes.',
+                  action: 'Abrir barra',
+                  href: '/dashboard/barra',
+                },
               ].map((step, i) => (
                 <Link key={i} href={step.href} className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-unna-green/30 transition-colors hover:shadow-lg">
                   <div className="w-12 h-12 bg-unna-green/10 rounded-xl flex items-center justify-center mb-4">

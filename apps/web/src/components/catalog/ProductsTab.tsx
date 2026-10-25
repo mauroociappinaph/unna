@@ -20,6 +20,7 @@ export function ProductsTab({ businessId }: { businessId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [savingFavorite, setSavingFavorite] = useState<Set<string>>(() => new Set());
 
   const load = useCallback(async () => {
     try {
@@ -75,6 +76,36 @@ export function ProductsTab({ businessId }: { businessId: string }) {
     runAction(() => api.updateProduct(businessId, product.id, { status: 'archived' }), 'No se pudo archivar el producto');
   };
 
+  const setFavorite = (productId: string, isFavorite: boolean) => {
+    setProducts((current) => current.map((p) => (p.id === productId ? { ...p, isFavorite } : p)));
+  };
+
+  const setSaving = (productId: string, saving: boolean) => {
+    setSavingFavorite((current) => {
+      const next = new Set(current);
+      if (saving) next.add(productId);
+      else next.delete(productId);
+      return next;
+    });
+  };
+
+  // Optimistic: the star flips right away and rolls back if the API rejects it.
+  const handleToggleFavorite = async (product: Product) => {
+    const isFavorite = !product.isFavorite;
+    setError(null);
+    setFavorite(product.id, isFavorite);
+    setSaving(product.id, true);
+    try {
+      const saved = await api.setProductFavorite(businessId, product.id, isFavorite);
+      setFavorite(product.id, saved.isFavorite);
+    } catch (err) {
+      setFavorite(product.id, product.isFavorite);
+      setError(apiErrorMessage(err, 'No se pudo actualizar el favorito'));
+    } finally {
+      setSaving(product.id, false);
+    }
+  };
+
   const handleDelete = (product: Product) => {
     if (!confirm(`¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`)) return;
     runAction(() => api.deleteProduct(businessId, product.id), 'No se pudo eliminar el producto');
@@ -120,6 +151,7 @@ export function ProductsTab({ businessId }: { businessId: string }) {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
+                <th className="px-4 py-3" aria-label="Favorito" />
                 <th className="px-4 py-3">Nombre</th>
                 <th className="px-4 py-3">Categoría</th>
                 <th className="px-4 py-3">Precio</th>
@@ -131,6 +163,23 @@ export function ProductsTab({ businessId }: { businessId: string }) {
             <tbody>
               {visibleProducts.map((product) => (
                 <tr key={product.id} className="border-t border-gray-100">
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      aria-pressed={product.isFavorite}
+                      aria-label={product.isFavorite
+                        ? `Quitar ${product.name} de favoritos`
+                        : `Fijar ${product.name} en favoritos`}
+                      title={product.isFavorite ? 'Quitar de favoritos' : 'Fijar en favoritos'}
+                      disabled={savingFavorite.has(product.id)}
+                      onClick={() => handleToggleFavorite(product)}
+                      className={`text-xl leading-none disabled:opacity-50 ${
+                        product.isFavorite ? 'text-unna-green-dark' : 'text-gray-300 hover:text-gray-500'
+                      }`}
+                    >
+                      <span aria-hidden="true">{product.isFavorite ? '★' : '☆'}</span>
+                    </button>
+                  </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{product.name}</td>
                   <td className="px-4 py-3">{categoryNames.get(product.categoryId) ?? '—'}</td>
                   <td className="px-4 py-3">{formatMoney(product.basePrice.amount)}</td>

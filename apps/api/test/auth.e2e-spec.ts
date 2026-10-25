@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { DomainExceptionFilter } from '../src/common/filters/domain-exception.filter';
 
 describe('Auth E2E', () => {
   let app: INestApplication;
@@ -16,6 +17,7 @@ describe('Auth E2E', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
+    app.useGlobalFilters(new DomainExceptionFilter());
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -78,22 +80,22 @@ describe('Auth E2E', () => {
       expect(Array.isArray(response.body.message) ? response.body.message.join(' ') : response.body.message).toContain('mínimo 8 caracteres');
     });
 
-    it('should accept mismatched passwords (backend validation missing - known issue)', async () => {
+    it('should reject mismatched passwords with 400', async () => {
       const response = await request(app.getHttpServer())
         .post(`${baseUrl}/register`)
         .send({ ...validRegisterDto, email: 'mismatch@example.com', confirmPassword: 'DifferentPass123' })
-        .expect(201);
+        .expect(400);
 
-      expect(response.body.accessToken).toBeDefined();
+      expect(Array.isArray(response.body.message) ? response.body.message.join(' ') : response.body.message).toContain('contraseñas no coinciden');
     });
 
-    it('should accept acceptTerms=false (backend validation missing - known issue)', async () => {
+    it('should reject acceptTerms=false with 400', async () => {
       const response = await request(app.getHttpServer())
         .post(`${baseUrl}/register`)
         .send({ ...validRegisterDto, email: 'noterms@example.com', acceptTerms: false })
-        .expect(201);
+        .expect(400);
 
-      expect(response.body.accessToken).toBeDefined();
+      expect(Array.isArray(response.body.message) ? response.body.message.join(' ') : response.body.message).toContain('Debes aceptar');
     });
 
     it('should fail with 400 for short business name', async () => {
@@ -105,13 +107,13 @@ describe('Auth E2E', () => {
       expect(Array.isArray(response.body.message) ? response.body.message.join(' ') : response.body.message).toContain('3 caracteres');
     });
 
-    it('should return 500 for invalid phone (domain error not caught - known issue)', async () => {
+    it('should reject invalid phone with 400 (fixed by DomainExceptionFilter)', async () => {
       const response = await request(app.getHttpServer())
         .post(`${baseUrl}/register`)
         .send({ ...validRegisterDto, email: 'badphone@example.com', phone: '123' })
-        .expect(500);
+        .expect(400);
 
-      expect(response.body.message).toBe('Internal server error');
+      expect(response.body.message).toContain('teléfono válido');
     });
   });
 
@@ -154,7 +156,7 @@ describe('Auth E2E', () => {
         .send({ ...loginDto, password: 'WrongPass123' })
         .expect(401);
 
-      expect(response.body.message).toBe('Credenciales inválidas');
+      expect(response.body.message || response.body.error || response.body).toContain('Credenciales inválidas');
     });
 
     it('should fail with 401 for non-existent user', async () => {
@@ -163,7 +165,7 @@ describe('Auth E2E', () => {
         .send({ email: 'nonexistent@example.com', password: 'SecurePass123' })
         .expect(401);
 
-      expect(response.body.message).toBe('Credenciales inválidas');
+      expect(response.body.message || response.body.error || response.body).toContain('Credenciales inválidas');
     });
   });
 

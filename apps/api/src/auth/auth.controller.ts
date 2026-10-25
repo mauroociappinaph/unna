@@ -3,7 +3,24 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterUseCase, RegisterCommand } from './use-cases/register.use-case';
 import { LoginUseCase, LoginCommand } from './use-cases/login.use-case';
 import { Result, isOk, isErr } from '@unna/domain';
-import { IsString, IsEmail, MinLength, MaxLength, Matches, IsBoolean } from 'class-validator';
+import { IsString, IsEmail, MinLength, MaxLength, Matches, IsBoolean, Validate, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
+
+@ValidatorConstraint({ name: 'PasswordsMatch', async: false })
+export class PasswordsMatchConstraint implements ValidatorConstraintInterface {
+  validate(confirmPassword: string, args: ValidationArguments) {
+    const obj = args.object as any;
+    return obj.password === confirmPassword;
+  }
+  defaultMessage() { return 'Las contraseñas no coinciden.'; }
+}
+
+@ValidatorConstraint({ name: 'AcceptTermsTrue', async: false })
+export class AcceptTermsTrueConstraint implements ValidatorConstraintInterface {
+  validate(acceptTerms: boolean) {
+    return acceptTerms === true;
+  }
+  defaultMessage() { return 'Debes aceptar las Condiciones y Políticas.'; }
+}
 
 export class RegisterDto implements RegisterCommand {
   @IsString()
@@ -34,9 +51,11 @@ export class RegisterDto implements RegisterCommand {
 
   @IsString()
   @MinLength(1, { message: 'Este campo es obligatorio' })
+  @Validate(PasswordsMatchConstraint)
   confirmPassword!: string;
 
   @IsBoolean()
+  @Validate(AcceptTermsTrueConstraint)
   acceptTerms!: boolean;
 }
 

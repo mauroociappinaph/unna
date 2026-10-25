@@ -104,8 +104,14 @@ export default function DashboardPage() {
                   href: '/dashboard/catalogo',
                 },
                 {
+                  title: 'Caja',
+                  desc: 'Abrí el turno con el fondo inicial, registrá ingresos y retiros, y cerrá con el arqueo.',
+                  action: 'Ir a la caja',
+                  href: '/dashboard/caja',
+                },
+                {
                   title: 'Vender',
-                  desc: 'Tomá pedidos, cobrá con varios medios de pago y emití tickets.',
+                  desc: 'Tomá pedidos, cobrá con varios medios de pago y emití tickets o facturas.',
                   action: 'Abrir POS',
                   href: '/dashboard/pos',
                 },

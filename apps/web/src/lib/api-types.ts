@@ -239,6 +239,17 @@ export interface PaymentResult {
   remaining: number;
 }
 
+export const IVA_CONDITIONS = ['responsable_inscripto', 'monotributo', 'exento', 'consumidor_final'] as const;
+export type IvaCondition = (typeof IVA_CONDITIONS)[number];
+export type ReceiptStatus = 'draft' | 'issued' | 'cancelled' | 'voided';
+
+/** IVA of one rate: base and amount in cents. */
+export interface IvaLine {
+  rate: number;
+  base: number;
+  amount: number;
+}
+
 export interface Receipt {
   id: string;
   businessId: string;
@@ -246,15 +257,31 @@ export interface Receipt {
   orderId: string;
   orderNumber: string;
   receiptNumber: string;
+  /** Sequential number within (punto de venta, type); fiscal ones are the number ARCA authorized. */
+  invoiceNumber?: number;
   pointOfSale: string;
   type: ReceiptType;
   receiptType: string;
-  status: string;
+  status: ReceiptStatus;
   subtotal: Money;
   taxAmount: Money;
   discountAmount: Money;
   totalAmount: Money;
   paymentMethod?: string;
+  customerName?: string;
+  customerTaxId?: string;
+  customerCondition?: string;
+  /** ARCA document of the customer: 80 CUIT, 96 DNI, 99 consumidor final. */
+  docType?: number;
+  docNumber?: string;
+  cae?: string;
+  caeExpiration?: string;
+  ivaBreakdown: IvaLine[];
+  netAmount?: Money;
+  ivaAmount?: Money;
+  /** ARCA verification URL encoded in the receipt QR. */
+  qrCode?: string;
+  authorizationError?: string;
   items: Array<Omit<OrderItem, 'orderId'> & { receiptId: string }>;
   issuedAt?: string;
   createdAt: string;
@@ -265,7 +292,53 @@ export interface IssueReceiptInput {
   type: ReceiptType;
   customerName?: string;
   customerTaxId?: string;
-  customerCondition?: string;
+  customerCondition?: IvaCondition;
+}
+
+/** Amounts in cents for every payment method. */
+export type CashAmounts = Record<PaymentMethod, number>;
+
+export const CASH_MOVEMENT_TYPES = ['in', 'out'] as const;
+export type CashMovementType = (typeof CASH_MOVEMENT_TYPES)[number];
+
+export interface CashMovement {
+  id: string;
+  sessionId: string;
+  type: CashMovementType;
+  amount: number;
+  reason: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface CashSession {
+  id: string;
+  businessId: string;
+  sucursalId: string;
+  status: 'open' | 'closed';
+  openedBy: string;
+  openedAt: string;
+  /** Fondo inicial in cents. */
+  openingAmount: number;
+  movements: CashMovement[];
+  closedBy?: string;
+  closedAt?: string;
+  notes?: string;
+  /** Present once closed. */
+  expected?: CashAmounts;
+  declared?: CashAmounts;
+  difference?: CashAmounts;
+}
+
+export interface CashMovementInput {
+  type: CashMovementType;
+  amount: number;
+  reason: string;
+}
+
+export interface CloseCashSessionInput {
+  declared: CashAmounts;
+  notes?: string;
 }
 
 /** Formats integer cents as Argentine pesos, e.g. 150000 -> "$ 1.500,00". */

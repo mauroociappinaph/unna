@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import type {
-  Category, ModifierGroup, Order, OrderAction, OrderLineInput, OrderType, Payment, PaymentMethod, Product, Receipt,
-  SelectedModifier,
+  CashSession, Category, IssueReceiptInput, IvaCondition, ModifierGroup, Order, OrderAction, OrderLineInput, OrderType,
+  Payment, PaymentMethod, Product, Receipt, SelectedModifier,
 } from '@/lib/api-types';
 import { ModifierDialog } from '@/components/pos/ModifierDialog';
 import { OpenOrders, selectOpenOrders } from '@/components/pos/OpenOrders';
@@ -16,6 +16,7 @@ import { OrderSummary } from '@/components/pos/OrderSummary';
 import { PaymentPanel } from '@/components/pos/PaymentPanel';
 import { PosSetup, type PosSucursal } from '@/components/pos/PosSetup';
 import { ProductGrid } from '@/components/pos/ProductGrid';
+import { ReceiptIssuer } from '@/components/pos/ReceiptIssuer';
 import { ReceiptView } from '@/components/pos/ReceiptView';
 import { CLOSED_STATUSES } from '@/components/pos/pos-format';
 import { apiErrorMessage } from '@/lib/api-errors';
@@ -24,8 +25,17 @@ import { UnnaSymbol } from '@/components/brand/UnnaSymbol';
 interface Business {
   id: string;
   businessName: string;
+  settings?: { ivaCondition?: IvaCondition };
   sucursales: PosSucursal[];
 }
+
+/** Current caja of a sucursal; null session when it is closed. */
+interface CashState {
+  sucursalId: string;
+  session: CashSession | null;
+}
+
+const isUnavailable = (err: unknown) => (err as { response?: { status?: number } })?.response?.status === 503;
 
 const mainSucursalId = (sucursales: PosSucursal[]) => (sucursales.find((s) => s.isMain) ?? sucursales[0])?.id ?? '';
 
@@ -49,6 +59,9 @@ export default function PosPage() {
   // Balance reported by the server after a payment; null while nothing was paid.
   const [paidRemaining, setPaidRemaining] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  // Receipt request to retry after ARCA answered 503 (the draft stays on the server).
+  const [retryReceipt, setRetryReceipt] = useState<IssueReceiptInput | null>(null);
+  const [cash, setCash] = useState<CashState | null>(null);
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
   const [showPayment, setShowPayment] = useState(false);
 
@@ -71,14 +84,17 @@ export default function PosPage() {
 
       const current = businesses[0];
       const active = (current.sucursales || []).filter((s) => s.isActive !== false);
-      const [categoryList, productList, groupList] = await Promise.all([
+      const initialSucursalId = mainSucursalId(active);
+      const [categoryList, productList, groupList, session] = await Promise.all([
         api.listCategories(current.id),
         api.listProducts(current.id, { status: 'active' }),
         api.listModifierGroups(current.id),
+        initialSucursalId ? api.getCurrentCashSession(current.id, initialSucursalId) : Promise.resolve(null),
       ]);
       setBusiness(current);
       setSucursales(active);
-      setSucursalId(mainSucursalId(active));
+      setSucursalId(initialSucursalId);
+      setCash({ sucursalId: initialSucursalId, session });
       setCategories(categoryList);
       setProducts(productList);
       setModifierGroups(groupList);
@@ -92,6 +108,24 @@ export default function PosPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Selling needs the caja of the selected sucursal open; reload it when the sucursal changes.
+  useEffect(() => {
+    if (!business || !sucursalId || cash?.sucursalId === sucursalId) return;
+    let cancelled = false;
+    api.getCurrentCashSession(business.id, sucursalId)
+      .then((session) => {
+        if (!cancelled) setCash({ sucursalId, session });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setCash({ sucursalId, session: null });
+        setError(apiErrorMessage(err, 'No se pudo cargar la caja'));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [business, sucursalId, cash]);
 
   const run = async (task: () => Promise<void>, fallback: string) => {
     setBusy(true);
@@ -162,9 +196,19 @@ export default function PosPage() {
     }, 'No se pudo registrar el pago');
   };
 
-  const handleIssueReceipt = () => {
+  const handleIssueReceipt = async (input: IssueReceiptInput) => {
     if (!business || !order) return;
-    run(async () => setReceipt(await api.issueReceipt(business.id, order.id, { type: 'ticket' })), 'No se pudo emitir el ticket');
+    setBusy(true);
+    setError(null);
+    setRetryReceipt(null);
+    try {
+      setReceipt(await api.issueReceipt(business.id, order.id, input));
+    } catch (err) {
+      if (isUnavailable(err)) setRetryReceipt(input);
+      else setError(apiErrorMessage(err, 'No se pudo emitir el comprobante'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const toggleOpenOrders = async () => {
@@ -197,6 +241,7 @@ export default function PosPage() {
       setPayments(completed);
       setPaidRemaining(completed.length > 0 ? Math.max(0, fresh.totalAmount.amount - paid) : null);
       setReceipt(null);
+      setRetryReceipt(null);
       setShowPayment(completed.length > 0);
       setSucursalId(fresh.sucursalId);
       setType(fresh.type);
@@ -210,6 +255,7 @@ export default function PosPage() {
     setPayments([]);
     setPaidRemaining(null);
     setReceipt(null);
+    setRetryReceipt(null);
     setPendingProduct(null);
     setShowPayment(false);
     setShowOpenOrders(false);
@@ -230,6 +276,10 @@ export default function PosPage() {
   const locked = payments.length > 0 || (!!order && CLOSED_STATUSES.includes(order.status));
   const remaining = order ? paidRemaining ?? order.totalAmount.amount : 0;
   const hasItems = !!order && order.items.length > 0;
+  // While the caja of the sucursal is loading nothing can be sold either, but there is no banner yet.
+  const cashKnown = !!cash && cash.sucursalId === sucursalId;
+  const cashOpen = cashKnown && !!cash.session;
+  const canIssueReceipt = payments.length > 0 && remaining === 0 && !receipt;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -254,13 +304,26 @@ export default function PosPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Punto de venta</h1>
-              <p className="text-gray-600">Cargá pedidos, cobralos y emití el ticket</p>
+              <p className="text-gray-600">Cargá pedidos, cobralos y emití el comprobante</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={toggleOpenOrders}>Pedidos abiertos</Button>
               <Button onClick={handleNewOrder}>Nuevo pedido</Button>
             </div>
           </div>
+
+          {cashKnown && !cashOpen && (
+            <div
+              role="status"
+              aria-label="Caja cerrada"
+              className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3"
+            >
+              <p className="font-semibold text-amber-900">Abrí la caja para empezar a vender</p>
+              <Link href="/dashboard/caja" className="font-semibold text-unna-green-dark underline">
+                Ir a la caja
+              </Link>
+            </div>
+          )}
 
           {error && (
             <div role="alert" className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700">
@@ -290,7 +353,7 @@ export default function PosPage() {
               <ProductGrid
                 categories={categories}
                 products={products}
-                disabled={locked || busy}
+                disabled={locked || busy || !cashOpen}
                 onSelect={handleSelectProduct}
               />
             </div>
@@ -311,7 +374,7 @@ export default function PosPage() {
                   onInvalidAmount={setError}
                 />
                 {hasItems && !showPayment && (
-                  <Button className="w-full" onClick={() => setShowPayment(true)}>Cobrar</Button>
+                  <Button className="w-full" disabled={!cashOpen} onClick={() => setShowPayment(true)}>Cobrar</Button>
                 )}
               </div>
 
@@ -321,12 +384,27 @@ export default function PosPage() {
                   <PaymentPanel
                     payments={payments}
                     remaining={remaining}
-                    busy={busy}
-                    canIssueReceipt={payments.length > 0 && !receipt}
+                    busy={busy || !cashOpen}
                     onPay={handlePay}
-                    onIssueReceipt={handleIssueReceipt}
                     onInvalidAmount={setError}
                   />
+                  {canIssueReceipt && (
+                    <ReceiptIssuer
+                      key={`receipt-${order.id}`}
+                      ivaCondition={business?.settings?.ivaCondition}
+                      busy={busy}
+                      onIssue={handleIssueReceipt}
+                      onInvalid={setError}
+                    />
+                  )}
+                  {canIssueReceipt && retryReceipt && (
+                    <div role="alert" className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                      <p className="text-amber-900">ARCA no está disponible; el comprobante quedó en borrador</p>
+                      <Button variant="secondary" size="sm" disabled={busy} onClick={() => handleIssueReceipt(retryReceipt)}>
+                        Reintentar
+                      </Button>
+                    </div>
+                  )}
                   {receipt && <ReceiptView receipt={receipt} />}
                 </div>
               )}

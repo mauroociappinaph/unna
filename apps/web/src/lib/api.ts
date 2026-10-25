@@ -1,8 +1,8 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import type {
-  Category, CategoryInput, CreateOrderInput, IssueReceiptInput, ModifierGroup, ModifierGroupInput, ModifierOptionInput,
-  Order, OrderAction, OrderLineInput, Payment, PaymentMethod, PaymentResult, Product, ProductInput, ProductStatus,
-  Receipt, StockChange, StockLevel, StockMovement, StockOutType,
+  CashMovementInput, CashSession, Category, CategoryInput, CloseCashSessionInput, CreateOrderInput, IssueReceiptInput,
+  ModifierGroup, ModifierGroupInput, ModifierOptionInput, Order, OrderAction, OrderLineInput, Payment, PaymentMethod,
+  PaymentResult, Product, ProductInput, ProductStatus, Receipt, StockChange, StockLevel, StockMovement, StockOutType,
 } from './api-types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -349,6 +349,33 @@ class ApiClient {
 
   async issueReceipt(businessId: string, orderId: string, data: IssueReceiptInput): Promise<Receipt> {
     return (await this.client.post(`/businesses/${businessId}/orders/${orderId}/receipts`, data)).data;
+  }
+
+  // --- Caja ---
+  async openCashSession(businessId: string, data: { sucursalId: string; openingAmount: number }): Promise<CashSession> {
+    return (await this.client.post(`/businesses/${businessId}/cash-sessions`, data)).data;
+  }
+
+  /** The open session of the sucursal, or null when its caja is closed. */
+  async getCurrentCashSession(businessId: string, sucursalId: string): Promise<CashSession | null> {
+    const { session } = (await this.client.get(`/businesses/${businessId}/cash-sessions/current`, { params: { sucursalId } })).data;
+    return session ?? null;
+  }
+
+  async listCashSessions(businessId: string, filters: { sucursalId?: string; status?: 'open' | 'closed'; from?: string; to?: string } = {}): Promise<CashSession[]> {
+    return (await this.client.get(`/businesses/${businessId}/cash-sessions`, { params: filters })).data;
+  }
+
+  async getCashSession(businessId: string, sessionId: string): Promise<CashSession> {
+    return (await this.client.get(`/businesses/${businessId}/cash-sessions/${sessionId}`)).data;
+  }
+
+  async addCashMovement(businessId: string, sessionId: string, data: CashMovementInput): Promise<CashSession> {
+    return (await this.client.post(`/businesses/${businessId}/cash-sessions/${sessionId}/movements`, data)).data;
+  }
+
+  async closeCashSession(businessId: string, sessionId: string, data: CloseCashSessionInput): Promise<CashSession> {
+    return (await this.client.post(`/businesses/${businessId}/cash-sessions/${sessionId}/close`, data)).data;
   }
 }
 

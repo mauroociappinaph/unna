@@ -77,6 +77,17 @@ Reglas de diseño (orquestador):
 - Caja: un turno abierto por sucursal; fondo inicial, ingresos/retiros, cierre con esperado vs declarado por medio de pago; cada pago queda asociado al turno; sin caja abierta no se crean pedidos ni se cobran; cierre y pagos serializados.
 - Facturación: responsable inscripto emite A (cliente con CUIT) o B; monotributo/exento emite C; IVA discriminado por alícuota en A/B; numeración secuencial por (punto de venta, tipo) a partir del último autorizado, bajo bloqueo; CAE y vencimiento guardados; QR ARCA; si ARCA rechaza o falla, el pedido sigue pagado y el comprobante se puede reintentar. Ticket no fiscal con numeración secuencial (ya no aleatoria).
 
+### S13: Modo hora pico + pantalla de barra + pantalla pública de pedidos
+Usuario: "Si" (a arrancar por modo hora pico con pantalla de barra y aviso de "listo"). Respuestas:
+- Aviso de listo: "Pantalla pública de pedidos (Recomendado)".
+- Entrada a barra: "Al cobrarlo (Recomendado)".
+- Favoritos: "Fijados + más vendidos (Recomendado)".
+Reglas de diseño (orquestador):
+- Favoritos: el dueño fija productos (marca en el producto); se completan con los más vendidos de los últimos días (pedidos cobrados).
+- POS: franja de favoritos, "/" enfoca la búsqueda y Enter agrega el primer resultado, repetir el último pedido, nombre del cliente opcional.
+- Barra: por sucursal, solo pedidos cobrados y no cerrados de hoy, en columnas Nuevos / En preparación / Listos, con acciones que usan los estados existentes; se actualiza sola.
+- Pantalla pública: sin sesión, con un token secreto por sucursal que el dueño genera y puede regenerar; muestra solo número corto del pedido, primer nombre del cliente y estado (en preparación / listo), de hoy y cobrados. Endpoint público: riesgo de seguridad.
+
 ## Architecture Constraints (MANDATORIOS)
 
 - **Hexagonal Architecture**: Domain core aislado, ports/adapters para infraestructura (DB, HTTP, external APIs)
@@ -156,6 +167,10 @@ unna/
 | T30d | S12 | inline | Integración: módulo, smoke real (caja, facturas, carreras de numeración y cierre) | df544d5, 8fde4ef |
 | T30e | S12 | worker | Web: caja (abrir, movimientos, cerrar) y POS con comprobante fiscal (CAE, QR) | 481962e |
 | T30f | S12 | worker | Adaptador ARCA real (WSAA + WSFEv1) con tests de XML; prueba en homologación bloqueada por credenciales | 8fde4ef |
+| T31a | S13 | worker | Backend: favoritos, más vendidos, cola de barra, token de pantalla y endpoint público | pending |
+| T31b | S13 | worker | Web: POS modo hora pico + favoritos en catálogo | pending |
+| T31c | S13 | worker | Web: pantalla de barra + pantalla pública | pending |
+| T31d | S13 | inline | Integración, smoke real (incl. aislamiento del endpoint público), PRs | pending |
 
 ## Log
 
@@ -192,3 +207,4 @@ unna/
 **L32**: Usuario aprobó ARCA + caja y turnos (S12). Rama feat/arca-cash desde develop (76f7ac8).
 **L33**: T30b/T30c integrados. Módulo: InvoicingUseCase, ReceiptIssueUnitOfWorkPort, ReceiptRepositoryPort → adaptador fiscal, FiscalAuthorizerPort por fábrica que impide el simulador con NODE_ENV=production (4 tests). Borrado el camino viejo (SalesUseCase.issueReceipt/getReceipt/listReceipts, Receipt.issue(), PrismaReceiptRepositoryAdapter). Smoke contra Postgres 70/70: venta sin caja 400, 5 aperturas simultáneas → 1, cierre esperado=apertura+efectivo+ingresos−retiros con diferencia 0, factura B (CAE, IVA = total, QR verificado), factura A (docType 80), C desde RI → 400 sin escribir, 8 facturas B concurrentes → números consecutivos sin huecos, ticket secuencial. Salvedad: en la carrera cierre vs pagos ganó siempre el cierre (0 aceptados/5 rechazados): invariante cumplido pero sin intercalación demostrada; se ajusta la prueba. Usuario: "dale" a node-forge para el adaptador ARCA real.
 **L34**: T30 completo (falta prueba real en homologación: bloqueada por certificado del usuario; el certificado de ARCA es gratis). node-forge 1.4.0 fijo, solo para firmar (GHSA-86w9-cpqp-85rv afecta la verificación, sin fix). Agregado RG 5616 (CondicionIVAReceptorId): factura A exige condición del cliente; B/C sin condición = consumidor final. Carrera cierre vs pagos con intercalación demostrada (pagos escalonados: 1/4, 2/3, 3/2 aceptados/rechazados, invariante OK). Integración final: lint 4/4, build 4/4, tsc ×4, tests domain 140, shared 9, api 214, web 151, smoke 70/70. Pendientes: ticket de WSAA en memoria (se pierde al reiniciar / varias instancias), invalidar ticket ante token rechazado (Err 600–602), identificación obligatoria en B sobre el umbral, imagen QR en el comprobante (requiere dependencia).
+**L35**: Cadena T30 mergeada (#21–#25, develop cfc7e27); runs de push en develop: todos success. Usuario: "Asegurate que pasen todas las actions despues de todos los push y merge" → cada merge se verifica también con el run de push en develop (Lint & TypeCheck, Tests, Build). S13 arranca en feat/peak-hour.

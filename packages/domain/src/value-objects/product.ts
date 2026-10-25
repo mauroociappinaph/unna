@@ -18,6 +18,8 @@ export interface ProductProps {
   barcode?: string;
   displayOrder: number;
   isActive: boolean;
+  /** Pinned by the owner to the POS favorites strip (S13). Defaults to false. */
+  isFavorite?: boolean;
   images: string[];
   modifierGroupIds: string[];
   // For composite/combo products
@@ -45,6 +47,7 @@ export class Product {
   public readonly barcode: string | undefined;
   public readonly displayOrder: number;
   public readonly isActive: boolean;
+  public readonly isFavorite: boolean;
   public readonly images: string[];
   public readonly modifierGroupIds: string[];
   public readonly components: Array<{ productId: string; quantity: number }>;
@@ -70,6 +73,7 @@ export class Product {
     this.barcode = props.barcode?.trim();
     this.displayOrder = props.displayOrder;
     this.isActive = props.isActive;
+    this.isFavorite = props.isFavorite ?? false;
     this.images = props.images;
     this.modifierGroupIds = props.modifierGroupIds;
     this.components = props.components ?? [];
@@ -186,6 +190,10 @@ export class Product {
   public setDisplayOrder(order: number): Product {
     if (order < 0) throw new Error('Orden no puede ser negativo');
     return new Product({ ...this.toProps(), displayOrder: order, updatedAt: new Date() });
+  }
+
+  public setFavorite(isFavorite: boolean): Product {
+    return new Product({ ...this.toProps(), isFavorite, updatedAt: new Date() });
   }
 
   public addImage(imageUrl: string): Product {
@@ -326,6 +334,7 @@ export class Product {
       barcode: this.barcode,
       displayOrder: this.displayOrder,
       isActive: this.isActive,
+      isFavorite: this.isFavorite,
       images: this.images,
       modifierGroupIds: this.modifierGroupIds,
       components: this.components,

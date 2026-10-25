@@ -51,6 +51,13 @@ export class CreateProductDto {
   @IsOptional() @IsInt() @Min(0) calories?: number;
   @IsOptional() @IsArray() @IsString({ each: true }) allergens?: string[];
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
+  @IsOptional() @IsBoolean() isFavorite?: boolean;
 }
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {}
+
+/** GET products/top-sellers: period in days (1-30, default 7) and how many products (1-20, default 8). */
+export class TopSellersQueryDto {
+  @IsOptional() @IsInt() @Min(1) @Max(30) days?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(20) limit?: number;
+}

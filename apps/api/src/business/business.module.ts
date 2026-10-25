@@ -30,13 +30,19 @@ export function fiscalAuthorizerFactory(env: NodeJS.ProcessEnv = process.env): F
 import { SalesUseCase } from './use-cases/sales.use-case';
 import { SalesController } from './sales.controller';
 import { CashController } from './cash.controller';
+import { OrderBoardController } from './order-board.controller';
+import { PublicOrderBoardController } from './public-order-board.controller';
+import { OrderBoardUseCase } from './use-cases/order-board.use-case';
+import { PrismaOrderBoardRepositoryAdapter } from './adapters/order-board.repository.adapter';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { publicBoardThrottlerOptions } from './public-board-throttle';
 import { CashUseCase } from './use-cases/cash.use-case';
 import { PrismaCashSessionRepositoryAdapter, PrismaCashUnitOfWorkAdapter } from './adapters/cash.repository.adapter';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 
 @Module({
-  imports: [PrismaModule],
-  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController],
+  imports: [PrismaModule, ThrottlerModule.forRoot(publicBoardThrottlerOptions())],
+  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController, OrderBoardController, PublicOrderBoardController],
   providers: [
     OnboardBusinessUseCase,
     BusinessManagementUseCase,
@@ -47,6 +53,8 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
     StockUseCase,
     SalesUseCase,
     CashUseCase,
+    OrderBoardUseCase,
+    { provide: 'OrderBoardRepositoryPort', useClass: PrismaOrderBoardRepositoryAdapter },
     { provide: 'CashSessionRepositoryPort', useClass: PrismaCashSessionRepositoryAdapter },
     { provide: 'CashUnitOfWorkPort', useClass: PrismaCashUnitOfWorkAdapter },
     BusinessOwnerGuard,

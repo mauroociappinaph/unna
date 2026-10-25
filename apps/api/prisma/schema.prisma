@@ -64,6 +64,9 @@ model Sucursal {
   schedule  Json
   isMain    Boolean  @default(false)
   isActive  Boolean  @default(true)
+  // Public order board (S13): only the SHA-256 of the display token is stored; null = disabled.
+  displayTokenHash      String?   @unique
+  displayTokenCreatedAt DateTime?
   businessId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -116,6 +119,7 @@ model Product {
   barcode         String?  @unique
   displayOrder    Int      @default(0)
   isActive        Boolean  @default(true)
+  isFavorite      Boolean  @default(false) // pinned to the POS favorites strip (S13)
   images          String[] @default([])
   modifierGroupIds String[] @default([])
   components      Json     @default("[]") // [{ productId, quantity }]

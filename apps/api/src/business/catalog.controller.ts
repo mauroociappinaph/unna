@@ -18,7 +18,7 @@ import { ModifierGroupUseCase } from './use-cases/product-catalog.use-case';
 import { PriceListUseCase } from './use-cases/product-catalog.use-case';
 import { StockUseCase } from './use-cases/product-catalog.use-case';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
-import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+import { CreateProductDto, TopSellersQueryDto, UpdateProductDto } from './dto/product.dto';
 import { CreateModifierGroupDto, ModifierOptionDto, UpdateModifierGroupDto, UpdateModifierOptionDto } from './dto/modifier-group.dto';
 import { CreatePriceListDto, PriceListEntryDto, UpdatePriceListDto, UpdatePriceListEntryDto } from './dto/price-list.dto';
 import { AddStockDto, AdjustThresholdsDto, InitializeStockDto, RecordCountDto, RemoveStockDto } from './dto/stock.dto';
@@ -105,6 +105,13 @@ export class ProductController {
       categoryId,
       activeOnly: activeOnly === 'true',
     }));
+  }
+
+  // Declared before ':id' so "top-sellers" is not taken as a product id.
+  @Get('top-sellers')
+  @ApiOperation({ summary: 'Más vendidos de los últimos días (pedidos cobrados)' })
+  async topSellers(@Param('businessId') businessId: string, @Query() query: TopSellersQueryDto) {
+    return unwrap(this.productUseCase.topSellers(businessId, query));
   }
 
   @Get(':id')

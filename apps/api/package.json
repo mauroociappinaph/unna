@@ -23,6 +23,7 @@
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.3.0",
     "@nestjs/swagger": "^7.3.0",
+    "@nestjs/throttler": "6.7.1",
     "@prisma/client": "^5.11.0",
     "@unna/domain": "^0.0.0",
     "@unna/shared": "^0.0.0",

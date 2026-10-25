@@ -14,6 +14,7 @@ import {
   PriceListRepositoryPort,
   StockLevelRepositoryPort,
   StockMovementRepositoryPort,
+  TopSeller,
   Category,
   Product,
   ModifierGroup,
@@ -117,6 +118,7 @@ export class PrismaProductRepositoryAdapter implements ProductRepositoryPort {
       barcode: product.barcode ?? null,
       displayOrder: product.displayOrder,
       isActive: product.isActive,
+      isFavorite: product.isFavorite,
       images: product.images,
       modifierGroupIds: product.modifierGroupIds,
       components: product.components,
@@ -165,6 +167,29 @@ export class PrismaProductRepositoryAdapter implements ProductRepositoryPort {
     return records.map((r) => this.toDomain(r));
   }
 
+  // Both the order and the product are filtered by businessId, so no other business's sales count.
+  async findTopSellers(businessId: string, since: Date, limit: number): Promise<TopSeller[]> {
+    const sold = await this.prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: {
+        order: { businessId, paymentStatus: 'completed', status: { notIn: ['cancelled', 'refunded'] }, createdAt: { gte: since } },
+        product: { businessId, isActive: true, status: 'active' },
+      },
+      _sum: { quantity: true },
+      orderBy: [{ _sum: { quantity: 'desc' } }, { productId: 'asc' }],
+      take: limit,
+    });
+    if (sold.length === 0) return [];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: sold.map((s) => s.productId) }, businessId },
+      select: { id: true, name: true },
+    });
+    const names = new Map(products.map((p) => [p.id, p.name]));
+    return sold
+      .filter((s) => names.has(s.productId))
+      .map((s) => ({ productId: s.productId, name: names.get(s.productId) as string, quantity: s._sum.quantity ?? 0 }));
+  }
+
   async delete(id: string): Promise<void> {
     await this.prisma.product.delete({ where: { id } });
   }
@@ -185,6 +210,7 @@ export class PrismaProductRepositoryAdapter implements ProductRepositoryPort {
       barcode: r.barcode ?? undefined,
       displayOrder: r.displayOrder,
       isActive: r.isActive,
+      isFavorite: r.isFavorite,
       images: r.images,
       modifierGroupIds: r.modifierGroupIds,
       components: (r.components as Product['components'] | null) ?? [],

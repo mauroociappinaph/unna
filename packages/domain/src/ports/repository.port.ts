@@ -36,6 +36,13 @@ export interface CategoryRepositoryPort {
   delete(id: string): Promise<void>;
 }
 
+/** Units of a product sold in a period (S13 favorites strip). */
+export interface TopSeller {
+  productId: string;
+  name: string;
+  quantity: number;
+}
+
 export interface ProductRepositoryPort {
   save(product: Product): Promise<void>;
   findById(id: string): Promise<Product | null>;
@@ -44,6 +51,11 @@ export interface ProductRepositoryPort {
   findActiveByBusinessId(businessId: string): Promise<Product[]>;
   findByCategoryId(categoryId: string): Promise<Product[]>;
   findByBusinessIdAndStatus(businessId: string, status: string): Promise<Product[]>;
+  /**
+   * The business's most sold active products since `since`, by units, most sold first. Counts only
+   * fully paid orders (paymentStatus completed) that were not cancelled or refunded.
+   */
+  findTopSellers(businessId: string, since: Date, limit: number): Promise<TopSeller[]>;
   delete(id: string): Promise<void>;
 }
 

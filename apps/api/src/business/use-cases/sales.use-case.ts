@@ -1,0 +1,373 @@
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  BusinessRepositoryPort,
+  ModifierGroupRepositoryPort,
+  OrderListFilters,
+  OrderRepositoryPort,
+  PaymentRecord,
+  PaymentRepositoryPort,
+  ProductRepositoryPort,
+  ReceiptRepositoryPort,
+  CUIT,
+  Money,
+  Order,
+  Receipt,
+} from '@unna/domain';
+
+export const ORDER_TYPES = ['dine_in', 'takeaway', 'delivery', 'pickup'] as const;
+export const PAYMENT_METHODS = ['cash', 'card', 'mercado_pago', 'transfer', 'qr'] as const;
+export const RECEIPT_TYPES = ['ticket', 'A', 'B', 'C'] as const;
+const MAX_ORDER_NUMBER_ATTEMPTS = 5;
+
+function isOrderNumberCollision(error: unknown): boolean {
+  const e = error as { code?: string; meta?: { target?: string[] | string } };
+  return e?.code === 'P2002' && String(e.meta?.target ?? '').includes('orderNumber');
+}
+
+export const ORDER_ACTIONS = ['confirm', 'prepare', 'ready', 'deliver', 'cancel'] as const;
+
+export interface OrderLineInput {
+  productId: string;
+  quantity: number;
+  notes?: string;
+  modifiers?: Array<{ modifierGroupId: string; optionId: string }>;
+}
+
+interface Result<T> {
+  ok: boolean;
+  value?: T;
+  error?: Error;
+}
+
+const ok = <T>(value: T): Result<T> => ({ ok: true, value });
+const fail = <T>(message: string): Result<T> => ({ ok: false, error: new Error(message) });
+
+const formatCents = (cents: number) => Money.fromCents(cents).format();
+
+@Injectable()
+export class SalesUseCase {
+  constructor(
+    @Inject('OrderRepositoryPort') private readonly orders: OrderRepositoryPort,
+    @Inject('PaymentRepositoryPort') private readonly payments: PaymentRepositoryPort,
+    @Inject('ReceiptRepositoryPort') private readonly receipts: ReceiptRepositoryPort,
+    @Inject('ProductRepositoryPort') private readonly products: ProductRepositoryPort,
+    @Inject('ModifierGroupRepositoryPort') private readonly modifierGroups: ModifierGroupRepositoryPort,
+    @Inject('BusinessRepositoryPort') private readonly businesses: BusinessRepositoryPort,
+  ) {}
+
+  async createOrder(command: {
+    businessId: string;
+    sucursalId: string;
+    type: string;
+    items: OrderLineInput[];
+    tableNumber?: string;
+    customerName?: string;
+    customerPhone?: string;
+    customerEmail?: string;
+    notes?: string;
+  }): Promise<Result<Order>> {
+    if (!ORDER_TYPES.includes(command.type as any)) return fail('Tipo de pedido inválido');
+    if (!command.items?.length) return fail('El pedido debe tener al menos un item');
+
+    const business = await this.businesses.findById(command.businessId);
+    if (!business) return fail('Negocio no encontrado');
+    const sucursal = business.sucursales.find((s) => s.id === command.sucursalId && s.isActive);
+    if (!sucursal) return fail('Sucursal no encontrada');
+
+    const lines = [];
+    for (const line of command.items) {
+      const built = await this.buildLine(command.businessId, line);
+      if (!built.ok) return fail(built.error!.message);
+      lines.push(built.value);
+    }
+
+    const props = {
+      businessId: command.businessId,
+      sucursalId: sucursal.id,
+      sucursalName: sucursal.name,
+      type: command.type as any,
+      tableNumber: command.tableNumber,
+      customerName: command.customerName,
+      customerPhone: command.customerPhone,
+      customerEmail: command.customerEmail,
+      notes: command.notes,
+      items: lines as any,
+    } as any;
+
+    // Order numbers are random per day; on a collision within the business, draw a new one.
+    for (let attempt = 1; ; attempt++) {
+      const order = Order.create(props);
+      try {
+        await this.orders.save(order);
+        return ok(order);
+      } catch (error) {
+        if (attempt >= MAX_ORDER_NUMBER_ATTEMPTS || !isOrderNumberCollision(error)) throw error;
+      }
+    }
+  }
+
+  async addItem(command: { businessId: string; orderId: string; line: OrderLineInput }): Promise<Result<Order>> {
+    const order = await this.findModifiable(command.businessId, command.orderId);
+    if (!order.ok) return order;
+    const built = await this.buildLine(command.businessId, command.line);
+    if (!built.ok) return fail(built.error!.message);
+    const updated = order.value!.addItem(built.value as any);
+    await this.orders.save(updated);
+    return ok(updated);
+  }
+
+  async removeItem(command: { businessId: string; orderId: string; itemId: string }): Promise<Result<Order>> {
+    const order = await this.findModifiable(command.businessId, command.orderId);
+    if (!order.ok) return order;
+    if (!order.value!.items.some((i) => i.id === command.itemId)) return fail('Item no encontrado');
+    const updated = order.value!.removeItem(command.itemId);
+    await this.orders.save(updated);
+    return ok(updated);
+  }
+
+  async applyDiscount(command: { businessId: string; orderId: string; amount: number }): Promise<Result<Order>> {
+    const order = await this.findModifiable(command.businessId, command.orderId);
+    if (!order.ok) return order;
+    const updated =
+      command.amount === 0 ? order.value!.removeDiscount() : order.value!.applyDiscount(Money.fromCents(command.amount));
+    await this.orders.save(updated);
+    return ok(updated);
+  }
+
+  async changeStatus(command: { businessId: string; orderId: string; action: string; reason?: string }): Promise<Result<Order>> {
+    const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
+    if (!order) return fail('Pedido no encontrado');
+
+    let updated: Order;
+    switch (command.action) {
+      case 'confirm':
+        updated = order.confirm();
+        break;
+      case 'prepare':
+        updated = order.startPreparing();
+        break;
+      case 'ready':
+        updated = order.markReady();
+        break;
+      case 'deliver':
+        updated = order.deliver();
+        break;
+      case 'cancel':
+        if (!command.reason?.trim()) return fail('El motivo de cancelación es obligatorio');
+        if (order.paymentStatus === 'completed') {
+          return fail('El pedido ya está pagado; corresponde un reembolso, no una cancelación');
+        }
+        if ((await this.payments.findByOrderId(order.id)).some((p) => p.status === 'completed')) {
+          return fail('El pedido tiene pagos registrados; corresponde un reembolso, no una cancelación');
+        }
+        updated = order.cancel(command.reason.trim());
+        break;
+      default:
+        return fail('Acción inválida');
+    }
+
+    await this.orders.save(updated);
+    return ok(updated);
+  }
+
+  async registerPayment(command: {
+    businessId: string;
+    orderId: string;
+    amount: number;
+    method: string;
+    reference?: string;
+  }): Promise<Result<{ order: Order; payments: PaymentRecord[]; remaining: number }>> {
+    if (!PAYMENT_METHODS.includes(command.method as any)) return fail('Método de pago inválido');
+    if (!Number.isInteger(command.amount) || command.amount <= 0) return fail('El monto debe ser un entero positivo en centavos');
+
+    const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
+    if (!order) return fail('Pedido no encontrado');
+    if (['cancelled', 'refunded'].includes(order.status)) return fail('No se puede cobrar un pedido cancelado o reembolsado');
+    if (order.paymentStatus === 'completed') return fail('El pedido ya está pagado');
+
+    const previous = (await this.payments.findByOrderId(order.id)).filter((p) => p.status === 'completed');
+    const paid = previous.reduce((sum, p) => sum + p.amount, 0);
+    const remaining = order.totalAmount.toCents() - paid;
+    if (command.amount > remaining) {
+      return fail(`El monto supera el saldo pendiente (${formatCents(remaining)})`);
+    }
+
+    const now = new Date();
+    const payment: PaymentRecord = {
+      id: crypto.randomUUID(),
+      orderId: order.id,
+      businessId: command.businessId,
+      amount: command.amount,
+      method: command.method,
+      status: 'completed',
+      reference: command.reference,
+      processedAt: now,
+      createdAt: now,
+    };
+    await this.payments.save(payment);
+
+    const all = [...previous, payment];
+    const newRemaining = remaining - command.amount;
+    let updated = order;
+    if (newRemaining === 0) {
+      const methods = new Set(all.map((p) => p.method));
+      updated = order.markPaymentCompleted(methods.size === 1 ? (command.method as any) : 'split', command.reference);
+      await this.orders.save(updated);
+    }
+
+    return ok({ order: updated, payments: all, remaining: newRemaining });
+  }
+
+  async listPayments(command: { businessId: string; orderId: string }): Promise<Result<PaymentRecord[]>> {
+    const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
+    if (!order) return fail('Pedido no encontrado');
+    return ok(await this.payments.findByOrderId(order.id));
+  }
+
+  async issueReceipt(command: {
+    businessId: string;
+    orderId: string;
+    type: string;
+    customerName?: string;
+    customerTaxId?: string;
+    customerCondition?: string;
+  }): Promise<Result<Receipt>> {
+    if (!RECEIPT_TYPES.includes(command.type as any)) return fail('Tipo de comprobante inválido');
+
+    const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
+    if (!order) return fail('Pedido no encontrado');
+    if (order.paymentStatus !== 'completed') return fail('El pedido debe estar pagado para emitir un comprobante');
+
+    const existing = await this.receipts.findByOrderId(order.id);
+    if (existing.some((r) => !['cancelled', 'voided'].includes(r.status))) return fail('El pedido ya tiene un comprobante');
+
+    let customerTaxId: string | undefined;
+    if (command.type === 'A') {
+      if (!command.customerTaxId) return fail('La factura A requiere el CUIT del cliente');
+      customerTaxId = CUIT.create(command.customerTaxId).value;
+    } else if (command.customerTaxId) {
+      customerTaxId = command.customerTaxId;
+    }
+
+    const business = await this.businesses.findById(command.businessId);
+    if (!business) return fail('Negocio no encontrado');
+    const pointOfSale = String((business.settings as any).salePoint ?? '1').padStart(4, '0');
+
+    let receipt = Receipt.create({
+      businessId: command.businessId,
+      sucursalId: order.sucursalId,
+      type: command.type as any,
+      receiptType: command.type,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      pointOfSale,
+      paymentMethod: order.paymentMethod ?? 'cash',
+      paymentReference: order.paymentReference,
+      customerName: command.customerName ?? order.customerName,
+      customerTaxId,
+      customerCondition: command.customerCondition,
+      discountAmount: order.discountAmount,
+      items: order.items.map((i) => ({
+        productId: i.productId,
+        productName: i.productName,
+        productSku: i.productSku,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        totalPrice: i.totalPrice,
+        taxRate: i.taxRate,
+        taxAmount: i.taxAmount,
+        modifiers: i.modifiers,
+      })),
+    } as any);
+
+    // Fiscal receipts (A/B/C) stay as drafts until ARCA/AFIP authorizes them with a CAE (T26).
+    if (command.type === 'ticket') receipt = receipt.issue();
+
+    await this.receipts.save(receipt);
+    return ok(receipt);
+  }
+
+  async getOrder(businessId: string, orderId: string): Promise<Result<Order>> {
+    const order = await this.orders.findByIdAndBusinessId(orderId, businessId);
+    return order ? ok(order) : fail('Pedido no encontrado');
+  }
+
+  async listOrders(businessId: string, filters: OrderListFilters): Promise<Result<Order[]>> {
+    return ok(await this.orders.findByBusinessId(businessId, filters));
+  }
+
+  async getReceipt(businessId: string, receiptId: string): Promise<Result<Receipt>> {
+    const receipt = await this.receipts.findByIdAndBusinessId(receiptId, businessId);
+    return receipt ? ok(receipt) : fail('Comprobante no encontrado');
+  }
+
+  async listReceipts(businessId: string): Promise<Result<Receipt[]>> {
+    return ok(await this.receipts.findByBusinessId(businessId));
+  }
+
+  private async findModifiable(businessId: string, orderId: string): Promise<Result<Order>> {
+    const order = await this.orders.findByIdAndBusinessId(orderId, businessId);
+    if (!order) return fail('Pedido no encontrado');
+    if (!order.canBeModified() || order.paymentStatus !== 'pending') {
+      return fail('El pedido ya no se puede modificar');
+    }
+    // A partial payment keeps paymentStatus 'pending', so check the payments themselves.
+    const payments = await this.payments.findByOrderId(order.id);
+    if (payments.some((p) => p.status === 'completed')) {
+      return fail('El pedido tiene pagos registrados y ya no se puede modificar');
+    }
+    return ok(order);
+  }
+
+  /** Prices, tax and names come from the catalog, never from the client. */
+  private async buildLine(businessId: string, line: OrderLineInput) {
+    if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
+      return fail<any>('La cantidad debe ser un entero positivo');
+    }
+    const product = await this.products.findByIdAndBusinessId(line.productId, businessId);
+    if (!product) return fail<any>(`Producto ${line.productId} no encontrado`);
+    if (!product.canBeSold()) return fail<any>(`El producto "${product.name}" no está disponible para la venta`);
+
+    const groups = await Promise.all(
+      product.modifierGroupIds.map((id) => this.modifierGroups.findByIdAndBusinessId(id, businessId)),
+    );
+    const selected = line.modifiers ?? [];
+    const modifiers: Array<{ modifierGroupId: string; optionId: string; name: string; priceDelta: number }> = [];
+
+    for (const choice of selected) {
+      const group = groups.find((g) => g?.id === choice.modifierGroupId && g.isActive);
+      if (!group) return fail<any>(`El modificador ${choice.modifierGroupId} no aplica a "${product.name}"`);
+      const option = group.options.find((o) => o.id === choice.optionId && o.isActive);
+      if (!option) return fail<any>(`Opción ${choice.optionId} no encontrada en "${group.name}"`);
+      modifiers.push({ modifierGroupId: group.id, optionId: option.id, name: option.name, priceDelta: option.priceDelta });
+    }
+
+    for (const group of groups) {
+      if (!group || !group.isActive) continue;
+      const count = modifiers.filter((m) => m.modifierGroupId === group.id).length;
+      const min = group.isRequired ? Math.max(1, group.minSelection) : group.minSelection;
+      if (count < min) return fail<any>(`Elegí al menos ${min} opción(es) de "${group.name}"`);
+      if (group.maxSelection > 0 && count > group.maxSelection) {
+        return fail<any>(`Podés elegir hasta ${group.maxSelection} opción(es) de "${group.name}"`);
+      }
+    }
+
+    const unitPrice = modifiers.reduce((sum, m) => sum.add(Money.fromCents(m.priceDelta)), product.basePrice);
+    const totalPrice = unitPrice.multiply(line.quantity);
+    return {
+      ok: true,
+      value: {
+        productId: product.id,
+        productName: product.name,
+        productSku: product.sku,
+        quantity: line.quantity,
+        unitPrice,
+        totalPrice,
+        taxRate: product.taxRate,
+        taxAmount: totalPrice.percentage(product.taxRate),
+        notes: line.notes,
+        modifiers,
+      },
+    };
+  }
+}

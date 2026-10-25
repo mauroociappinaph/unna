@@ -50,6 +50,7 @@ model Business {
   orders        Order[]
   payments      Payment[]
   receipts      Receipt[]
+  cashSessions  CashSession[]
 
   @@map("businesses")
 }
@@ -70,6 +71,7 @@ model Sucursal {
   business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   orders    Order[]
   receipts  Receipt[]
+  cashSessions CashSession[]
 
   @@map("sucursales")
 }
@@ -333,13 +335,16 @@ model Payment {
   reference       String?  // transaction ID, authorization code, etc.
   metadata        Json?    // gateway response, etc.
   processedAt     DateTime?
+  cashSessionId   String?  // shift the payment was taken in (required for new payments, see S12)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  cashSession     CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
 
   @@index([orderId])
+  @@index([cashSessionId])
   @@index([businessId, status, createdAt])
   @@map("payments")
 }
@@ -348,7 +353,8 @@ model Receipt {
   id              String   @id @default(uuid())
   businessId      String
   sucursalId      String
-  receiptNumber   String   @unique
+  receiptNumber   String   // e.g. B-0003-00000042, unique per business
+  invoiceNumber   Int?     // sequential number within (pointOfSale, receiptType)
   type            String   // A, B, C, ticket, proforma, credit_note, debit_note
   status          String   @default("draft") // draft, issued, cancelled, voided
   orderId         String?
@@ -367,6 +373,10 @@ model Receipt {
   customerTaxId   String?
   customerAddress Json?
   customerCondition String? // IVA condition
+  docType         Int?     // ARCA document type: 80 CUIT, 96 DNI, 99 consumidor final
+  docNumber       String?
+  ivaBreakdown    Json?    // [{ rate, base, amount }] in cents
+  authorizationError String? // last ARCA rejection or failure, while the receipt stays draft
   caeRequest      String?
   caeResponse     String?
   pdfUrl          String?
@@ -383,6 +393,7 @@ model Receipt {
   sucursal        Sucursal   @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
   order           Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
+  @@unique([businessId, receiptNumber])
   @@index([businessId, status, createdAt])
   @@index([businessId, orderId])
   @@map("receipts")
@@ -411,3 +422,58 @@ model ReceiptItem {
 
 // ============ Stock / Inventory ============
 
+/// A cash register shift for one sucursal. At most one open session per sucursal (enforced in the use case under a lock).
+model CashSession {
+  id             String   @id @default(uuid())
+  businessId     String
+  sucursalId     String
+  status         String   @default("open") // open, closed
+  openedBy       String   // user id
+  openedAt       DateTime @default(now())
+  openingAmount  Int      // cash float, in cents
+  closedBy       String?
+  closedAt       DateTime?
+  expected       Json?    // { cash, card, mercado_pago, transfer, qr } in cents, computed at close
+  declared       Json?    // same keys, counted by the cashier
+  difference     Json?    // declared - expected per method
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sucursal       Sucursal       @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+  movements      CashMovement[]
+  payments       Payment[]
+
+  @@index([businessId, sucursalId, status])
+  @@map("cash_sessions")
+}
+
+/// Cash put into (in) or taken out of (out) the register during a session.
+model CashMovement {
+  id          String   @id @default(uuid())
+  sessionId   String
+  businessId  String
+  type        String   // in, out
+  amount      Int      // cents, > 0
+  reason      String
+  createdBy   String   // user id
+  createdAt   DateTime @default(now())
+
+  session     CashSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  @@index([sessionId])
+  @@map("cash_movements")
+}
+
+/// Last number used per (business, point of sale, receipt type). Locked while numbering a receipt.
+model ReceiptSequence {
+  businessId   String
+  pointOfSale  String   // 4 digits
+  receiptType  String   // A, B, C, ticket
+  lastNumber   Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@id([businessId, pointOfSale, receiptType])
+  @@map("receipt_sequences")
+}

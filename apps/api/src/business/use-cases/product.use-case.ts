@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CategoryRepositoryPort, ProductRepositoryPort, ModifierGroupRepositoryPort, TopSeller, Product, Money } from '@unna/domain';
+import { NotFoundError, CategoryRepositoryPort, ProductRepositoryPort, ModifierGroupRepositoryPort, TopSeller, Product, Money } from '@unna/domain';
 import { UseCaseResult } from '../../common/use-case-result';
 
 export interface ProductInput {
@@ -46,12 +46,12 @@ export class ProductUseCase {
   ): Promise<UseCaseResult<never> | null> {
     for (const groupId of refs.modifierGroupIds ?? []) {
       if (!(await this.modifierGroupRepository.findByIdAndBusinessId(groupId, businessId))) {
-        return { ok: false, error: new Error(`Grupo de modificadores ${groupId} no encontrado`) };
+        return { ok: false, error: new NotFoundError(`Grupo de modificadores ${groupId} no encontrado`) };
       }
     }
     for (const component of refs.components ?? []) {
       if (!(await this.productRepository.findByIdAndBusinessId(component.productId, businessId))) {
-        return { ok: false, error: new Error(`Producto componente ${component.productId} no encontrado`) };
+        return { ok: false, error: new NotFoundError(`Producto componente ${component.productId} no encontrado`) };
       }
     }
     return null;
@@ -60,7 +60,7 @@ export class ProductUseCase {
   async create(command: { businessId: string; ownerId: string } & ProductInput): Promise<UseCaseResult<Product>> {
     // Validate category exists and belongs to business
     const category = await this.categoryRepository.findByIdAndBusinessId(command.categoryId, command.businessId);
-    if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
+    if (!category) return { ok: false, error: new NotFoundError('Categoría no encontrada') };
     const refError = await this.checkReferences(command.businessId, command);
     if (refError) return refError;
 
@@ -94,7 +94,7 @@ export class ProductUseCase {
 
   async update(command: { id: string; businessId: string; ownerId: string } & Partial<ProductInput>): Promise<UseCaseResult<Product>> {
     let product = await this.productRepository.findByIdAndBusinessId(command.id, command.businessId);
-    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+    if (!product) return { ok: false, error: new NotFoundError('Producto no encontrado') };
     const refError = await this.checkReferences(command.businessId, command);
     if (refError) return refError;
 
@@ -153,14 +153,14 @@ export class ProductUseCase {
 
   async delete(command: { id: string; businessId: string; ownerId: string }): Promise<UseCaseResult<void>> {
     const product = await this.productRepository.findByIdAndBusinessId(command.id, command.businessId);
-    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+    if (!product) return { ok: false, error: new NotFoundError('Producto no encontrado') };
     await this.productRepository.delete(command.id);
     return { ok: true };
   }
 
   async getById(id: string, businessId: string): Promise<UseCaseResult<Product>> {
     const product = await this.productRepository.findByIdAndBusinessId(id, businessId);
-    return product ? { ok: true, value: product } : { ok: false, error: new Error('Producto no encontrado') };
+    return product ? { ok: true, value: product } : { ok: false, error: new NotFoundError('Producto no encontrado') };
   }
 
   /** Most sold active products of the business in the last `days` days (default 7), up to `limit` (default 8). */
@@ -177,7 +177,7 @@ export class ProductUseCase {
     let products: Product[];
     if (filters?.categoryId) {
       const category = await this.categoryRepository.findByIdAndBusinessId(filters.categoryId, businessId);
-      if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
+      if (!category) return { ok: false, error: new NotFoundError('Categoría no encontrada') };
       products = await this.productRepository.findByCategoryId(filters.categoryId);
     } else if (filters?.status) {
       products = await this.productRepository.findByBusinessIdAndStatus(businessId, filters.status);

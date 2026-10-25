@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  NotFoundError,
   BusinessRepositoryPort,
   FiscalAuthorizationRequest,
   FiscalAuthorizationResult,
@@ -36,6 +37,7 @@ interface Result<T> {
 
 const ok = <T>(value: T): Result<T> => ({ ok: true, value });
 const fail = <T>(message: string): Result<T> => ({ ok: false, error: new Error(message) });
+const notFound = <T>(message: string): Result<T> => ({ ok: false, error: new NotFoundError(message) });
 
 const isOneOf = <T extends string>(values: readonly T[], value: string): value is T =>
   (values as readonly string[]).includes(value);
@@ -73,11 +75,11 @@ export class InvoicingUseCase {
     const { type } = command;
 
     const order = await this.orders.findByIdAndBusinessId(orderId, businessId);
-    if (!order) return fail('Pedido no encontrado');
+    if (!order) return notFound('Pedido no encontrado');
     if (order.paymentStatus !== 'completed') return fail('El pedido debe estar pagado para emitir un comprobante');
 
     const business = await this.businesses.findById(businessId);
-    if (!business) return fail('Negocio no encontrado');
+    if (!business) return notFound('Negocio no encontrado');
     const issuer: Issuer = { cuit: business.cuit.value, pointOfSale: business.settings.salePoint.padStart(4, '0') };
 
     let document: FiscalDocument | undefined;
@@ -130,7 +132,7 @@ export class InvoicingUseCase {
 
   async getReceipt(businessId: string, receiptId: string): Promise<Result<Receipt>> {
     const receipt = await this.receipts.findByIdAndBusinessId(receiptId, businessId);
-    return receipt ? ok(receipt) : fail('Comprobante no encontrado');
+    return receipt ? ok(receipt) : notFound('Comprobante no encontrado');
   }
 
   async listReceipts(businessId: string): Promise<Result<Receipt[]>> {

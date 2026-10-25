@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ModifierGroupRepositoryPort, ModifierGroup, ModifierOption } from '@unna/domain';
+import { NotFoundError, ModifierGroupRepositoryPort, ModifierGroup, ModifierOption } from '@unna/domain';
 import { UseCaseResult } from '../../common/use-case-result';
 
 interface ModifierOptionInput {
@@ -52,7 +52,7 @@ export class ModifierGroupUseCase {
 
   async update(command: { id: string; businessId: string; ownerId: string } & Partial<ModifierGroupInput>): Promise<UseCaseResult<ModifierGroup>> {
     let group = await this.groupRepository.findByIdAndBusinessId(command.id, command.businessId);
-    if (!group) return { ok: false, error: new Error('Grupo de modificadores no encontrado') };
+    if (!group) return { ok: false, error: new NotFoundError('Grupo de modificadores no encontrado') };
 
     if (command.name !== undefined) group = group.updateName(command.name);
     if (command.description !== undefined) group = group.updateDescription(command.description);
@@ -69,7 +69,7 @@ export class ModifierGroupUseCase {
 
   async addOption(command: { groupId: string; businessId: string; ownerId: string; option: ModifierOptionInput }): Promise<UseCaseResult<ModifierGroup>> {
     let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
-    if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
+    if (!group) return { ok: false, error: new NotFoundError('Grupo no encontrado') };
     const option = ModifierOption.create({
       name: command.option.name,
       priceDelta: command.option.priceDelta ?? 0,
@@ -84,7 +84,7 @@ export class ModifierGroupUseCase {
 
   async updateOption(command: { groupId: string; businessId: string; ownerId: string; optionId: string; updates: Partial<ModifierOptionInput> }): Promise<UseCaseResult<ModifierGroup>> {
     let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
-    if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
+    if (!group) return { ok: false, error: new NotFoundError('Grupo no encontrado') };
     group = group.updateOption(command.optionId, (o: ModifierOption) => {
       if (command.updates.name !== undefined) o = o.updateName(command.updates.name);
       if (command.updates.priceDelta !== undefined) o = o.updatePriceDelta(command.updates.priceDelta);
@@ -98,7 +98,7 @@ export class ModifierGroupUseCase {
 
   async deleteOption(command: { groupId: string; businessId: string; ownerId: string; optionId: string }): Promise<UseCaseResult<ModifierGroup>> {
     let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
-    if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
+    if (!group) return { ok: false, error: new NotFoundError('Grupo no encontrado') };
     group = group.removeOption(command.optionId);
     await this.groupRepository.save(group);
     return { ok: true, value: group };
@@ -106,14 +106,14 @@ export class ModifierGroupUseCase {
 
   async delete(command: { id: string; businessId: string; ownerId: string }): Promise<UseCaseResult<void>> {
     const group = await this.groupRepository.findByIdAndBusinessId(command.id, command.businessId);
-    if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
+    if (!group) return { ok: false, error: new NotFoundError('Grupo no encontrado') };
     await this.groupRepository.delete(command.id);
     return { ok: true };
   }
 
   async getById(id: string, businessId: string): Promise<UseCaseResult<ModifierGroup>> {
     const group = await this.groupRepository.findByIdAndBusinessId(id, businessId);
-    return group ? { ok: true, value: group } : { ok: false, error: new Error('Grupo no encontrado') };
+    return group ? { ok: true, value: group } : { ok: false, error: new NotFoundError('Grupo no encontrado') };
   }
 
   async list(businessId: string, activeOnly = false): Promise<UseCaseResult<ModifierGroup[]>> {

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { StockLevelRepositoryPort, StockMovementRepositoryPort, ProductRepositoryPort, StockLevel, StockMovement, StockMovementType } from '@unna/domain';
+import { NotFoundError, StockLevelRepositoryPort, StockMovementRepositoryPort, ProductRepositoryPort, StockLevel, StockMovement, StockMovementType } from '@unna/domain';
 import { UseCaseResult } from '../../common/use-case-result';
 
 interface StockMovementInput {
@@ -35,7 +35,7 @@ export class StockUseCase {
 
   async addStock(command: { businessId: string; ownerId: string } & StockMovementCommand): Promise<UseCaseResult<StockChange>> {
     const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
-    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+    if (!product) return { ok: false, error: new NotFoundError('Producto no encontrado') };
 
     const level = await this.stockRepository.findByProductId(command.productId);
     if (!level) {
@@ -64,10 +64,10 @@ export class StockUseCase {
 
   async removeStock(command: { businessId: string; ownerId: string; type?: StockMovementType } & StockMovementCommand): Promise<UseCaseResult<StockChange>> {
     const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
-    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+    if (!product) return { ok: false, error: new NotFoundError('Producto no encontrado') };
 
     const level = await this.stockRepository.findByProductId(command.productId);
-    if (!level) return { ok: false, error: new Error('Nivel de stock no encontrado') };
+    if (!level) return { ok: false, error: new NotFoundError('Nivel de stock no encontrado') };
 
     const movement = StockMovement.create({
       productId: command.productId,
@@ -91,14 +91,14 @@ export class StockUseCase {
 
   private async productMissing(productId: string, businessId: string): Promise<UseCaseResult<never> | null> {
     const product = await this.productRepository.findByIdAndBusinessId(productId, businessId);
-    return product ? null : { ok: false, error: new Error('Producto no encontrado') };
+    return product ? null : { ok: false, error: new NotFoundError('Producto no encontrado') };
   }
 
   async recordCount(command: { productId: string; businessId: string; ownerId: string; countedQuantity: number }): Promise<UseCaseResult<StockLevel>> {
     const missing = await this.productMissing(command.productId, command.businessId);
     if (missing) return missing;
     const level = await this.stockRepository.findByProductId(command.productId);
-    if (!level) return { ok: false, error: new Error('Nivel de stock no encontrado') };
+    if (!level) return { ok: false, error: new NotFoundError('Nivel de stock no encontrado') };
 
     const updatedLevel = level.recordCount(command.countedQuantity);
     await this.stockRepository.save(updatedLevel);
@@ -109,7 +109,7 @@ export class StockUseCase {
     const missing = await this.productMissing(command.productId, command.businessId);
     if (missing) return missing;
     const level = await this.stockRepository.findByProductId(command.productId);
-    if (!level) return { ok: false, error: new Error('Nivel de stock no encontrado') };
+    if (!level) return { ok: false, error: new NotFoundError('Nivel de stock no encontrado') };
 
     const updatedLevel = level.adjustThresholds(command.minThreshold, command.maxThreshold, command.reorderPoint, command.reorderQuantity);
     await this.stockRepository.save(updatedLevel);
@@ -118,7 +118,7 @@ export class StockUseCase {
 
   async initializeStock(command: { productId: string; businessId: string; ownerId: string; initialQuantity: number; minThreshold?: number; reorderPoint?: number; reorderQuantity?: number }): Promise<UseCaseResult<StockLevel>> {
     const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
-    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+    if (!product) return { ok: false, error: new NotFoundError('Producto no encontrado') };
 
     const existing = await this.stockRepository.findByProductId(command.productId);
     if (existing) return { ok: false, error: new Error('El stock ya está inicializado para este producto') };
@@ -152,7 +152,7 @@ export class StockUseCase {
     const missing = await this.productMissing(productId, businessId);
     if (missing) return missing;
     const level = await this.stockRepository.findByProductId(productId);
-    return level ? { ok: true, value: level } : { ok: false, error: new Error('Nivel de stock no encontrado') };
+    return level ? { ok: true, value: level } : { ok: false, error: new NotFoundError('Nivel de stock no encontrado') };
   }
 
   async getLowStock(businessId: string): Promise<UseCaseResult<StockLevel[]>> {

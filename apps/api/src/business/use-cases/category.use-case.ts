@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CategoryRepositoryPort, Category } from '@unna/domain';
+import { NotFoundError, CategoryRepositoryPort, Category } from '@unna/domain';
 import { UseCaseResult } from '../../common/use-case-result';
 
 interface CategoryInput {
@@ -34,7 +34,7 @@ export class CategoryUseCase {
 
   async update(command: { id: string; businessId: string; ownerId: string } & Partial<CategoryInput>): Promise<UseCaseResult<Category>> {
     let category = await this.categoryRepository.findByIdAndBusinessId(command.id, command.businessId);
-    if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
+    if (!category) return { ok: false, error: new NotFoundError('Categoría no encontrada') };
     if (command.parentId === command.id) return { ok: false, error: new Error('Una categoría no puede ser su propia categoría padre') };
     const parentError = await this.checkParent(command.parentId, command.businessId);
     if (parentError) return parentError;
@@ -55,20 +55,20 @@ export class CategoryUseCase {
 
   async delete(command: { id: string; businessId: string; ownerId: string }): Promise<UseCaseResult<void>> {
     const category = await this.categoryRepository.findByIdAndBusinessId(command.id, command.businessId);
-    if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
+    if (!category) return { ok: false, error: new NotFoundError('Categoría no encontrada') };
     await this.categoryRepository.delete(command.id);
     return { ok: true };
   }
 
   async getById(id: string, businessId: string): Promise<UseCaseResult<Category>> {
     const category = await this.categoryRepository.findByIdAndBusinessId(id, businessId);
-    return category ? { ok: true, value: category } : { ok: false, error: new Error('Categoría no encontrada') };
+    return category ? { ok: true, value: category } : { ok: false, error: new NotFoundError('Categoría no encontrada') };
   }
 
   private async checkParent(parentId: string | undefined, businessId: string): Promise<UseCaseResult<never> | null> {
     if (!parentId) return null;
     const parent = await this.categoryRepository.findByIdAndBusinessId(parentId, businessId);
-    return parent ? null : { ok: false, error: new Error('Categoría padre no encontrada') };
+    return parent ? null : { ok: false, error: new NotFoundError('Categoría padre no encontrada') };
   }
 
   async list(businessId: string, activeOnly = false): Promise<UseCaseResult<Category[]>> {

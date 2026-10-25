@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import {
+  NotFoundError,
   argentinaDayWindow,
   BAR_QUEUE_STATUSES,
   BarQueueColumn,
@@ -62,7 +63,7 @@ export class OrderBoardUseCase {
 
   /** Today's (Argentina) fully paid, still open orders of the sucursal, by column, oldest first. */
   async barQueue(businessId: string, sucursalId: string, now = new Date()): Promise<UseCaseResult<BarQueue>> {
-    if (!(await this.board.findSucursal(businessId, sucursalId))) return { ok: false, error: new Error(SUCURSAL_NOT_FOUND) };
+    if (!(await this.board.findSucursal(businessId, sucursalId))) return { ok: false, error: new NotFoundError(SUCURSAL_NOT_FOUND) };
     const orders = await this.board.findPaidOrders(businessId, sucursalId, argentinaDayWindow(now), BAR_QUEUE_STATUSES);
     const buckets = bucketBarQueue(orders);
     return {
@@ -73,23 +74,23 @@ export class OrderBoardUseCase {
 
   /** New token for the sucursal's public board, returned only here; it replaces any previous one. */
   async generateDisplayToken(businessId: string, sucursalId: string, now = new Date()): Promise<UseCaseResult<{ token: string; path: string }>> {
-    if (!(await this.board.findSucursal(businessId, sucursalId))) return { ok: false, error: new Error(SUCURSAL_NOT_FOUND) };
+    if (!(await this.board.findSucursal(businessId, sucursalId))) return { ok: false, error: new NotFoundError(SUCURSAL_NOT_FOUND) };
     const token = randomBytes(32).toString('base64url');
     await this.board.setDisplayTokenHash(businessId, sucursalId, hashDisplayToken(token), now);
     return { ok: true, value: { token, path: `/pantalla/${token}` } };
   }
 
   async disableDisplayToken(businessId: string, sucursalId: string): Promise<UseCaseResult<{ ok: true }>> {
-    if (!(await this.board.findSucursal(businessId, sucursalId))) return { ok: false, error: new Error(SUCURSAL_NOT_FOUND) };
+    if (!(await this.board.findSucursal(businessId, sucursalId))) return { ok: false, error: new NotFoundError(SUCURSAL_NOT_FOUND) };
     await this.board.setDisplayTokenHash(businessId, sucursalId, null, null);
     return { ok: true, value: { ok: true } };
   }
 
   /** Public board: short number, first name and status only. Malformed tokens never reach the database. */
   async publicBoard(token: string, now = new Date()): Promise<UseCaseResult<PublicOrderBoard>> {
-    if (!isWellFormedDisplayToken(token)) return { ok: false, error: new Error(BOARD_NOT_FOUND) };
+    if (!isWellFormedDisplayToken(token)) return { ok: false, error: new NotFoundError(BOARD_NOT_FOUND) };
     const sucursal = await this.board.findSucursalByDisplayTokenHash(hashDisplayToken(token));
-    if (!sucursal) return { ok: false, error: new Error(BOARD_NOT_FOUND) };
+    if (!sucursal) return { ok: false, error: new NotFoundError(BOARD_NOT_FOUND) };
 
     const orders = await this.board.findPaidOrders(sucursal.businessId, sucursal.id, argentinaDayWindow(now), BAR_QUEUE_STATUSES);
     const board: PublicOrderBoard = { sucursalName: sucursal.name, preparing: [], ready: [], updatedAt: now.toISOString() };

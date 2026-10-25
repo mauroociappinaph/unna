@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PriceListRepositoryPort, ProductRepositoryPort, PriceList, PriceListEntry, Money } from '@unna/domain';
+import { NotFoundError, PriceListRepositoryPort, ProductRepositoryPort, PriceList, PriceListEntry, Money } from '@unna/domain';
 import { UseCaseResult } from '../../common/use-case-result';
 
 interface PriceListInput {
@@ -35,7 +35,7 @@ export class PriceListUseCase {
     if (command.entries) {
       for (const entry of command.entries) {
         const product = await this.productRepository.findByIdAndBusinessId(entry.productId, command.businessId);
-        if (!product) return { ok: false, error: new Error(`Producto ${entry.productId} no encontrado`) };
+        if (!product) return { ok: false, error: new NotFoundError(`Producto ${entry.productId} no encontrado`) };
       }
     }
 
@@ -75,7 +75,7 @@ export class PriceListUseCase {
 
   async update(command: { id: string; businessId: string; ownerId: string } & Partial<PriceListInput>): Promise<UseCaseResult<PriceList>> {
     let list = await this.listRepository.findByIdAndBusinessId(command.id, command.businessId);
-    if (!list) return { ok: false, error: new Error('Lista de precios no encontrada') };
+    if (!list) return { ok: false, error: new NotFoundError('Lista de precios no encontrada') };
 
     if (command.name !== undefined) list = list.updateName(command.name);
     if (command.description !== undefined) list = list.updateDescription(command.description);
@@ -101,10 +101,10 @@ export class PriceListUseCase {
 
   async addEntry(command: { listId: string; businessId: string; ownerId: string; productId: string; price: number; costPrice?: number; isActive?: boolean }): Promise<UseCaseResult<PriceList>> {
     let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
-    if (!list) return { ok: false, error: new Error('Lista no encontrada') };
+    if (!list) return { ok: false, error: new NotFoundError('Lista no encontrada') };
 
     const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
-    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+    if (!product) return { ok: false, error: new NotFoundError('Producto no encontrado') };
 
     const entry = PriceListEntry.create({
       productId: command.productId,
@@ -120,7 +120,7 @@ export class PriceListUseCase {
 
   async updateEntry(command: { listId: string; businessId: string; ownerId: string; productId: string; price?: number; costPrice?: number; isActive?: boolean }): Promise<UseCaseResult<PriceList>> {
     let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
-    if (!list) return { ok: false, error: new Error('Lista no encontrada') };
+    if (!list) return { ok: false, error: new NotFoundError('Lista no encontrada') };
 
     if (command.price !== undefined) list = list.setEntryPrice(command.productId, Money.fromCents(command.price, 'ARS'));
     if (command.costPrice !== undefined) list = list.updateEntry(command.productId, (e: PriceListEntry) => e.updateCostPrice(command.costPrice ? Money.fromCents(command.costPrice, 'ARS') : undefined));
@@ -132,7 +132,7 @@ export class PriceListUseCase {
 
   async removeEntry(command: { listId: string; businessId: string; ownerId: string; productId: string }): Promise<UseCaseResult<PriceList>> {
     let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
-    if (!list) return { ok: false, error: new Error('Lista no encontrada') };
+    if (!list) return { ok: false, error: new NotFoundError('Lista no encontrada') };
     list = list.removeEntry(command.productId);
     await this.listRepository.save(list);
     return { ok: true, value: list };
@@ -140,14 +140,14 @@ export class PriceListUseCase {
 
   async delete(command: { id: string; businessId: string; ownerId: string }): Promise<UseCaseResult<void>> {
     const list = await this.listRepository.findByIdAndBusinessId(command.id, command.businessId);
-    if (!list) return { ok: false, error: new Error('Lista no encontrada') };
+    if (!list) return { ok: false, error: new NotFoundError('Lista no encontrada') };
     await this.listRepository.delete(command.id);
     return { ok: true };
   }
 
   async getById(id: string, businessId: string): Promise<UseCaseResult<PriceList>> {
     const list = await this.listRepository.findByIdAndBusinessId(id, businessId);
-    return list ? { ok: true, value: list } : { ok: false, error: new Error('Lista no encontrada') };
+    return list ? { ok: true, value: list } : { ok: false, error: new NotFoundError('Lista no encontrada') };
   }
 
   async list(businessId: string, activeOnly = false): Promise<UseCaseResult<PriceList[]>> {

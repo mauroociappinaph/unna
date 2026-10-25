@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Request, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OnboardBusinessUseCase, OnboardBusinessCommand } from './use-cases/onboard-business.use-case';
-import { BusinessManagementUseCase, SUCURSAL_NOT_FOUND } from './use-cases/business-management.use-case';
+import { BusinessManagementUseCase } from './use-cases/business-management.use-case';
+import { NotFoundError } from '@unna/domain';
 import { BusinessView, toBusinessView } from './business.presenter';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { IsString, IsNotEmpty, ValidateNested, IsArray, ArrayMinSize, IsOptional, IsUUID } from 'class-validator';
@@ -249,7 +250,7 @@ export class BusinessController {
     });
 
     if (!result.ok) {
-      if (result.error.message === SUCURSAL_NOT_FOUND) throw new NotFoundException(SUCURSAL_NOT_FOUND);
+      if (result.error instanceof NotFoundError) throw new NotFoundException(result.error.message);
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 

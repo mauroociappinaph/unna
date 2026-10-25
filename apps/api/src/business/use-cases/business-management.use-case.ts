@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { BusinessRepositoryPort } from '@unna/domain';
 import { Business, Address, Schedule, Sucursal } from '@unna/domain';
-import { Result, ok, err } from '@unna/domain';
+import { NotFoundError, Result, ok, err } from '@unna/domain';
 
 interface DayScheduleInput {
   open: string;
@@ -99,7 +99,7 @@ export class BusinessManagementUseCase {
   /** Another owner's business is reported as not found, so ids do not leak. */
   async getMine(businessId: string, ownerId: string): Promise<Result<Business, Error>> {
     const business = await this.businessRepository.findById(businessId);
-    if (!business || business.ownerId !== ownerId) return err(new Error('Negocio no encontrado'));
+    if (!business || business.ownerId !== ownerId) return err(new NotFoundError('Negocio no encontrado'));
     return ok(business);
   }
 
@@ -107,7 +107,7 @@ export class BusinessManagementUseCase {
   async updateSettings(command: UpdateBusinessSettingsCommand): Promise<Result<Business, Error>> {
     const business = await this.businessRepository.findById(command.businessId);
     if (!business) {
-      return err(new Error('Negocio no encontrado'));
+      return err(new NotFoundError('Negocio no encontrado'));
     }
     if (business.ownerId !== command.ownerId) {
       return err(new Error('No tenés permisos para modificar este negocio'));
@@ -151,7 +151,7 @@ export class BusinessManagementUseCase {
     address: AddressInput;
   }): Promise<Result<Business, Error>> {
     const business = await this.businessRepository.findById(command.businessId);
-    if (!business) return err(new Error('Negocio no encontrado'));
+    if (!business) return err(new NotFoundError('Negocio no encontrado'));
     if (business.ownerId !== command.ownerId) return err(new Error('Sin permisos'));
 
     const address = Address.create(command.address);
@@ -167,7 +167,7 @@ export class BusinessManagementUseCase {
     schedule: WeekScheduleInput;
   }): Promise<Result<Business, Error>> {
     const business = await this.businessRepository.findById(command.businessId);
-    if (!business) return err(new Error('Negocio no encontrado'));
+    if (!business) return err(new NotFoundError('Negocio no encontrado'));
     if (business.ownerId !== command.ownerId) return err(new Error('Sin permisos'));
 
     const schedule = Schedule.create(command.schedule);
@@ -179,7 +179,7 @@ export class BusinessManagementUseCase {
   // Sucursal management
   async manageSucursal(command: ManageSucursalCommand): Promise<Result<Business, Error>> {
     const business = await this.businessRepository.findById(command.businessId);
-    if (!business) return err(new Error('Negocio no encontrado'));
+    if (!business) return err(new NotFoundError('Negocio no encontrado'));
     if (business.ownerId !== command.ownerId) return err(new Error('Sin permisos'));
 
     const { action, sucursal } = command;
@@ -220,7 +220,7 @@ export class BusinessManagementUseCase {
         return err(new Error('ID de sucursal requerido para eliminar'));
       }
       if (!business.sucursales.some((s) => s.id === deleteInput.id)) {
-        return err(new Error(SUCURSAL_NOT_FOUND));
+        return err(new NotFoundError(SUCURSAL_NOT_FOUND));
       }
       business.removeSucursal(deleteInput.id);
     }
@@ -232,7 +232,7 @@ export class BusinessManagementUseCase {
   // Schedule management (business or sucursal level)
   async manageHorarios(command: ManageHorariosCommand): Promise<Result<Business, Error>> {
     const business = await this.businessRepository.findById(command.businessId);
-    if (!business) return err(new Error('Negocio no encontrado'));
+    if (!business) return err(new NotFoundError('Negocio no encontrado'));
     if (business.ownerId !== command.ownerId) return err(new Error('Sin permisos'));
 
     const schedule = Schedule.create(command.schedule);
@@ -241,7 +241,7 @@ export class BusinessManagementUseCase {
       business.updateSchedule(schedule);
     } else {
       const sucursal = business.sucursales.find(s => s.id === command.sucursalId);
-      if (!sucursal) return err(new Error('Sucursal no encontrada'));
+      if (!sucursal) return err(new NotFoundError('Sucursal no encontrada'));
       business.updateSucursal(command.sucursalId, (s) => s.updateSchedule(schedule));
     }
 

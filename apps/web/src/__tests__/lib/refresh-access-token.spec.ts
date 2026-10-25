@@ -34,6 +34,31 @@ describe('refreshAccessToken', () => {
     expect(localStorage.getItem('refresh_token')).toBe('refresh-2');
   });
 
+  it('shares one renewal between concurrent callers, so a rotated refresh token is not spent twice', async () => {
+    localStorage.setItem('refresh_token', 'refresh-1');
+    let resolve!: (value: unknown) => void;
+    post.mockReturnValue(new Promise((r) => { resolve = r; }));
+
+    const first = refreshAccessToken();
+    const second = refreshAccessToken();
+    resolve({ data: { accessToken: 'access-2', refreshToken: 'refresh-2' } });
+
+    await expect(Promise.all([first, second])).resolves.toEqual(['access-2', 'access-2']);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('refresh_token')).toBe('refresh-2');
+  });
+
+  it('starts a new renewal once the previous one finished', async () => {
+    localStorage.setItem('refresh_token', 'refresh-1');
+    post.mockResolvedValueOnce({ data: { accessToken: 'access-2', refreshToken: 'refresh-2' } });
+    post.mockResolvedValueOnce({ data: { accessToken: 'access-3', refreshToken: 'refresh-3' } });
+
+    await refreshAccessToken();
+    await expect(refreshAccessToken()).resolves.toBe('access-3');
+
+    expect(post).toHaveBeenLastCalledWith(expect.any(String), { refreshToken: 'refresh-2' });
+  });
+
   it('clears the session when the renewal fails', async () => {
     localStorage.setItem('auth_token', 'expired');
     localStorage.setItem('refresh_token', 'refresh-1');

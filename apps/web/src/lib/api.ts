@@ -11,9 +11,19 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 /**
  * Renews the session with the stored refresh token and returns the new access token. Without a
  * refresh token it returns null and leaves the page alone (e.g. a wrong password on /login); when
- * the renewal itself fails it clears the session and sends the user to /login.
+ * the renewal itself fails it clears the session and sends the user to /login. Concurrent callers
+ * (the bar polling while the POS saves) share one renewal, so a rotated refresh token is spent once.
  */
-export async function refreshAccessToken(): Promise<string | null> {
+let pendingRefresh: Promise<string | null> | null = null;
+
+export function refreshAccessToken(): Promise<string | null> {
+  pendingRefresh ??= renewSession().finally(() => {
+    pendingRefresh = null;
+  });
+  return pendingRefresh;
+}
+
+async function renewSession(): Promise<string | null> {
   const refreshToken = localStorage.getItem('refresh_token');
   if (!refreshToken) return null;
   try {

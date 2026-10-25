@@ -21,4 +21,3 @@ export type { HashingPort } from './hashing.port';
 export type { EmailPort, EmailConfig } from './email.port';
 export * from './fiscal.port';
 export * from './cash.port';
-// Bar queue and public order board (S13). Exported from here because the package root index does

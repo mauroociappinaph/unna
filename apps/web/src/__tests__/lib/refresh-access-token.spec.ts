@@ -29,7 +29,7 @@ describe('refreshAccessToken', () => {
 
     await expect(refreshAccessToken()).resolves.toBe('access-2');
 
-    expect(post).toHaveBeenCalledWith(expect.stringMatching(/\/api\/v1\/auth\/refresh$/), { refreshToken: 'refresh-1' });
+    expect(post).toHaveBeenCalledWith(expect.stringMatching(/\/api\/v1\/auth\/refresh$/), { refreshToken: 'refresh-1' }, expect.anything());
     expect(localStorage.getItem('auth_token')).toBe('access-2');
     expect(localStorage.getItem('refresh_token')).toBe('refresh-2');
   });
@@ -56,7 +56,16 @@ describe('refreshAccessToken', () => {
     await refreshAccessToken();
     await expect(refreshAccessToken()).resolves.toBe('access-3');
 
-    expect(post).toHaveBeenLastCalledWith(expect.any(String), { refreshToken: 'refresh-2' });
+    expect(post).toHaveBeenLastCalledWith(expect.any(String), { refreshToken: 'refresh-2' }, expect.anything());
+  });
+
+  it('bounds the renewal with a timeout, so a hung request cannot block every later renewal', async () => {
+    localStorage.setItem('refresh_token', 'refresh-1');
+    post.mockResolvedValue({ data: { accessToken: 'access-2', refreshToken: 'refresh-2' } });
+
+    await refreshAccessToken();
+
+    expect(post).toHaveBeenCalledWith(expect.any(String), { refreshToken: 'refresh-1' }, { timeout: 15_000 });
   });
 
   it('clears the session when the renewal fails', async () => {

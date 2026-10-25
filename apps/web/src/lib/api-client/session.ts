@@ -2,6 +2,9 @@ import axios from 'axios';
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// A hung renewal would hold the shared promise forever and block every later renewal.
+const REFRESH_TIMEOUT_MS = 15_000;
+
 /**
  * Renews the session with the stored refresh token and returns the new access token. Without a
  * refresh token it returns null and leaves the page alone (e.g. a wrong password on /login); when
@@ -21,7 +24,7 @@ async function renewSession(): Promise<string | null> {
   const refreshToken = localStorage.getItem('refresh_token');
   if (!refreshToken) return null;
   try {
-    const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, { refreshToken });
+    const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, { refreshToken }, { timeout: REFRESH_TIMEOUT_MS });
     const { accessToken, refreshToken: newRefreshToken } = response.data;
     localStorage.setItem('auth_token', accessToken);
     localStorage.setItem('refresh_token', newRefreshToken);

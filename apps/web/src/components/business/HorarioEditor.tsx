@@ -78,7 +78,13 @@ export function HorarioEditor({ initialData, onSubmit, onCancel, isLoading, titl
   };
 
   return (
-    <form className="space-y-6">
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(formData);
+      }}
+    >
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>

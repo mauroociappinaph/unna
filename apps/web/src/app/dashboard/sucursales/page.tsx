@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
-import { SucursalForm } from '@/components/business/SucursalForm';
+import { SucursalForm, type SucursalFormData } from '@/components/business/SucursalForm';
 
 interface Sucursal {
   id: string;
@@ -84,7 +84,7 @@ export default function SucursalesPage() {
     }
   };
 
-  const handleSubmitSucursal = async (data: any) => {
+  const handleSubmitSucursal = async (data: SucursalFormData) => {
     if (!business) return;
 
     setFormLoading(true);

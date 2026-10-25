@@ -1,5 +1,4 @@
 import { Money } from './money';
-import { ModifierGroup } from './modifier';
 
 export type ProductType = 'simple' | 'composite' | 'combo';
 export type ProductStatus = 'draft' | 'active' | 'archived';

@@ -1,6 +1,6 @@
 import { DomainEvent } from '../events/domain-event';
 
-export abstract class AggregateRoot<Props extends Record<string, any>> {
+export abstract class AggregateRoot<Props extends object> {
   public readonly id: string;
   private _domainEvents: DomainEvent[] = [];
 

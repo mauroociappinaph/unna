@@ -3,14 +3,11 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { registerRequestSchema, type RegisterRequest } from '@unna/shared';
-
-const phoneRegex = /^(\+?54)?9?\d{2}\d{4}\d{4}$/;
 
 function formatPhone(value: string): string {
   const cleaned = value.replace(/\D/g, '');

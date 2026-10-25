@@ -1,17 +1,20 @@
 import { ForgotPasswordUseCase } from '../forgot-password.use-case';
-import { Result, ok, err, isOk, isErr } from '@unna/domain';
+import { isOk } from '@unna/domain';
 
 const mockUserRepository = {
   existsByEmail: jest.fn(),
   save: jest.fn(),
   findById: jest.fn(),
   findByEmail: jest.fn(),
+  delete: jest.fn(),
 };
 
 const mockJwtPort = {
   generateTokenPair: jest.fn(),
   verifyAccessToken: jest.fn(),
   verifyRefreshToken: jest.fn(),
+  generateAccessToken: jest.fn(),
+  generateRefreshToken: jest.fn(),
   decodeToken: jest.fn(),
   generateResetToken: jest.fn(),
   verifyResetToken: jest.fn(),
@@ -29,9 +32,9 @@ describe('ForgotPasswordUseCase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useCase = new ForgotPasswordUseCase(
-      mockUserRepository as any,
-      mockJwtPort as any,
-      mockEmailPort as any,
+      mockUserRepository,
+      mockJwtPort,
+      mockEmailPort,
     );
   });
 

@@ -1,4 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import {
+  Prisma,
+  Category as CategoryRecord,
+  Product as ProductRecord,
+  StockLevel as StockLevelRecord,
+  StockMovement as StockMovementRecord,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CategoryRepositoryPort,
@@ -18,7 +25,11 @@ import {
   Money,
 } from '@unna/domain';
 
-const money = (cents: number, currency = 'ARS') => Money.fromCents(cents, currency as any);
+// Stored currency codes were written from Money, so they are always a supported currency.
+const money = (cents: number, currency = 'ARS') => Money.fromCents(cents, currency as Money['currency']);
+
+type ModifierGroupRecord = Prisma.ModifierGroupGetPayload<{ include: { options: true } }>;
+type PriceListRecord = Prisma.PriceListGetPayload<{ include: { entries: true } }>;
 
 @Injectable()
 export class PrismaCategoryRepositoryAdapter implements CategoryRepositoryPort {
@@ -69,13 +80,13 @@ export class PrismaCategoryRepositoryAdapter implements CategoryRepositoryPort {
     await this.prisma.category.delete({ where: { id } });
   }
 
-  private toDomain(r: any): Category {
+  private toDomain(r: CategoryRecord): Category {
     return Category.reconstitute({
       id: r.id,
       businessId: r.businessId,
       name: r.name,
       description: r.description ?? undefined,
-      type: r.type,
+      type: r.type as Category['type'],
       displayOrder: r.displayOrder,
       isActive: r.isActive,
       parentId: r.parentId ?? undefined,
@@ -108,7 +119,7 @@ export class PrismaProductRepositoryAdapter implements ProductRepositoryPort {
       isActive: product.isActive,
       images: product.images,
       modifierGroupIds: product.modifierGroupIds,
-      components: product.components as any,
+      components: product.components,
       preparationTimeMinutes: product.preparationTimeMinutes ?? null,
       calories: product.calories ?? null,
       allergens: product.allergens,
@@ -158,15 +169,15 @@ export class PrismaProductRepositoryAdapter implements ProductRepositoryPort {
     await this.prisma.product.delete({ where: { id } });
   }
 
-  private toDomain(r: any): Product {
+  private toDomain(r: ProductRecord): Product {
     return Product.reconstitute({
       id: r.id,
       businessId: r.businessId,
       categoryId: r.categoryId,
       name: r.name,
       description: r.description ?? undefined,
-      type: r.type,
-      status: r.status,
+      type: r.type as Product['type'],
+      status: r.status as Product['status'],
       basePrice: money(r.basePrice, r.currency),
       costPrice: r.costPrice != null ? money(r.costPrice, r.currency) : undefined,
       taxRate: r.taxRate,
@@ -176,7 +187,7 @@ export class PrismaProductRepositoryAdapter implements ProductRepositoryPort {
       isActive: r.isActive,
       images: r.images,
       modifierGroupIds: r.modifierGroupIds,
-      components: (r.components as any) ?? [],
+      components: (r.components as Product['components'] | null) ?? [],
       preparationTimeMinutes: r.preparationTimeMinutes ?? undefined,
       calories: r.calories ?? undefined,
       allergens: r.allergens,
@@ -261,7 +272,7 @@ export class PrismaModifierGroupRepositoryAdapter implements ModifierGroupReposi
     await this.prisma.modifierGroup.delete({ where: { id } });
   }
 
-  private toDomain(r: any): ModifierGroup {
+  private toDomain(r: ModifierGroupRecord): ModifierGroup {
     return ModifierGroup.reconstitute({
       id: r.id,
       businessId: r.businessId,
@@ -272,7 +283,7 @@ export class PrismaModifierGroupRepositoryAdapter implements ModifierGroupReposi
       isRequired: r.isRequired,
       displayOrder: r.displayOrder,
       isActive: r.isActive,
-      options: (r.options ?? []).map((o: any) =>
+      options: (r.options ?? []).map((o) =>
         ModifierOption.reconstitute({
           id: o.id,
           name: o.name,
@@ -370,13 +381,13 @@ export class PrismaPriceListRepositoryAdapter implements PriceListRepositoryPort
     await this.prisma.priceList.delete({ where: { id } });
   }
 
-  private toDomain(r: any): PriceList {
+  private toDomain(r: PriceListRecord): PriceList {
     return PriceList.reconstitute({
       id: r.id,
       businessId: r.businessId,
       name: r.name,
       description: r.description ?? undefined,
-      type: r.type,
+      type: r.type as PriceList['type'],
       isDefault: r.isDefault,
       isActive: r.isActive,
       validFrom: r.validFrom ?? undefined,
@@ -384,7 +395,7 @@ export class PrismaPriceListRepositoryAdapter implements PriceListRepositoryPort
       validDays: r.validDays?.length ? r.validDays : undefined,
       validFromTime: r.validFromTime ?? undefined,
       validToTime: r.validToTime ?? undefined,
-      entries: (r.entries ?? []).map((e: any) =>
+      entries: (r.entries ?? []).map((e) =>
         PriceListEntry.reconstitute({
           productId: e.productId,
           price: money(e.price),
@@ -440,7 +451,7 @@ export class PrismaStockLevelRepositoryAdapter implements StockLevelRepositoryPo
     await this.prisma.stockLevel.delete({ where: { productId } });
   }
 
-  private toDomain(r: any): StockLevel {
+  private toDomain(r: StockLevelRecord): StockLevel {
     return StockLevel.reconstitute({
       productId: r.productId,
       businessId: r.businessId,
@@ -498,12 +509,12 @@ export class PrismaStockMovementRepositoryAdapter implements StockMovementReposi
     return records.map((r) => this.toDomain(r));
   }
 
-  private toDomain(r: any): StockMovement {
+  private toDomain(r: StockMovementRecord): StockMovement {
     return StockMovement.reconstitute({
       id: r.id,
       productId: r.productId,
       businessId: r.businessId,
-      type: r.type,
+      type: r.type as StockMovement['type'],
       quantity: r.quantity,
       reason: r.reason,
       referenceId: r.referenceId ?? undefined,

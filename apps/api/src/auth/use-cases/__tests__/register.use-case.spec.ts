@@ -1,12 +1,11 @@
 import { RegisterUseCase } from '../register.use-case';
-import { User } from '@unna/domain';
-import { Result, ok, err, isOk, isErr } from '@unna/domain';
+import { isOk, isErr, UserRepositoryPort, HashingPort, JwtPort } from '@unna/domain';
 
 describe('RegisterUseCase', () => {
   let useCase: RegisterUseCase;
-  let mockUserRepository: any;
-  let mockHashingPort: any;
-  let mockJwtPort: any;
+  let mockUserRepository: Record<keyof UserRepositoryPort, jest.Mock>;
+  let mockHashingPort: Record<keyof HashingPort, jest.Mock>;
+  let mockJwtPort: Record<keyof JwtPort, jest.Mock>;
 
   beforeEach(() => {
     mockUserRepository = {
@@ -14,6 +13,7 @@ describe('RegisterUseCase', () => {
       save: jest.fn(),
       findById: jest.fn(),
       findByEmail: jest.fn(),
+      delete: jest.fn(),
     };
     mockHashingPort = {
       hash: jest.fn(),
@@ -23,7 +23,11 @@ describe('RegisterUseCase', () => {
       generateTokenPair: jest.fn(),
       verifyAccessToken: jest.fn(),
       verifyRefreshToken: jest.fn(),
+      generateAccessToken: jest.fn(),
+      generateRefreshToken: jest.fn(),
       decodeToken: jest.fn(),
+      generateResetToken: jest.fn(),
+      verifyResetToken: jest.fn(),
     };
     useCase = new RegisterUseCase(
       mockUserRepository,

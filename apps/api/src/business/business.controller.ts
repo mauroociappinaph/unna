@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Request, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OnboardBusinessUseCase, OnboardBusinessCommand } from './use-cases/onboard-business.use-case';
-import { BusinessManagementUseCase, UpdateBusinessSettingsCommand, ManageSucursalCommand, ManageHorariosCommand } from './use-cases/business-management.use-case';
+import { BusinessManagementUseCase } from './use-cases/business-management.use-case';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { IsString, IsNotEmpty, ValidateNested, IsArray, ArrayMinSize, IsOptional, IsUUID, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, ValidateNested, IsArray, ArrayMinSize, IsOptional, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
+import type { AuthenticatedRequest } from './authenticated-request';
 
 class AddressDto {
   @IsString() @IsNotEmpty() street!: string;
@@ -107,7 +108,7 @@ export class BusinessController {
   // --- Onboarding ---
   @Post()
   @ApiOperation({ summary: 'Crear nuevo negocio para el usuario autenticado (onboarding completo)' })
-  async onboard(@Request() req: any, @Body() dto: OnboardBusinessDto) {
+  async onboard(@Request() req: AuthenticatedRequest, @Body() dto: OnboardBusinessDto) {
     const command: OnboardBusinessCommand = {
       ownerId: req.user.sub,
       businessName: dto.businessName,
@@ -121,7 +122,6 @@ export class BusinessController {
     const result = await this.onboardBusinessUseCase.execute(command);
 
     if (!result.ok) {
-      const { HttpException, HttpStatus } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 
@@ -133,7 +133,7 @@ export class BusinessController {
   @ApiOperation({ summary: 'Actualizar configuración del negocio' })
   async updateSettings(
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: UpdateSettingsDto,
   ) {
     const result = await this.businessManagementUseCase.updateSettings({
@@ -143,7 +143,6 @@ export class BusinessController {
     });
 
     if (!result.ok) {
-      const { HttpException, HttpStatus } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 
@@ -154,7 +153,7 @@ export class BusinessController {
   @ApiOperation({ summary: 'Actualizar dirección del negocio' })
   async updateAddress(
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: AddressDto,
   ) {
     const result = await this.businessManagementUseCase.updateAddress({
@@ -164,7 +163,6 @@ export class BusinessController {
     });
 
     if (!result.ok) {
-      const { HttpException, HttpStatus } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 
@@ -175,7 +173,7 @@ export class BusinessController {
   @ApiOperation({ summary: 'Actualizar horario del negocio (nivel business)' })
   async updateSchedule(
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: WeekScheduleDto,
   ) {
     const result = await this.businessManagementUseCase.updateSchedule({
@@ -185,7 +183,6 @@ export class BusinessController {
     });
 
     if (!result.ok) {
-      const { HttpException, HttpStatus } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 
@@ -197,7 +194,7 @@ export class BusinessController {
   @ApiOperation({ summary: 'Crear nueva sucursal' })
   async createSucursal(
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: ManageSucursalDto,
   ) {
     const result = await this.businessManagementUseCase.manageSucursal({
@@ -208,7 +205,6 @@ export class BusinessController {
     });
 
     if (!result.ok) {
-      const { HttpException, HttpStatus } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 
@@ -220,7 +216,7 @@ export class BusinessController {
   async updateSucursal(
     @Param('id') id: string,
     @Param('sucursalId') sucursalId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: ManageSucursalDto,
   ) {
     const result = await this.businessManagementUseCase.manageSucursal({
@@ -231,7 +227,6 @@ export class BusinessController {
     });
 
     if (!result.ok) {
-      const { HttpException, HttpStatus } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 
@@ -243,7 +238,7 @@ export class BusinessController {
   async deleteSucursal(
     @Param('id') id: string,
     @Param('sucursalId') sucursalId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     const result = await this.businessManagementUseCase.manageSucursal({
       businessId: id,
@@ -253,7 +248,6 @@ export class BusinessController {
     });
 
     if (!result.ok) {
-      const { HttpException, HttpStatus } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 
@@ -265,7 +259,7 @@ export class BusinessController {
   @ApiOperation({ summary: 'Actualizar horario (business o sucursal)' })
   async manageHorarios(
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: ManageHorariosDto,
   ) {
     const result = await this.businessManagementUseCase.manageHorarios({
@@ -276,7 +270,6 @@ export class BusinessController {
     });
 
     if (!result.ok) {
-      const { HttpException, HttpStatus } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 
@@ -286,7 +279,7 @@ export class BusinessController {
   // --- Getters ---
   @Get()
   @ApiOperation({ summary: 'Listar negocios del usuario autenticado' })
-  async findMine(@Request() req: any) {
+  async findMine() {
     // TODO: implement using repository
     return [];
   }

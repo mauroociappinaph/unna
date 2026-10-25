@@ -3,7 +3,7 @@ export class BusinessName {
 
   private static readonly MIN_LENGTH = 3;
   private static readonly MAX_LENGTH = 45;
-  private static readonly ALLOWED_PATTERN = /^[a-zA-Z0-9\s&_\-]+$/;
+  private static readonly ALLOWED_PATTERN = /^[a-zA-Z0-9\s&_-]+$/;
 
   private constructor(value: string) {
     this.value = value.trim();

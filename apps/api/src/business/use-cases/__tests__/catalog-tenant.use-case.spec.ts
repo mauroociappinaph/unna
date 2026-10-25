@@ -1,5 +1,6 @@
-import { CategoryUseCase, ProductUseCase, StockUseCase } from '../product-catalog.use-case';
+import { CategoryUseCase, ProductInput, ProductUseCase, StockUseCase } from '../product-catalog.use-case';
 import { StockLevel } from '@unna/domain';
+import { fake } from './test-doubles';
 
 // Business A's owner sends their own businessId together with ids that belong to business B.
 const OWN = 'biz-A';
@@ -38,7 +39,7 @@ const foreignLevel = () =>
   StockLevel.create({
     productId: 'prod-B', businessId: FOREIGN, currentQuantity: 50, reservedQuantity: 0,
     minThreshold: 10, reorderPoint: 5, reorderQuantity: 20,
-  } as any);
+  });
 
 describe('Catalog tenant isolation', () => {
   describe('StockUseCase with a foreign product id', () => {
@@ -48,9 +49,9 @@ describe('Catalog tenant isolation', () => {
     beforeEach(() => {
       saved = [];
       stock = new StockUseCase(
-        { findByProductId: async () => foreignLevel(), save: async (l: unknown) => saved.push(l) } as any,
-        { findByProductId: async () => [{ businessId: FOREIGN }], save: jest.fn() } as any,
-        productsRepo() as any,
+        fake({ findByProductId: async () => foreignLevel(), save: async (l: unknown) => saved.push(l) }),
+        fake({ findByProductId: async () => [{ businessId: FOREIGN }], save: jest.fn() }),
+        fake(productsRepo()),
       );
     });
 
@@ -62,31 +63,33 @@ describe('Catalog tenant isolation', () => {
     ])('%s is rejected and writes nothing', async (_name, run) => {
       const result = await run(stock);
       expect(result.ok).toBe(false);
-      expect(result.error.message).toBe('Producto no encontrado');
+      expect(result.error?.message).toBe('Producto no encontrado');
       expect(saved).toHaveLength(0);
     });
   });
 
   describe('ProductUseCase', () => {
-    const useCase = () => new ProductUseCase(productsRepo() as any, categoriesRepo() as any, groupsRepo() as any);
-    const base = { businessId: OWN, ownerId: 'u', categoryId: 'cat-A', name: 'Milanesa', type: 'simple', basePrice: 1000 };
+    const useCase = () => new ProductUseCase(fake(productsRepo()), fake(categoriesRepo()), fake(groupsRepo()));
+    const base: { businessId: string; ownerId: string } & ProductInput = {
+      businessId: OWN, ownerId: 'u', categoryId: 'cat-A', name: 'Milanesa', type: 'simple', basePrice: 1000,
+    };
 
     it('rejects listing by a foreign category', async () => {
       const result = await useCase().list(OWN, { categoryId: 'cat-B' });
       expect(result.ok).toBe(false);
-      expect(result.error.message).toBe('Categoría no encontrada');
+      expect(result.error?.message).toBe('Categoría no encontrada');
     });
 
     it('rejects a foreign modifier group', async () => {
       const result = await useCase().create({ ...base, modifierGroupIds: ['grp-B'] });
       expect(result.ok).toBe(false);
-      expect(result.error.message).toBe('Grupo de modificadores grp-B no encontrado');
+      expect(result.error?.message).toBe('Grupo de modificadores grp-B no encontrado');
     });
 
     it('rejects a foreign component product', async () => {
       const result = await useCase().create({ ...base, type: 'combo', components: [{ productId: 'prod-B', quantity: 1 }] });
       expect(result.ok).toBe(false);
-      expect(result.error.message).toBe('Producto componente prod-B no encontrado');
+      expect(result.error?.message).toBe('Producto componente prod-B no encontrado');
     });
 
     it('accepts own modifier groups and components', async () => {
@@ -100,11 +103,11 @@ describe('Catalog tenant isolation', () => {
   describe('CategoryUseCase', () => {
     it('rejects a foreign parent category', async () => {
       const repo = categoriesRepo();
-      const result = await new CategoryUseCase(repo as any).create({
+      const result = await new CategoryUseCase(fake(repo)).create({
         businessId: OWN, ownerId: 'u', name: 'Sub', type: 'plato', parentId: 'cat-B',
       });
       expect(result.ok).toBe(false);
-      expect(result.error.message).toBe('Categoría padre no encontrada');
+      expect(result.error?.message).toBe('Categoría padre no encontrada');
       expect(repo.save).not.toHaveBeenCalled();
     });
   });

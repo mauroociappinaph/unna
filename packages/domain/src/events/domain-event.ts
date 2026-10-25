@@ -14,5 +14,5 @@ export type DomainEventHandler<T extends DomainEvent> = (event: T) => Promise<vo
 
 export interface DomainEventPublisher {
   publish<T extends DomainEvent>(event: T): Promise<void>;
-  subscribe<T extends DomainEvent>(eventClass: new (...args: any[]) => T, handler: DomainEventHandler<T>): void;
+  subscribe<T extends DomainEvent>(eventClass: new (...args: never[]) => T, handler: DomainEventHandler<T>): void;
 }

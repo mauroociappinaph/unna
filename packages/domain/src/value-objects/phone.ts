@@ -14,7 +14,7 @@ export class Phone {
       throw new Error('Este campo es obligatorio');
     }
 
-    const cleaned = value.replace(/[\s\-\(\)]/g, '');
+    const cleaned = value.replace(/[\s\-()]/g, '');
 
     const argentinaPatterns = [
       /^(\+?54)?9?(\d{2})(\d{4})(\d{4})$/,  // +54 9 11 1234 5678 o 11 1234 5678

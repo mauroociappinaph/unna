@@ -59,7 +59,6 @@ export interface SucursalFormProps {
 }
 
 export function SucursalForm({ initialData, onSubmit, onCancel, isLoading, title = 'Sucursal' }: SucursalFormProps) {
-  const [editingSchedule, setEditingSchedule] = useState<string | null>(null);
   const [formData, setFormData] = useState<SucursalFormData>({
     name: '',
     address: {
@@ -81,7 +80,7 @@ export function SucursalForm({ initialData, onSubmit, onCancel, isLoading, title
     ...initialData,
   });
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: string | boolean) => {
     if (field.startsWith('address.')) {
       setFormData(prev => ({
         ...prev,

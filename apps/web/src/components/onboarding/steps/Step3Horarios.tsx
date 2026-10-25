@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 
 export interface WeekSchedule {
@@ -39,8 +38,6 @@ const defaultSchedule: WeekSchedule = {
 };
 
 export function Step3Horarios({ data, onChange }: Step3HorariosProps) {
-  const [copiedFrom, setCopiedFrom] = useState<string | null>(null);
-
   const handleTimeChange = (day: keyof WeekSchedule, field: 'open' | 'close', value: string) => {
     onChange({
       ...data,
@@ -64,8 +61,6 @@ export function Step3Horarios({ data, onChange }: Step3HorariosProps) {
       }
     });
     onChange(newSchedule);
-    setCopiedFrom(sourceDay);
-    setTimeout(() => setCopiedFrom(null), 2000);
   };
 
   const resetToDefault = () => {
@@ -103,10 +98,7 @@ export function Step3Horarios({ data, onChange }: Step3HorariosProps) {
                     data-testid={`day-${key}-closed`}
                     type="checkbox"
                     checked={schedule.isClosed}
-                    onChange={(e) => onChange({
-                      ...data,
-                      [key]: { ...data[key], isClosed: e.target.checked },
-                    })}
+                    onChange={(e) => handleClosedChange(key, e.target.checked)}
                     className="w-4 h-4 rounded border-gray-300 text-unna-green focus:ring-unna-green"
                   />
                   <span className="text-sm text-gray-600">Cerrado</span>

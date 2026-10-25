@@ -1,17 +1,17 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpException, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterUseCase, RegisterCommand } from './use-cases/register.use-case';
 import { LoginUseCase, LoginCommand } from './use-cases/login.use-case';
 import { ForgotPasswordUseCase, ForgotPasswordCommand } from './use-cases/forgot-password.use-case';
 import { ResetPasswordUseCase, ResetPasswordCommand } from './use-cases/reset-password.use-case';
 import { VerifyEmailUseCase, VerifyEmailCommand } from './use-cases/verify-email.use-case';
-import { Result, isOk, isErr } from '@unna/domain';
+import { Result, isOk, isErr, User, TokenPair } from '@unna/domain';
 import { IsString, IsEmail, MinLength, MaxLength, Matches, IsBoolean, Validate, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
 
 @ValidatorConstraint({ name: 'PasswordsMatch', async: false })
 export class PasswordsMatchConstraint implements ValidatorConstraintInterface {
   validate(confirmPassword: string, args: ValidationArguments) {
-    const obj = args.object as any;
+    const obj = args.object as Partial<RegisterDto>;
     return obj.password === confirmPassword;
   }
   defaultMessage() { return 'Las contraseñas no coinciden.'; }
@@ -29,7 +29,7 @@ export class RegisterDto implements RegisterCommand {
   @IsString()
   @MinLength(3, { message: 'El nombre del negocio debe tener más de 3 caracteres.' })
   @MaxLength(45, { message: 'El nombre del negocio debe tener menos de 45 caracteres.' })
-  @Matches(/^[a-zA-Z0-9\s&_\-]+$/, { message: 'Solamente caracteres alfanuméricos y los símbolos: &, - y _.' })
+  @Matches(/^[a-zA-Z0-9\s&_-]+$/, { message: 'Solamente caracteres alfanuméricos y los símbolos: &, - y _.' })
   businessName!: string;
 
   @IsString()
@@ -158,7 +158,6 @@ export class AuthController {
   async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<MessageResponseDto> {
     const result = await this.forgotPasswordUseCase.execute(dto);
     if (isErr(result)) {
-      const { HttpException } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
     return { message: 'Si el email existe, recibirás un link para restablecer tu contraseña.' };
@@ -173,7 +172,6 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<MessageResponseDto> {
     const result = await this.resetPasswordUseCase.execute(dto);
     if (isErr(result)) {
-      const { HttpException } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
     return { message: 'Contraseña actualizada correctamente. Ya podés iniciar sesión.' };
@@ -188,13 +186,12 @@ export class AuthController {
   async verifyEmail(@Body() dto: VerifyEmailDto): Promise<MessageResponseDto> {
     const result = await this.verifyEmailUseCase.execute(dto);
     if (isErr(result)) {
-      const { HttpException } = require('@nestjs/common');
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
     return { message: 'Email verificado correctamente. Ya podés iniciar sesión.' };
   }
 
-  private handleResult<T extends { user: any; tokens: any }>(result: Result<T, Error>): AuthResponseDto {
+  private handleResult<T extends { user: User; tokens: TokenPair }>(result: Result<T, Error>): AuthResponseDto {
     if (isOk(result)) {
       const { user, tokens } = result.value;
       return {
@@ -214,7 +211,6 @@ export class AuthController {
                        error.message.includes('inválidas') || error.message.includes('desactivada') ? HttpStatus.UNAUTHORIZED :
                        HttpStatus.BAD_REQUEST;
 
-    const { HttpException } = require('@nestjs/common');
     throw new HttpException(error.message, statusCode);
   }
 }

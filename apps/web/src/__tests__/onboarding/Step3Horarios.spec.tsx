@@ -1,5 +1,4 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { Step3Horarios } from '@/components/onboarding/steps/Step3Horarios';
 
 const initialSchedule = {

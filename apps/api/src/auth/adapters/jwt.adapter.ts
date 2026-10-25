@@ -73,7 +73,7 @@ export class JwtAdapter implements JwtPort {
       return this.jwtService.verify<ResetTokenPayload>(token, {
         secret: this.configService.get('JWT_RESET_SECRET') || this.configService.get('JWT_SECRET'),
       });
-    } catch (error) {
+    } catch {
       throw new Error('Token inválido o expirado');
     }
   }

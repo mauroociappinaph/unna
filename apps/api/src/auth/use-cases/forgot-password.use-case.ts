@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { UserRepositoryPort, JwtPort, EmailPort } from '@unna/domain';
 import { Email } from '@unna/domain';
-import { Result, ok, err } from '@unna/domain';
+import { Result, ok } from '@unna/domain';
 
 export interface ForgotPasswordCommand {
   email: string;

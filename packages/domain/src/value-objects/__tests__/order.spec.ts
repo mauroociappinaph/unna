@@ -25,8 +25,8 @@ const newOrder = () =>
     sucursalName: 'Palermo',
     type: 'dine_in',
     status: 'pending',
-    items: [item()],
-  } as any);
+    items: [{ ...item(), orderId: 'pending' }],
+  });
 
 describe('Order', () => {
   describe('create', () => {
@@ -46,7 +46,7 @@ describe('Order', () => {
 
     it('rejects an order without items', () => {
       expect(() =>
-        Order.create({ businessId: 'b', sucursalId: 's', sucursalName: 'P', type: 'dine_in', status: 'pending', items: [] } as any),
+        Order.create({ businessId: 'b', sucursalId: 's', sucursalName: 'P', type: 'dine_in', status: 'pending', items: [] }),
       ).toThrow('El pedido debe tener al menos un item');
     });
   });

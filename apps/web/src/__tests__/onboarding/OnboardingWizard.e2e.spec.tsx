@@ -19,7 +19,7 @@ const mockFetch = (data: unknown, status = 201) => {
 };
 
 const restoreFetch = () => {
-  delete (global as any).fetch;
+  delete (global as { fetch?: typeof fetch }).fetch;
 };
 
 beforeEach(() => {

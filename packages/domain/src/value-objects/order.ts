@@ -108,8 +108,8 @@ export class OrderItem {
       ...this.toProps(),
       modifiers: this.modifiers.filter(m => m.optionId !== optionId),
       unitPrice: this.unitPrice.subtract(Money.fromCents(modifier.priceDelta)),
-      totalPrice: this.totalPrice.subtract(Money.fromCents(modifier.priceDelta).multiply(this.quantity)),
-      taxAmount: this.totalPrice.subtract(Money.fromCents(modifier.priceDelta).multiply(this.quantity)).percentage(this.taxRate),
+      totalPrice: this.totalPrice.subtract(modifierPrice),
+      taxAmount: this.totalPrice.subtract(modifierPrice).percentage(this.taxRate),
       updatedAt: new Date(),
     });
   }

@@ -16,7 +16,7 @@ const receiptItem = () => {
   };
 };
 
-const newReceipt = (overrides: Record<string, unknown> = {}) =>
+const newReceipt = (overrides: Partial<Parameters<typeof Receipt.create>[0]> = {}) =>
   Receipt.create({
     businessId: 'biz-1',
     sucursalId: 'suc-1',
@@ -26,7 +26,7 @@ const newReceipt = (overrides: Record<string, unknown> = {}) =>
     paymentMethod: 'cash',
     items: [receiptItem()],
     ...overrides,
-  } as any);
+  });
 
 describe('Receipt', () => {
   describe('create', () => {

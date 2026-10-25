@@ -1,4 +1,4 @@
-import { UserRole, USER_ROLES, ROLE_HIERARCHY, hasRole, canManageRole } from '../role';
+import { USER_ROLES, ROLE_HIERARCHY, hasRole, canManageRole } from '../role';
 
 describe('Role Value Object', () => {
   describe('USER_ROLES', () => {

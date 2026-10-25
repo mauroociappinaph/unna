@@ -1,6 +1,5 @@
 import { Address } from './address';
 import { Money } from './money';
-import { Order } from './order';
 
 export type ReceiptType = 'A' | 'B' | 'C' | 'ticket' | 'proforma' | 'credit_note' | 'debit_note';
 export type ReceiptStatus = 'draft' | 'issued' | 'cancelled' | 'voided';

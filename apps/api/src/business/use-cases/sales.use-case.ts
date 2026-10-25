@@ -44,6 +44,13 @@ const fail = <T>(message: string): Result<T> => ({ ok: false, error: new Error(m
 
 const formatCents = (cents: number) => Money.fromCents(cents).format();
 
+const isOneOf = <T extends string>(values: readonly T[], value: string): value is T =>
+  (values as readonly string[]).includes(value);
+
+type NewOrder = Parameters<typeof Order.create>[0];
+/** A priced order line; the order assigns its own id to it. */
+type NewOrderLine = Parameters<Order['addItem']>[0];
+
 @Injectable()
 export class SalesUseCase {
   constructor(
@@ -66,7 +73,7 @@ export class SalesUseCase {
     customerEmail?: string;
     notes?: string;
   }): Promise<Result<Order>> {
-    if (!ORDER_TYPES.includes(command.type as any)) return fail('Tipo de pedido inválido');
+    if (!isOneOf(ORDER_TYPES, command.type)) return fail('Tipo de pedido inválido');
     if (!command.items?.length) return fail('El pedido debe tener al menos un item');
 
     const business = await this.businesses.findById(command.businessId);
@@ -74,25 +81,26 @@ export class SalesUseCase {
     const sucursal = business.sucursales.find((s) => s.id === command.sucursalId && s.isActive);
     if (!sucursal) return fail('Sucursal no encontrada');
 
-    const lines = [];
+    const lines: NewOrderLine[] = [];
     for (const line of command.items) {
       const built = await this.buildLine(command.businessId, line);
       if (!built.ok) return fail(built.error!.message);
-      lines.push(built.value);
+      lines.push(built.value!);
     }
 
+    // Order.create sets status and each item's orderId itself, though its signature still lists them.
     const props = {
       businessId: command.businessId,
       sucursalId: sucursal.id,
       sucursalName: sucursal.name,
-      type: command.type as any,
+      type: command.type,
       tableNumber: command.tableNumber,
       customerName: command.customerName,
       customerPhone: command.customerPhone,
       customerEmail: command.customerEmail,
       notes: command.notes,
-      items: lines as any,
-    } as any;
+      items: lines,
+    } as NewOrder;
 
     // Order numbers are random per day; on a collision within the business, draw a new one.
     for (let attempt = 1; ; attempt++) {
@@ -111,7 +119,7 @@ export class SalesUseCase {
     if (!order.ok) return order;
     const built = await this.buildLine(command.businessId, command.line);
     if (!built.ok) return fail(built.error!.message);
-    const updated = order.value!.addItem(built.value as any);
+    const updated = order.value!.addItem(built.value!);
     await this.orders.save(updated);
     return ok(updated);
   }
@@ -177,7 +185,7 @@ export class SalesUseCase {
     method: string;
     reference?: string;
   }): Promise<Result<{ order: Order; payments: PaymentRecord[]; remaining: number }>> {
-    if (!PAYMENT_METHODS.includes(command.method as any)) return fail('Método de pago inválido');
+    if (!isOneOf(PAYMENT_METHODS, command.method)) return fail('Método de pago inválido');
     if (!Number.isInteger(command.amount) || command.amount <= 0) return fail('El monto debe ser un entero positivo en centavos');
 
     const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
@@ -211,7 +219,7 @@ export class SalesUseCase {
     let updated = order;
     if (newRemaining === 0) {
       const methods = new Set(all.map((p) => p.method));
-      updated = order.markPaymentCompleted(methods.size === 1 ? (command.method as any) : 'split', command.reference);
+      updated = order.markPaymentCompleted(methods.size === 1 ? command.method : 'split', command.reference);
       await this.orders.save(updated);
     }
 
@@ -232,7 +240,7 @@ export class SalesUseCase {
     customerTaxId?: string;
     customerCondition?: string;
   }): Promise<Result<Receipt>> {
-    if (!RECEIPT_TYPES.includes(command.type as any)) return fail('Tipo de comprobante inválido');
+    if (!isOneOf(RECEIPT_TYPES, command.type)) return fail('Tipo de comprobante inválido');
 
     const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
     if (!order) return fail('Pedido no encontrado');
@@ -251,12 +259,12 @@ export class SalesUseCase {
 
     const business = await this.businesses.findById(command.businessId);
     if (!business) return fail('Negocio no encontrado');
-    const pointOfSale = String((business.settings as any).salePoint ?? '1').padStart(4, '0');
+    const pointOfSale = String(business.settings.salePoint ?? '1').padStart(4, '0');
 
     let receipt = Receipt.create({
       businessId: command.businessId,
       sucursalId: order.sucursalId,
-      type: command.type as any,
+      type: command.type,
       receiptType: command.type,
       orderId: order.id,
       orderNumber: order.orderNumber,
@@ -278,7 +286,7 @@ export class SalesUseCase {
         taxAmount: i.taxAmount,
         modifiers: i.modifiers,
       })),
-    } as any);
+    });
 
     // Fiscal receipts (A/B/C) stay as drafts until ARCA/AFIP authorizes them with a CAE (T26).
     if (command.type === 'ticket') receipt = receipt.issue();
@@ -320,13 +328,13 @@ export class SalesUseCase {
   }
 
   /** Prices, tax and names come from the catalog, never from the client. */
-  private async buildLine(businessId: string, line: OrderLineInput) {
+  private async buildLine(businessId: string, line: OrderLineInput): Promise<Result<NewOrderLine>> {
     if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
-      return fail<any>('La cantidad debe ser un entero positivo');
+      return fail<NewOrderLine>('La cantidad debe ser un entero positivo');
     }
     const product = await this.products.findByIdAndBusinessId(line.productId, businessId);
-    if (!product) return fail<any>(`Producto ${line.productId} no encontrado`);
-    if (!product.canBeSold()) return fail<any>(`El producto "${product.name}" no está disponible para la venta`);
+    if (!product) return fail<NewOrderLine>(`Producto ${line.productId} no encontrado`);
+    if (!product.canBeSold()) return fail<NewOrderLine>(`El producto "${product.name}" no está disponible para la venta`);
 
     const groups = await Promise.all(
       product.modifierGroupIds.map((id) => this.modifierGroups.findByIdAndBusinessId(id, businessId)),
@@ -336,9 +344,9 @@ export class SalesUseCase {
 
     for (const choice of selected) {
       const group = groups.find((g) => g?.id === choice.modifierGroupId && g.isActive);
-      if (!group) return fail<any>(`El modificador ${choice.modifierGroupId} no aplica a "${product.name}"`);
+      if (!group) return fail<NewOrderLine>(`El modificador ${choice.modifierGroupId} no aplica a "${product.name}"`);
       const option = group.options.find((o) => o.id === choice.optionId && o.isActive);
-      if (!option) return fail<any>(`Opción ${choice.optionId} no encontrada en "${group.name}"`);
+      if (!option) return fail<NewOrderLine>(`Opción ${choice.optionId} no encontrada en "${group.name}"`);
       modifiers.push({ modifierGroupId: group.id, optionId: option.id, name: option.name, priceDelta: option.priceDelta });
     }
 
@@ -346,28 +354,25 @@ export class SalesUseCase {
       if (!group || !group.isActive) continue;
       const count = modifiers.filter((m) => m.modifierGroupId === group.id).length;
       const min = group.isRequired ? Math.max(1, group.minSelection) : group.minSelection;
-      if (count < min) return fail<any>(`Elegí al menos ${min} opción(es) de "${group.name}"`);
+      if (count < min) return fail<NewOrderLine>(`Elegí al menos ${min} opción(es) de "${group.name}"`);
       if (group.maxSelection > 0 && count > group.maxSelection) {
-        return fail<any>(`Podés elegir hasta ${group.maxSelection} opción(es) de "${group.name}"`);
+        return fail<NewOrderLine>(`Podés elegir hasta ${group.maxSelection} opción(es) de "${group.name}"`);
       }
     }
 
     const unitPrice = modifiers.reduce((sum, m) => sum.add(Money.fromCents(m.priceDelta)), product.basePrice);
     const totalPrice = unitPrice.multiply(line.quantity);
-    return {
-      ok: true,
-      value: {
-        productId: product.id,
-        productName: product.name,
-        productSku: product.sku,
-        quantity: line.quantity,
-        unitPrice,
-        totalPrice,
-        taxRate: product.taxRate,
-        taxAmount: totalPrice.percentage(product.taxRate),
-        notes: line.notes,
-        modifiers,
-      },
-    };
+    return ok({
+      productId: product.id,
+      productName: product.name,
+      productSku: product.sku,
+      quantity: line.quantity,
+      unitPrice,
+      totalPrice,
+      taxRate: product.taxRate,
+      taxAmount: totalPrice.percentage(product.taxRate),
+      notes: line.notes,
+      modifiers,
+    });
   }
 }

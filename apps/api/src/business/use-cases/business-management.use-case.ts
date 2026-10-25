@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { BusinessRepositoryPort } from '@unna/domain';
-import { Business, BusinessName, CUIT, Address, Schedule, BusinessSettings, Sucursal } from '@unna/domain';
+import { Business, Address, Schedule, Sucursal } from '@unna/domain';
 import { Result, ok, err } from '@unna/domain';
 
 interface DayScheduleInput {

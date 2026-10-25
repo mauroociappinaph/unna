@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Request, UseInterceptors, UploadedFile, ParseFilePipe, FileTypeValidator, MaxFileSizeValidator } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, UseInterceptors, UploadedFile, ParseFilePipe, FileTypeValidator, MaxFileSizeValidator } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -17,6 +17,8 @@ import { ProductUseCase } from './use-cases/product-catalog.use-case';
 import { ModifierGroupUseCase } from './use-cases/product-catalog.use-case';
 import { PriceListUseCase } from './use-cases/product-catalog.use-case';
 import { StockUseCase } from './use-cases/product-catalog.use-case';
+import type { ProductInput } from './use-cases/product-catalog.use-case';
+import type { AuthenticatedRequest } from './authenticated-request';
 
 @ApiTags('Categorías')
 @Controller('businesses/:businessId/categories')
@@ -29,7 +31,7 @@ export class CategoryController {
   @ApiOperation({ summary: 'Crear nueva categoría' })
   async create(
     @Param('businessId') businessId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { name: string; description?: string; type: 'plato' | 'bebida' | 'postre' | 'extra' | 'combo'; displayOrder?: number; isActive?: boolean; parentId?: string; imageUrl?: string },
   ) {
     return unwrap(this.categoryUseCase.create({ ...dto, businessId, ownerId: req.user.sub }));
@@ -55,7 +57,7 @@ export class CategoryController {
   async update(
     @Param('businessId') businessId: string,
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { name?: string; description?: string; type?: 'plato' | 'bebida' | 'postre' | 'extra' | 'combo'; displayOrder?: number; isActive?: boolean; parentId?: string; imageUrl?: string },
   ) {
     return unwrap(this.categoryUseCase.update({ ...dto, id, businessId, ownerId: req.user.sub }));
@@ -63,7 +65,7 @@ export class CategoryController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar categoría' })
-  async delete(@Param('businessId') businessId: string, @Param('id') id: string, @Request() req: any) {
+  async delete(@Param('businessId') businessId: string, @Param('id') id: string, @Request() req: AuthenticatedRequest) {
     await unwrap(this.categoryUseCase.delete({ id, businessId, ownerId: req.user.sub }));
     return { ok: true };
   }
@@ -80,8 +82,8 @@ export class ProductController {
   @ApiOperation({ summary: 'Crear nuevo producto' })
   async create(
     @Param('businessId') businessId: string,
-    @Request() req: any,
-    @Body() dto: { categoryId: string; name: string; description?: string; type: 'simple' | 'composite' | 'combo'; status?: 'draft' | 'active' | 'archived'; basePrice: number; currency?: string; costPrice?: number; taxRate?: number; sku?: string; barcode?: string; displayOrder?: number; isActive?: boolean; images?: string[]; modifierGroupIds?: string[]; components?: Array<{ productId: string; quantity: number }>; preparationTimeMinutes?: number; calories?: number; allergens?: string[]; tags?: string[] },
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: ProductInput,
   ) {
     return unwrap(this.productUseCase.create({ ...dto, businessId, ownerId: req.user.sub }));
   }
@@ -112,15 +114,15 @@ export class ProductController {
   async update(
     @Param('businessId') businessId: string,
     @Param('id') id: string,
-    @Request() req: any,
-    @Body() dto: Partial<any>,
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: Partial<ProductInput>,
   ) {
     return unwrap(this.productUseCase.update({ ...dto, id, businessId, ownerId: req.user.sub }));
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar producto' })
-  async delete(@Param('businessId') businessId: string, @Param('id') id: string, @Request() req: any) {
+  async delete(@Param('businessId') businessId: string, @Param('id') id: string, @Request() req: AuthenticatedRequest) {
     await unwrap(this.productUseCase.delete({ id, businessId, ownerId: req.user.sub }));
     return { ok: true };
   }
@@ -177,7 +179,7 @@ export class ModifierGroupController {
   @ApiOperation({ summary: 'Crear grupo de modificadores' })
   async create(
     @Param('businessId') businessId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { name: string; description?: string; minSelection?: number; maxSelection?: number; isRequired?: boolean; displayOrder?: number; isActive?: boolean; options?: Array<{ name: string; priceDelta?: number; isDefault?: boolean; displayOrder?: number; isActive?: boolean }> },
   ) {
     return unwrap(this.groupUseCase.create({ ...dto, businessId, ownerId: req.user.sub }));
@@ -203,7 +205,7 @@ export class ModifierGroupController {
   async update(
     @Param('businessId') businessId: string,
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { name?: string; description?: string; minSelection?: number; maxSelection?: number; isRequired?: boolean; isActive?: boolean },
   ) {
     return unwrap(this.groupUseCase.update({ ...dto, id, businessId, ownerId: req.user.sub }));
@@ -214,7 +216,7 @@ export class ModifierGroupController {
   async addOption(
     @Param('businessId') businessId: string,
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { name: string; priceDelta?: number; isDefault?: boolean; displayOrder?: number; isActive?: boolean },
   ) {
     return unwrap(this.groupUseCase.addOption({ groupId: id, businessId, ownerId: req.user.sub, option: dto }));
@@ -226,7 +228,7 @@ export class ModifierGroupController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Param('optionId') optionId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { name?: string; priceDelta?: number; isDefault?: boolean; isActive?: boolean },
   ) {
     return unwrap(this.groupUseCase.updateOption({ groupId: id, businessId, ownerId: req.user.sub, optionId, updates: dto }));
@@ -238,7 +240,7 @@ export class ModifierGroupController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Param('optionId') optionId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     await unwrap(this.groupUseCase.deleteOption({ groupId: id, businessId, ownerId: req.user.sub, optionId }));
     return { ok: true };
@@ -246,7 +248,7 @@ export class ModifierGroupController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar grupo de modificadores' })
-  async delete(@Param('businessId') businessId: string, @Param('id') id: string, @Request() req: any) {
+  async delete(@Param('businessId') businessId: string, @Param('id') id: string, @Request() req: AuthenticatedRequest) {
     await unwrap(this.groupUseCase.delete({ id, businessId, ownerId: req.user.sub }));
     return { ok: true };
   }
@@ -263,7 +265,7 @@ export class PriceListController {
   @ApiOperation({ summary: 'Crear lista de precios' })
   async create(
     @Param('businessId') businessId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { name: string; description?: string; type: 'standard' | 'delivery' | 'takeaway' | 'happy-hour' | 'event' | 'custom'; isDefault?: boolean; isActive?: boolean; validFrom?: string; validTo?: string; validDays?: number[]; validFromTime?: string; validToTime?: string; entries?: Array<{ productId: string; price: number; costPrice?: number; isActive?: boolean }> },
   ) {
     return unwrap(this.listUseCase.create({ ...dto, businessId, ownerId: req.user.sub }));
@@ -295,7 +297,7 @@ export class PriceListController {
   async update(
     @Param('businessId') businessId: string,
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { name?: string; description?: string; isDefault?: boolean; isActive?: boolean; validFrom?: string; validTo?: string; validDays?: number[]; validFromTime?: string; validToTime?: string },
   ) {
     return unwrap(this.listUseCase.update({ ...dto, id, businessId, ownerId: req.user.sub }));
@@ -306,7 +308,7 @@ export class PriceListController {
   async addEntry(
     @Param('businessId') businessId: string,
     @Param('id') id: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { productId: string; price: number; costPrice?: number; isActive?: boolean },
   ) {
     return unwrap(this.listUseCase.addEntry({ listId: id, businessId, ownerId: req.user.sub, ...dto }));
@@ -318,7 +320,7 @@ export class PriceListController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Param('productId') productId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { price?: number; costPrice?: number; isActive?: boolean },
   ) {
     return unwrap(this.listUseCase.updateEntry({ listId: id, businessId, ownerId: req.user.sub, productId, ...dto }));
@@ -330,7 +332,7 @@ export class PriceListController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Param('productId') productId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     await unwrap(this.listUseCase.removeEntry({ listId: id, businessId, ownerId: req.user.sub, productId }));
     return { ok: true };
@@ -338,7 +340,7 @@ export class PriceListController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar lista de precios' })
-  async delete(@Param('businessId') businessId: string, @Param('id') id: string, @Request() req: any) {
+  async delete(@Param('businessId') businessId: string, @Param('id') id: string, @Request() req: AuthenticatedRequest) {
     await unwrap(this.listUseCase.delete({ id, businessId, ownerId: req.user.sub }));
     return { ok: true };
   }
@@ -356,7 +358,7 @@ export class StockController {
   async initialize(
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { initialQuantity: number; minThreshold?: number; reorderPoint?: number; reorderQuantity?: number },
   ) {
     return unwrap(this.stockUseCase.initializeStock({ ...dto, productId, businessId, ownerId: req.user.sub }));
@@ -400,7 +402,7 @@ export class StockController {
   async addStock(
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { quantity: number; reason: string; referenceId?: string; referenceType?: string; unitCost?: number; totalCost?: number },
   ) {
     return unwrap(this.stockUseCase.addStock({ ...dto, productId, businessId, ownerId: req.user.sub }));
@@ -411,7 +413,7 @@ export class StockController {
   async removeStock(
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { quantity: number; reason: string; referenceId?: string; referenceType?: string; unitCost?: number; totalCost?: number; type?: 'out' | 'adjustment' | 'waste' | 'transfer' | 'sale' | 'return' },
   ) {
     return unwrap(this.stockUseCase.removeStock({ ...dto, productId, businessId, ownerId: req.user.sub }));
@@ -422,7 +424,7 @@ export class StockController {
   async recordCount(
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { countedQuantity: number },
   ) {
     return unwrap(this.stockUseCase.recordCount({ ...dto, productId, businessId, ownerId: req.user.sub }));
@@ -433,7 +435,7 @@ export class StockController {
   async adjustThresholds(
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Body() dto: { minThreshold?: number; maxThreshold?: number; reorderPoint?: number; reorderQuantity?: number },
   ) {
     return unwrap(this.stockUseCase.adjustThresholds({ ...dto, productId, businessId, ownerId: req.user.sub }));

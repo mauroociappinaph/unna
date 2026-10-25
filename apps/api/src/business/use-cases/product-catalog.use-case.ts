@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CategoryRepositoryPort, ProductRepositoryPort, ModifierGroupRepositoryPort, PriceListRepositoryPort, StockLevelRepositoryPort, StockMovementRepositoryPort } from '@unna/domain';
-import { Category, Product, ModifierGroup, ModifierOption, PriceList, PriceListEntry, StockLevel, StockMovement, Money, ProductType, ProductStatus, Schedule } from '@unna/domain';
-import { Result, ok, err } from '@unna/domain';
+import { Category, Product, ModifierGroup, ModifierOption, PriceList, PriceListEntry, StockLevel, StockMovement, Money, StockMovementType } from '@unna/domain';
+import { UseCaseResult } from '../../common/use-case-result';
 
 interface CategoryInput {
   name: string;
@@ -13,14 +13,14 @@ interface CategoryInput {
   imageUrl?: string;
 }
 
-interface ProductInput {
+export interface ProductInput {
   categoryId: string;
   name: string;
   description?: string;
   type: 'simple' | 'composite' | 'combo';
   status?: 'draft' | 'active' | 'archived';
   basePrice: number; // in cents
-  currency?: string;
+  currency?: Money['currency'];
   costPrice?: number;
   taxRate?: number;
   sku?: string;
@@ -86,14 +86,22 @@ interface StockMovementInput {
   performedBy: string;
 }
 
+/** Stock entries and exits: the movement fields the caller sends; the user performing it is the owner. */
+type StockMovementCommand = Omit<StockMovementInput, 'type' | 'performedBy'>;
+
+export interface StockChange {
+  level: StockLevel;
+  movement: StockMovement;
+}
+
 @Injectable()
 export class CategoryUseCase {
   constructor(
     @Inject('CategoryRepositoryPort')
-    private readonly categoryRepository: any,
+    private readonly categoryRepository: CategoryRepositoryPort,
   ) {}
 
-  async create(command: { businessId: string; ownerId: string } & CategoryInput): Promise<any> {
+  async create(command: { businessId: string; ownerId: string } & CategoryInput): Promise<UseCaseResult<Category>> {
     const parentError = await this.checkParent(command.parentId, command.businessId);
     if (parentError) return parentError;
     const category = Category.create({
@@ -106,7 +114,7 @@ export class CategoryUseCase {
     return { ok: true, value: category };
   }
 
-  async update(command: { id: string; businessId: string; ownerId: string } & Partial<CategoryInput>): Promise<any> {
+  async update(command: { id: string; businessId: string; ownerId: string } & Partial<CategoryInput>): Promise<UseCaseResult<Category>> {
     let category = await this.categoryRepository.findByIdAndBusinessId(command.id, command.businessId);
     if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
     if (command.parentId === command.id) return { ok: false, error: new Error('Una categoría no puede ser su propia categoría padre') };
@@ -127,25 +135,25 @@ export class CategoryUseCase {
     return { ok: true, value: category };
   }
 
-  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<any> {
+  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<UseCaseResult<void>> {
     const category = await this.categoryRepository.findByIdAndBusinessId(command.id, command.businessId);
     if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
     await this.categoryRepository.delete(command.id);
     return { ok: true };
   }
 
-  async getById(id: string, businessId: string): Promise<any> {
+  async getById(id: string, businessId: string): Promise<UseCaseResult<Category>> {
     const category = await this.categoryRepository.findByIdAndBusinessId(id, businessId);
     return category ? { ok: true, value: category } : { ok: false, error: new Error('Categoría no encontrada') };
   }
 
-  private async checkParent(parentId: string | undefined, businessId: string): Promise<any | null> {
+  private async checkParent(parentId: string | undefined, businessId: string): Promise<UseCaseResult<never> | null> {
     if (!parentId) return null;
     const parent = await this.categoryRepository.findByIdAndBusinessId(parentId, businessId);
     return parent ? null : { ok: false, error: new Error('Categoría padre no encontrada') };
   }
 
-  async list(businessId: string, activeOnly = false): Promise<any> {
+  async list(businessId: string, activeOnly = false): Promise<UseCaseResult<Category[]>> {
     const categories = activeOnly 
       ? await this.categoryRepository.findActiveByBusinessId(businessId)
       : await this.categoryRepository.findByBusinessId(businessId);
@@ -157,18 +165,18 @@ export class CategoryUseCase {
 export class ProductUseCase {
   constructor(
     @Inject('ProductRepositoryPort')
-    private readonly productRepository: any,
+    private readonly productRepository: ProductRepositoryPort,
     @Inject('CategoryRepositoryPort')
-    private readonly categoryRepository: any,
+    private readonly categoryRepository: CategoryRepositoryPort,
     @Inject('ModifierGroupRepositoryPort')
-    private readonly modifierGroupRepository: any,
+    private readonly modifierGroupRepository: ModifierGroupRepositoryPort,
   ) {}
 
   /** Every id a product references must belong to the same business. */
   private async checkReferences(
     businessId: string,
     refs: { modifierGroupIds?: string[]; components?: Array<{ productId: string }> },
-  ): Promise<any | null> {
+  ): Promise<UseCaseResult<never> | null> {
     for (const groupId of refs.modifierGroupIds ?? []) {
       if (!(await this.modifierGroupRepository.findByIdAndBusinessId(groupId, businessId))) {
         return { ok: false, error: new Error(`Grupo de modificadores ${groupId} no encontrado`) };
@@ -182,7 +190,7 @@ export class ProductUseCase {
     return null;
   }
 
-  async create(command: { businessId: string; ownerId: string } & any): Promise<any> {
+  async create(command: { businessId: string; ownerId: string } & ProductInput): Promise<UseCaseResult<Product>> {
     // Validate category exists and belongs to business
     const category = await this.categoryRepository.findByIdAndBusinessId(command.categoryId, command.businessId);
     if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
@@ -203,8 +211,8 @@ export class ProductUseCase {
       barcode: command.barcode,
       displayOrder: command.displayOrder ?? 0,
       isActive: command.isActive ?? true,
-      images: command.images,
-      modifierGroupIds: command.modifierGroupIds,
+      images: command.images ?? [],
+      modifierGroupIds: command.modifierGroupIds ?? [],
       components: command.components,
       preparationTimeMinutes: command.preparationTimeMinutes,
       calories: command.calories,
@@ -216,10 +224,10 @@ export class ProductUseCase {
     return { ok: true, value: product };
   }
 
-  async update(command: { id: string; businessId: string; ownerId: string } & Partial<any>): Promise<any> {
+  async update(command: { id: string; businessId: string; ownerId: string } & Partial<ProductInput>): Promise<UseCaseResult<Product>> {
     let product = await this.productRepository.findByIdAndBusinessId(command.id, command.businessId);
     if (!product) return { ok: false, error: new Error('Producto no encontrado') };
-    const refError = await this.checkReferences(command.businessId, command as any);
+    const refError = await this.checkReferences(command.businessId, command);
     if (refError) return refError;
 
     if (command.name !== undefined) product = product.updateName(command.name);
@@ -274,20 +282,20 @@ export class ProductUseCase {
     return { ok: true, value: product };
   }
 
-  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<any> {
+  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<UseCaseResult<void>> {
     const product = await this.productRepository.findByIdAndBusinessId(command.id, command.businessId);
     if (!product) return { ok: false, error: new Error('Producto no encontrado') };
     await this.productRepository.delete(command.id);
     return { ok: true };
   }
 
-  async getById(id: string, businessId: string): Promise<any> {
+  async getById(id: string, businessId: string): Promise<UseCaseResult<Product>> {
     const product = await this.productRepository.findByIdAndBusinessId(id, businessId);
     return product ? { ok: true, value: product } : { ok: false, error: new Error('Producto no encontrado') };
   }
 
-  async list(businessId: string, filters?: { status?: string; categoryId?: string; activeOnly?: boolean }): Promise<any> {
-    let products: any[];
+  async list(businessId: string, filters?: { status?: string; categoryId?: string; activeOnly?: boolean }): Promise<UseCaseResult<Product[]>> {
+    let products: Product[];
     if (filters?.categoryId) {
       const category = await this.categoryRepository.findByIdAndBusinessId(filters.categoryId, businessId);
       if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
@@ -307,10 +315,10 @@ export class ProductUseCase {
 export class ModifierGroupUseCase {
   constructor(
     @Inject('ModifierGroupRepositoryPort')
-    private readonly groupRepository: any,
+    private readonly groupRepository: ModifierGroupRepositoryPort,
   ) {}
 
-  async create(command: { businessId: string; ownerId: string } & any): Promise<any> {
+  async create(command: { businessId: string; ownerId: string } & ModifierGroupInput): Promise<UseCaseResult<ModifierGroup>> {
     const group = ModifierGroup.create({
       businessId: command.businessId,
       name: command.name,
@@ -320,7 +328,7 @@ export class ModifierGroupUseCase {
       isRequired: command.isRequired ?? false,
       displayOrder: command.displayOrder ?? 0,
       isActive: command.isActive ?? true,
-      options: command.options?.map((o: any) => ModifierOption.create({
+      options: command.options?.map((o) => ModifierOption.create({
         name: o.name,
         priceDelta: o.priceDelta ?? 0,
         isDefault: o.isDefault ?? false,
@@ -332,7 +340,7 @@ export class ModifierGroupUseCase {
     return { ok: true, value: group };
   }
 
-  async update(command: { id: string; businessId: string; ownerId: string } & Partial<any>): Promise<any> {
+  async update(command: { id: string; businessId: string; ownerId: string } & Partial<ModifierGroupInput>): Promise<UseCaseResult<ModifierGroup>> {
     let group = await this.groupRepository.findByIdAndBusinessId(command.id, command.businessId);
     if (!group) return { ok: false, error: new Error('Grupo de modificadores no encontrado') };
 
@@ -349,7 +357,7 @@ export class ModifierGroupUseCase {
     return { ok: true, value: group };
   }
 
-  async addOption(command: { groupId: string; businessId: string; ownerId: string; option: any }): Promise<any> {
+  async addOption(command: { groupId: string; businessId: string; ownerId: string; option: ModifierOptionInput }): Promise<UseCaseResult<ModifierGroup>> {
     let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
     if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
     const option = ModifierOption.create({
@@ -364,7 +372,7 @@ export class ModifierGroupUseCase {
     return { ok: true, value: group };
   }
 
-  async updateOption(command: { groupId: string; businessId: string; ownerId: string; optionId: string; updates: Partial<any> }): Promise<any> {
+  async updateOption(command: { groupId: string; businessId: string; ownerId: string; optionId: string; updates: Partial<ModifierOptionInput> }): Promise<UseCaseResult<ModifierGroup>> {
     let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
     if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
     group = group.updateOption(command.optionId, (o: ModifierOption) => {
@@ -378,7 +386,7 @@ export class ModifierGroupUseCase {
     return { ok: true, value: group };
   }
 
-  async deleteOption(command: { groupId: string; businessId: string; ownerId: string; optionId: string }): Promise<any> {
+  async deleteOption(command: { groupId: string; businessId: string; ownerId: string; optionId: string }): Promise<UseCaseResult<ModifierGroup>> {
     let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
     if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
     group = group.removeOption(command.optionId);
@@ -386,19 +394,19 @@ export class ModifierGroupUseCase {
     return { ok: true, value: group };
   }
 
-  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<any> {
+  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<UseCaseResult<void>> {
     const group = await this.groupRepository.findByIdAndBusinessId(command.id, command.businessId);
     if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
     await this.groupRepository.delete(command.id);
     return { ok: true };
   }
 
-  async getById(id: string, businessId: string): Promise<any> {
+  async getById(id: string, businessId: string): Promise<UseCaseResult<ModifierGroup>> {
     const group = await this.groupRepository.findByIdAndBusinessId(id, businessId);
     return group ? { ok: true, value: group } : { ok: false, error: new Error('Grupo no encontrado') };
   }
 
-  async list(businessId: string, activeOnly = false): Promise<any> {
+  async list(businessId: string, activeOnly = false): Promise<UseCaseResult<ModifierGroup[]>> {
     const groups = activeOnly 
       ? await this.groupRepository.findActiveByBusinessId(businessId)
       : await this.groupRepository.findByBusinessId(businessId);
@@ -410,12 +418,12 @@ export class ModifierGroupUseCase {
 export class PriceListUseCase {
   constructor(
     @Inject('PriceListRepositoryPort')
-    private readonly listRepository: any,
+    private readonly listRepository: PriceListRepositoryPort,
     @Inject('ProductRepositoryPort')
-    private readonly productRepository: any,
+    private readonly productRepository: ProductRepositoryPort,
   ) {}
 
-  async create(command: { businessId: string; ownerId: string } & any): Promise<any> {
+  async create(command: { businessId: string; ownerId: string } & PriceListInput): Promise<UseCaseResult<PriceList>> {
     // Validate products exist
     if (command.entries) {
       for (const entry of command.entries) {
@@ -424,7 +432,7 @@ export class PriceListUseCase {
       }
     }
 
-    let list = PriceList.create({
+    const list = PriceList.create({
       businessId: command.businessId,
       name: command.name,
       description: command.description,
@@ -436,7 +444,7 @@ export class PriceListUseCase {
       validDays: command.validDays,
       validFromTime: command.validFromTime,
       validToTime: command.validToTime,
-      entries: command.entries?.map((e: any) => PriceListEntry.create({
+      entries: command.entries?.map((e) => PriceListEntry.create({
         productId: e.productId,
         price: Money.fromCents(e.price, 'ARS'),
         costPrice: e.costPrice ? Money.fromCents(e.costPrice, 'ARS') : undefined,
@@ -458,7 +466,7 @@ export class PriceListUseCase {
     return { ok: true, value: list };
   }
 
-  async update(command: { id: string; businessId: string; ownerId: string } & Partial<any>): Promise<any> {
+  async update(command: { id: string; businessId: string; ownerId: string } & Partial<PriceListInput>): Promise<UseCaseResult<PriceList>> {
     let list = await this.listRepository.findByIdAndBusinessId(command.id, command.businessId);
     if (!list) return { ok: false, error: new Error('Lista de precios no encontrada') };
 
@@ -484,7 +492,7 @@ export class PriceListUseCase {
     return { ok: true, value: list };
   }
 
-  async addEntry(command: { listId: string; businessId: string; ownerId: string; productId: string; price: number; costPrice?: number; isActive?: boolean }): Promise<any> {
+  async addEntry(command: { listId: string; businessId: string; ownerId: string; productId: string; price: number; costPrice?: number; isActive?: boolean }): Promise<UseCaseResult<PriceList>> {
     let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
     if (!list) return { ok: false, error: new Error('Lista no encontrada') };
 
@@ -503,7 +511,7 @@ export class PriceListUseCase {
     return { ok: true, value: list };
   }
 
-  async updateEntry(command: { listId: string; businessId: string; ownerId: string; productId: string; price?: number; costPrice?: number; isActive?: boolean }): Promise<any> {
+  async updateEntry(command: { listId: string; businessId: string; ownerId: string; productId: string; price?: number; costPrice?: number; isActive?: boolean }): Promise<UseCaseResult<PriceList>> {
     let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
     if (!list) return { ok: false, error: new Error('Lista no encontrada') };
 
@@ -515,7 +523,7 @@ export class PriceListUseCase {
     return { ok: true, value: list };
   }
 
-  async removeEntry(command: { listId: string; businessId: string; ownerId: string; productId: string }): Promise<any> {
+  async removeEntry(command: { listId: string; businessId: string; ownerId: string; productId: string }): Promise<UseCaseResult<PriceList>> {
     let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
     if (!list) return { ok: false, error: new Error('Lista no encontrada') };
     list = list.removeEntry(command.productId);
@@ -523,26 +531,26 @@ export class PriceListUseCase {
     return { ok: true, value: list };
   }
 
-  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<any> {
+  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<UseCaseResult<void>> {
     const list = await this.listRepository.findByIdAndBusinessId(command.id, command.businessId);
     if (!list) return { ok: false, error: new Error('Lista no encontrada') };
     await this.listRepository.delete(command.id);
     return { ok: true };
   }
 
-  async getById(id: string, businessId: string): Promise<any> {
+  async getById(id: string, businessId: string): Promise<UseCaseResult<PriceList>> {
     const list = await this.listRepository.findByIdAndBusinessId(id, businessId);
     return list ? { ok: true, value: list } : { ok: false, error: new Error('Lista no encontrada') };
   }
 
-  async list(businessId: string, activeOnly = false): Promise<any> {
+  async list(businessId: string, activeOnly = false): Promise<UseCaseResult<PriceList[]>> {
     const lists = activeOnly 
       ? await this.listRepository.findActiveByBusinessId(businessId)
       : await this.listRepository.findByBusinessId(businessId);
     return { ok: true, value: lists };
   }
 
-  async getDefault(businessId: string): Promise<any> {
+  async getDefault(businessId: string): Promise<UseCaseResult<PriceList>> {
     const list = await this.listRepository.findDefaultByBusinessId(businessId);
     return list ? { ok: true, value: list } : { ok: false, error: new Error('No hay lista por defecto') };
   }
@@ -552,14 +560,14 @@ export class PriceListUseCase {
 export class StockUseCase {
   constructor(
     @Inject('StockLevelRepositoryPort')
-    private readonly stockRepository: any,
+    private readonly stockRepository: StockLevelRepositoryPort,
     @Inject('StockMovementRepositoryPort')
-    private readonly movementRepository: any,
+    private readonly movementRepository: StockMovementRepositoryPort,
     @Inject('ProductRepositoryPort')
-    private readonly productRepository: any,
+    private readonly productRepository: ProductRepositoryPort,
   ) {}
 
-  async addStock(command: { productId: string; businessId: string; ownerId: string } & any): Promise<any> {
+  async addStock(command: { businessId: string; ownerId: string } & StockMovementCommand): Promise<UseCaseResult<StockChange>> {
     const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
     if (!product) return { ok: false, error: new Error('Producto no encontrado') };
 
@@ -588,7 +596,7 @@ export class StockUseCase {
     return { ok: true, value: { level: updatedLevel, movement } };
   }
 
-  async removeStock(command: { productId: string; businessId: string; ownerId: string } & any): Promise<any> {
+  async removeStock(command: { businessId: string; ownerId: string; type?: StockMovementType } & StockMovementCommand): Promise<UseCaseResult<StockChange>> {
     const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
     if (!product) return { ok: false, error: new Error('Producto no encontrado') };
 
@@ -598,7 +606,8 @@ export class StockUseCase {
     const movement = StockMovement.create({
       productId: command.productId,
       businessId: command.businessId,
-      type: command.type,
+      // The body's type is optional and is forwarded as received, even when omitted.
+      type: command.type as StockMovementType,
       quantity: command.quantity,
       reason: command.reason,
       referenceId: command.referenceId,
@@ -615,12 +624,12 @@ export class StockUseCase {
     return { ok: true, value: { level: updatedLevel, movement } };
   }
 
-  private async productMissing(productId: string, businessId: string): Promise<any | null> {
+  private async productMissing(productId: string, businessId: string): Promise<UseCaseResult<never> | null> {
     const product = await this.productRepository.findByIdAndBusinessId(productId, businessId);
     return product ? null : { ok: false, error: new Error('Producto no encontrado') };
   }
 
-  async recordCount(command: { productId: string; businessId: string; ownerId: string; countedQuantity: number }): Promise<any> {
+  async recordCount(command: { productId: string; businessId: string; ownerId: string; countedQuantity: number }): Promise<UseCaseResult<StockLevel>> {
     const missing = await this.productMissing(command.productId, command.businessId);
     if (missing) return missing;
     const level = await this.stockRepository.findByProductId(command.productId);
@@ -631,7 +640,7 @@ export class StockUseCase {
     return { ok: true, value: updatedLevel };
   }
 
-  async adjustThresholds(command: { productId: string; businessId: string; ownerId: string; minThreshold?: number; maxThreshold?: number; reorderPoint?: number; reorderQuantity?: number }): Promise<any> {
+  async adjustThresholds(command: { productId: string; businessId: string; ownerId: string; minThreshold?: number; maxThreshold?: number; reorderPoint?: number; reorderQuantity?: number }): Promise<UseCaseResult<StockLevel>> {
     const missing = await this.productMissing(command.productId, command.businessId);
     if (missing) return missing;
     const level = await this.stockRepository.findByProductId(command.productId);
@@ -642,7 +651,7 @@ export class StockUseCase {
     return { ok: true, value: updatedLevel };
   }
 
-  async initializeStock(command: { productId: string; businessId: string; ownerId: string; initialQuantity: number; minThreshold?: number; reorderPoint?: number; reorderQuantity?: number }): Promise<any> {
+  async initializeStock(command: { productId: string; businessId: string; ownerId: string; initialQuantity: number; minThreshold?: number; reorderPoint?: number; reorderQuantity?: number }): Promise<UseCaseResult<StockLevel>> {
     const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
     if (!product) return { ok: false, error: new Error('Producto no encontrado') };
 
@@ -674,25 +683,25 @@ export class StockUseCase {
     return { ok: true, value: level };
   }
 
-  async getLevel(productId: string, businessId: string): Promise<any> {
+  async getLevel(productId: string, businessId: string): Promise<UseCaseResult<StockLevel>> {
     const missing = await this.productMissing(productId, businessId);
     if (missing) return missing;
     const level = await this.stockRepository.findByProductId(productId);
     return level ? { ok: true, value: level } : { ok: false, error: new Error('Nivel de stock no encontrado') };
   }
 
-  async getLowStock(businessId: string): Promise<any> {
+  async getLowStock(businessId: string): Promise<UseCaseResult<StockLevel[]>> {
     const levels = await this.stockRepository.findLowStock(businessId);
     return { ok: true, value: levels };
   }
 
-  async listByBusiness(businessId: string): Promise<any> {
+  async listByBusiness(businessId: string): Promise<UseCaseResult<StockLevel[]>> {
     const levels = await this.stockRepository.findByBusinessId(businessId);
     return { ok: true, value: levels };
   }
 
-  async listMovements(businessId: string, filters?: { productId?: string; from?: Date; to?: Date }): Promise<any> {
-    let movements: any[];
+  async listMovements(businessId: string, filters?: { productId?: string; from?: Date; to?: Date }): Promise<UseCaseResult<StockMovement[]>> {
+    let movements: StockMovement[];
     if (filters?.from && filters?.to) {
       movements = await this.movementRepository.findByBusinessIdAndDateRange(businessId, filters.from, filters.to);
     } else if (filters?.productId) {

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   OrderRepositoryPort,
@@ -15,6 +16,10 @@ import {
 
 const money = (cents: number) => Money.fromCents(cents, 'ARS');
 
+type OrderRecord = Prisma.OrderGetPayload<{ include: { items: true } }>;
+type ReceiptRecord = Prisma.ReceiptGetPayload<{ include: { items: true } }>;
+type LineModifiers = OrderItem['modifiers'];
+
 @Injectable()
 export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
@@ -30,7 +35,7 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
       customerName: order.customerName ?? null,
       customerPhone: order.customerPhone ?? null,
       customerEmail: order.customerEmail ?? null,
-      deliveryAddress: (order.deliveryAddress as any) ?? undefined,
+      deliveryAddress: order.deliveryAddress ? { ...order.deliveryAddress } : undefined,
       subtotal: order.subtotal.toCents(),
       taxAmount: order.taxAmount.toCents(),
       discountAmount: order.discountAmount.toCents(),
@@ -64,7 +69,7 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
           taxRate: i.taxRate,
           taxAmount: i.taxAmount.toCents(),
           notes: i.notes ?? null,
-          modifiers: i.modifiers as any,
+          modifiers: i.modifiers,
           createdAt: i.createdAt,
         })),
       }),
@@ -92,20 +97,21 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
     return records.map((r) => this.toDomain(r));
   }
 
-  private toDomain(r: any): Order {
+  // Stored type, status and payment fields were written from the domain values, so they are valid members.
+  private toDomain(r: OrderRecord): Order {
     return Order.reconstitute({
       id: r.id,
       businessId: r.businessId,
       sucursalId: r.sucursalId,
       orderNumber: r.orderNumber,
-      type: r.type,
-      status: r.status,
+      type: r.type as Order['type'],
+      status: r.status as Order['status'],
       tableNumber: r.tableNumber ?? undefined,
       customerName: r.customerName ?? undefined,
       customerPhone: r.customerPhone ?? undefined,
       customerEmail: r.customerEmail ?? undefined,
-      deliveryAddress: r.deliveryAddress ?? undefined,
-      items: (r.items ?? []).map((i: any) =>
+      deliveryAddress: (r.deliveryAddress as Order['deliveryAddress'] | null) ?? undefined,
+      items: (r.items ?? []).map((i) =>
         OrderItem.reconstitute({
           id: i.id,
           orderId: i.orderId,
@@ -118,7 +124,7 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
           taxRate: i.taxRate,
           taxAmount: money(i.taxAmount),
           notes: i.notes ?? undefined,
-          modifiers: (i.modifiers as any) ?? [],
+          modifiers: (i.modifiers as LineModifiers | null) ?? [],
           createdAt: i.createdAt,
           updatedAt: i.updatedAt,
         }),
@@ -127,8 +133,8 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
       taxAmount: money(r.taxAmount),
       discountAmount: money(r.discountAmount),
       totalAmount: money(r.totalAmount),
-      paymentStatus: r.paymentStatus,
-      paymentMethod: r.paymentMethod ?? undefined,
+      paymentStatus: r.paymentStatus as Order['paymentStatus'],
+      paymentMethod: (r.paymentMethod as Order['paymentMethod'] | null) ?? undefined,
       paymentReference: r.paymentReference ?? undefined,
       notes: r.notes ?? undefined,
       sucursalName: r.sucursalName,
@@ -202,7 +208,7 @@ export class PrismaReceiptRepositoryAdapter implements ReceiptRepositoryPort {
       paymentReference: receipt.paymentReference ?? null,
       customerName: receipt.customerName ?? null,
       customerTaxId: receipt.customerTaxId ?? null,
-      customerAddress: (receipt.customerAddress as any) ?? undefined,
+      customerAddress: receipt.customerAddress ? { ...receipt.customerAddress } : undefined,
       customerCondition: receipt.customerCondition ?? null,
       caeRequest: receipt.caeRequest ?? null,
       caeResponse: receipt.caeResponse ?? null,
@@ -232,7 +238,7 @@ export class PrismaReceiptRepositoryAdapter implements ReceiptRepositoryPort {
           totalPrice: i.totalPrice.toCents(),
           taxRate: i.taxRate,
           taxAmount: i.taxAmount.toCents(),
-          modifiers: i.modifiers as any,
+          modifiers: i.modifiers,
           createdAt: i.createdAt,
         })),
       }),
@@ -258,14 +264,15 @@ export class PrismaReceiptRepositoryAdapter implements ReceiptRepositoryPort {
     return records.map((r) => this.toDomain(r));
   }
 
-  private toDomain(r: any): Receipt {
+  // Stored type and status were written from the domain values, so they are valid members.
+  private toDomain(r: ReceiptRecord): Receipt {
     return Receipt.reconstitute({
       id: r.id,
       businessId: r.businessId,
       sucursalId: r.sucursalId,
       receiptNumber: r.receiptNumber,
-      type: r.type,
-      status: r.status,
+      type: r.type as Receipt['type'],
+      status: r.status as Receipt['status'],
       orderId: r.orderId ?? undefined,
       orderNumber: r.orderNumber ?? undefined,
       cae: r.cae ?? undefined,
@@ -280,13 +287,13 @@ export class PrismaReceiptRepositoryAdapter implements ReceiptRepositoryPort {
       paymentReference: r.paymentReference ?? undefined,
       customerName: r.customerName ?? undefined,
       customerTaxId: r.customerTaxId ?? undefined,
-      customerAddress: r.customerAddress ?? undefined,
+      customerAddress: (r.customerAddress as Receipt['customerAddress'] | null) ?? undefined,
       customerCondition: r.customerCondition ?? undefined,
       caeRequest: r.caeRequest ?? undefined,
       caeResponse: r.caeResponse ?? undefined,
       pdfUrl: r.pdfUrl ?? undefined,
       qrCode: r.qrCode ?? undefined,
-      items: (r.items ?? []).map((i: any) =>
+      items: (r.items ?? []).map((i) =>
         ReceiptItem.reconstitute({
           id: i.id,
           receiptId: i.receiptId,
@@ -298,7 +305,7 @@ export class PrismaReceiptRepositoryAdapter implements ReceiptRepositoryPort {
           totalPrice: money(i.totalPrice),
           taxRate: i.taxRate,
           taxAmount: money(i.taxAmount),
-          modifiers: (i.modifiers as any) ?? [],
+          modifiers: (i.modifiers as LineModifiers | null) ?? [],
           createdAt: i.createdAt,
           updatedAt: i.updatedAt,
         }),

@@ -1,21 +1,26 @@
 import { SalesUseCase } from '../sales.use-case';
 import { Money, Order } from '@unna/domain';
+import { fake } from './test-doubles';
 
 const m = (cents: number) => Money.fromCents(cents);
 
+type NewOrderLine = Parameters<Order['addItem']>[0];
+const line: NewOrderLine = { productId: 'p', productName: 'X', quantity: 1, unitPrice: m(1000), totalPrice: m(1000), taxRate: 0, taxAmount: m(0), modifiers: [] };
+
+// Order.create sets status and each item's orderId itself, though its signature still lists them.
 const openOrder = () =>
   Order.create({
     businessId: 'biz-A', sucursalId: 'suc-1', sucursalName: 'Central', type: 'dine_in',
-    items: [{ productId: 'p', productName: 'X', quantity: 1, unitPrice: m(1000), totalPrice: m(1000), taxRate: 0, taxAmount: m(0), modifiers: [] }],
-  } as any);
+    items: [line],
+  } as Parameters<typeof Order.create>[0]);
 
 describe('SalesUseCase', () => {
   it('rejects cancelling an order that has a partial payment', async () => {
     let order = openOrder();
     const sales = new SalesUseCase(
-      { findByIdAndBusinessId: async () => order, save: async (o: Order) => { order = o; } } as any,
-      { findByOrderId: async () => [{ amount: 400, method: 'cash', status: 'completed' }] } as any,
-      {} as any, {} as any, {} as any, {} as any,
+      fake({ findByIdAndBusinessId: async () => order, save: async (o: Order) => { order = o; } }),
+      fake({ findByOrderId: async () => [{ amount: 400, method: 'cash', status: 'completed' }] }),
+      fake({}), fake({}), fake({}), fake({}),
     );
 
     const result = await sales.changeStatus({ businessId: 'biz-A', orderId: order.id, action: 'cancel', reason: 'cliente se fue' });
@@ -38,12 +43,12 @@ describe('SalesUseCase', () => {
       canBeSold: () => true,
     };
     const sales = new SalesUseCase(
-      orders as any,
-      {} as any,
-      {} as any,
-      { findByIdAndBusinessId: async () => product } as any,
-      { findByIdAndBusinessId: async () => null } as any,
-      { findById: async () => ({ id: 'biz-A', sucursales: [{ id: 'suc-1', name: 'Central', isActive: true }] }) } as any,
+      fake(orders),
+      fake({}),
+      fake({}),
+      fake({ findByIdAndBusinessId: async () => product }),
+      fake({ findByIdAndBusinessId: async () => null }),
+      fake({ findById: async () => ({ id: 'biz-A', sucursales: [{ id: 'suc-1', name: 'Central', isActive: true }] }) }),
     );
 
     const result = await sales.createOrder({ businessId: 'biz-A', sucursalId: 'suc-1', type: 'takeaway', items: [{ productId: 'p', quantity: 1 }] });

@@ -1,7 +1,23 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BusinessRepositoryPort } from '@unna/domain';
+import { BusinessRepositoryPort, WeekSchedule } from '@unna/domain';
 import { Business, BusinessName, CUIT, Address, Schedule, BusinessSettings, Sucursal } from '@unna/domain';
+
+type BusinessRecord = Prisma.BusinessGetPayload<{ include: { sucursales: true } }>;
+type AddressJson = Parameters<typeof Address.create>[0];
+type SettingsJson = Parameters<typeof BusinessSettings.create>[0];
+/** Week shape written by Schedule.toJSON, or the raw Schedule instance held by older rows. */
+type ScheduleJson = Partial<WeekSchedule> & { weekSchedule?: Partial<WeekSchedule>; timezone?: string };
+
+/**
+ * Json columns hold the fields this adapter wrote from a value object; Prisma only types them as
+ * JsonValue, so the stored shape is asserted here, once, and validated by the value object's create.
+ */
+const storedAs = <T>(json: Prisma.JsonValue): T => json as unknown as T;
+
+const scheduleJson = (schedule: Schedule): Prisma.InputJsonObject =>
+  Object.fromEntries(Object.entries(schedule.toJSON()).map(([day, hours]) => [day, { ...hours }]));
 
 @Injectable()
 export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
@@ -19,7 +35,7 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
         update: props,
       }),
       this.prisma.sucursal.deleteMany({ where: { businessId: business.id, id: { notIn: keepIds } } }),
-      ...sucursales.map((s: any) =>
+      ...sucursales.map((s) =>
         this.prisma.sucursal.upsert({
           where: { id: s.id },
           create: { ...s, businessId: business.id },
@@ -42,7 +58,7 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
       where: { ownerId },
       include: { sucursales: true },
     });
-    return records.map(this.toDomain);
+    return records.map((r) => this.toDomain(r));
   }
 
   async existsByName(name: string): Promise<boolean> {
@@ -59,24 +75,25 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
     await this.prisma.business.delete({ where: { id } });
   }
 
-  private toPrisma(business: Business): any {
+  // Value objects are stored as Prisma serializes them: own fields, or toJSON for Schedule.
+  private toPrisma(business: Business) {
     return {
       id: business.id,
       name: business.name.value,
       slug: business.slug,
       cuit: business.cuit.value,
-      address: business.address,
-      schedule: business.schedule,
-      settings: business.settings,
+      address: { ...business.address },
+      schedule: scheduleJson(business.schedule),
+      settings: { ...business.settings },
       ownerId: business.ownerId,
       isActive: business.isActive,
       sucursales: business.sucursales.map(s => ({
           id: s.id,
           name: s.name,
-          address: s.address,
+          address: { ...s.address },
           phone: s.phone,
           email: s.email,
-          schedule: s.schedule,
+          schedule: scheduleJson(s.schedule),
           isMain: s.isMain,
           isActive: s.isActive,
           createdAt: s.createdAt,
@@ -88,16 +105,17 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
   }
 
   // Schedule is stored through its toJSON (week shape); older rows may hold the raw instance.
-  private toSchedule(json: any): Schedule {
-    return Schedule.create(json?.weekSchedule ?? json, json?.timezone);
+  private toSchedule(json: Prisma.JsonValue): Schedule {
+    const stored = json as ScheduleJson;
+    return Schedule.create(stored?.weekSchedule ?? stored, stored?.timezone);
   }
 
-  private toDomain(record: any): Business {
-    const sucursales = (record.sucursales || []).map((s: any) => 
+  private toDomain(record: BusinessRecord): Business {
+    const sucursales = (record.sucursales || []).map((s) => 
       Sucursal.reconstitute({
         id: s.id,
         name: s.name,
-        address: Address.create(s.address),
+        address: Address.create(storedAs<AddressJson>(s.address)),
         phone: s.phone,
         email: s.email,
         schedule: this.toSchedule(s.schedule),
@@ -111,9 +129,9 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
     return Business.reconstitute(record.id, {
       name: BusinessName.create(record.name),
       cuit: CUIT.create(record.cuit),
-      address: Address.create(record.address),
+      address: Address.create(storedAs<AddressJson>(record.address)),
       schedule: this.toSchedule(record.schedule),
-      settings: BusinessSettings.create(record.settings),
+      settings: BusinessSettings.create(storedAs<SettingsJson>(record.settings)),
       ownerId: record.ownerId,
       slug: record.slug,
       isActive: record.isActive,

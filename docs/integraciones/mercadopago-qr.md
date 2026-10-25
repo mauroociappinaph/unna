@@ -62,7 +62,7 @@ Source: [notifications](https://www.mercadopago.com.ar/developers/en/docs/qr-cod
 | `MP_REDIRECT_URI` | OAuth callback registered in the application, e.g. `https://api.example.com/api/v1/mercadopago/oauth/callback` |
 | `MP_WEBHOOK_SECRET` | Signing secret of the webhook |
 | `MP_TOKEN_ENCRYPTION_KEY` | 32-byte base64 key for tokens at rest (required in production) |
-| `WEB_URL` | Where the OAuth callback redirects the owner back |
+| `FRONTEND_URL` (existing) | Where the OAuth callback redirects the owner back |
 
 ### API contract (prefix `/api/v1`)
 Owner routes require the JWT and `BusinessOwnerGuard`; amounts in cents.
@@ -76,7 +76,7 @@ Owner routes require the JWT and `BusinessOwnerGuard`; amounts in cents.
 | `POST /businesses/:id/orders/:orderId/qr-charge` | Charges the pending balance. `{ id, orderId, amount, status: "pending", qrData, expiresAt }` |
 | `GET /businesses/:id/qr-charges/:chargeId` | Syncs with Mercado Pago. `{ id, orderId, amount, status: "pending" \| "paid" \| "expired" \| "cancelled", qrData, expiresAt, paidAt: string \| null }` |
 | `DELETE /businesses/:id/qr-charges/:chargeId` | Cancels a pending charge. Returns the charge with `status: "cancelled"` |
-| `GET /mercadopago/oauth/callback?code&state` | Public. 302 to `${WEB_URL}/dashboard/mercadopago?status=connected` or `?status=error` |
+| `GET /mercadopago/oauth/callback?code&state` | Public. 302 to `${FRONTEND_URL}/dashboard/mercadopago?status=connected` or `?status=error` |
 | `POST /public/mercadopago/webhook` | Public, signature validated, 200 |
 | `POST /mercadopago/simulator/orders/:mpOrderId/pay` | Simulator only, never in production |
 

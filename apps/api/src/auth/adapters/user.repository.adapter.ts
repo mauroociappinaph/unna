@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { User as PrismaUser } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserRepositoryPort } from '@unna/domain';
 import { User } from '@unna/domain';
-import { Email } from '@unna/domain';
-import { Result, ok, err } from '@unna/domain';
+import { Email, Password, PersonName, Phone, UserRole } from '@unna/domain';
 
 @Injectable()
 export class PrismaUserRepositoryAdapter implements UserRepositoryPort {
@@ -37,7 +37,7 @@ export class PrismaUserRepositoryAdapter implements UserRepositoryPort {
     await this.prisma.user.delete({ where: { id } });
   }
 
-  private toPrisma(user: User): any {
+  private toPrisma(user: User): PrismaUser {
     return {
       id: user.id,
       email: user.email.value,
@@ -54,16 +54,16 @@ export class PrismaUserRepositoryAdapter implements UserRepositoryPort {
     };
   }
 
-  private toDomain(record: any): User {
+  private toDomain(record: PrismaUser): User {
     return User.reconstitute(record.id, {
       email: Email.create(record.email),
-      password: require('@unna/domain').Password.fromHash(record.passwordHash),
-      name: require('@unna/domain').PersonName.create(record.name),
-      phone: require('@unna/domain').Phone.create(record.phone),
+      password: Password.fromHash(record.passwordHash),
+      name: PersonName.create(record.name),
+      phone: Phone.create(record.phone),
       businessName: record.businessName,
       isActive: record.isActive,
       emailVerified: record.emailVerified,
-      roles: record.roles,
+      roles: record.roles as UserRole[],
       lastLoginAt: record.lastLoginAt ? new Date(record.lastLoginAt) : null,
       createdAt: new Date(record.createdAt),
       updatedAt: new Date(record.updatedAt),

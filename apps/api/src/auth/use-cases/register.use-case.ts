@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserRepositoryPort, HashingPort, JwtPort } from '@unna/domain';
+import { UserRepositoryPort, HashingPort, JwtPort, TokenPair } from '@unna/domain';
 import { User } from '@unna/domain';
 import { Email, Password, PersonName, Phone, BusinessName } from '@unna/domain';
 import { Result, ok, err } from '@unna/domain';
@@ -23,7 +23,7 @@ export class RegisterUseCase {
     private readonly jwtPort: JwtPort,
   ) {}
 
-  async execute(command: RegisterCommand): Promise<Result<{ user: User; tokens: any }, Error>> {
+  async execute(command: RegisterCommand): Promise<Result<{ user: User; tokens: TokenPair }, Error>> {
     const email = Email.create(command.email);
     const exists = await this.userRepository.existsByEmail(email.value);
     if (exists) {

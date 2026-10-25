@@ -1,11 +1,11 @@
 import { LoginUseCase } from '../login.use-case';
-import { Result, ok, err, isOk, isErr } from '@unna/domain';
+import { isOk, isErr, UserRepositoryPort, HashingPort, JwtPort } from '@unna/domain';
 
 describe('LoginUseCase', () => {
   let useCase: LoginUseCase;
-  let mockUserRepository: any;
-  let mockHashingPort: any;
-  let mockJwtPort: any;
+  let mockUserRepository: Record<keyof UserRepositoryPort, jest.Mock>;
+  let mockHashingPort: Record<keyof HashingPort, jest.Mock>;
+  let mockJwtPort: Record<keyof JwtPort, jest.Mock>;
 
   beforeEach(() => {
     mockUserRepository = {
@@ -13,6 +13,7 @@ describe('LoginUseCase', () => {
       save: jest.fn(),
       findById: jest.fn(),
       findByEmail: jest.fn(),
+      delete: jest.fn(),
     };
     mockHashingPort = {
       hash: jest.fn(),
@@ -22,7 +23,11 @@ describe('LoginUseCase', () => {
       generateTokenPair: jest.fn(),
       verifyAccessToken: jest.fn(),
       verifyRefreshToken: jest.fn(),
+      generateAccessToken: jest.fn(),
+      generateRefreshToken: jest.fn(),
       decodeToken: jest.fn(),
+      generateResetToken: jest.fn(),
+      verifyResetToken: jest.fn(),
     };
     useCase = new LoginUseCase(
       mockUserRepository,
@@ -36,7 +41,7 @@ describe('LoginUseCase', () => {
     password: 'SecurePass123',
   };
 
-  const createMockUser = (overrides: any = {}) => ({
+  const createMockUser = (overrides: Record<string, unknown> = {}) => ({
     id: 'user-id',
     email: { value: 'test@example.com' },
     password: { hash: '$2b$10$hashedpassword' },

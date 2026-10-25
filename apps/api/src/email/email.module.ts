@@ -1,7 +1,6 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ResendEmailAdapter } from './resend-email.adapter';
-import { EmailPort } from '@unna/domain';
 
 @Global()
 @Module({

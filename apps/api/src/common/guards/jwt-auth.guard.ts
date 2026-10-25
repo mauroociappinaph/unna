@@ -1,5 +1,6 @@
 import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { JwtPayload } from '@unna/domain';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -7,7 +8,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any, info: any) {
+  handleRequest<TUser = JwtPayload>(err: unknown, user: TUser | false | null): TUser {
     if (err || !user) {
       throw err || new UnauthorizedException('Token inválido o expirado');
     }

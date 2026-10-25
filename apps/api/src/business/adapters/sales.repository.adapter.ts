@@ -7,6 +7,9 @@ import {
   PaymentRepositoryPort,
   PaymentRecord,
   ReceiptRepositoryPort,
+  SalesUnitOfWorkPort,
+  LockedOrderRepositories,
+  Address,
   Order,
   OrderItem,
   Receipt,
@@ -16,13 +19,29 @@ import {
 
 const money = (cents: number) => Money.fromCents(cents, 'ARS');
 
+/** Address columns hold the fields written from an Address value object; rebuild it on read. */
+const toAddress = (json: Prisma.JsonValue | null): Address | undefined =>
+  json ? Address.create(json as unknown as Parameters<typeof Address.create>[0]) : undefined;
+
+/** The root client or the client of an open interactive transaction. */
+type Db = Prisma.TransactionClient;
+/** Runs a batch of writes so they commit together. */
+type AtomicWrites = (writes: Prisma.PrismaPromise<unknown>[]) => Promise<unknown>;
+
+/** Inside an open transaction the writes already commit together; run them in order. */
+const inOpenTransaction: AtomicWrites = async (writes) => {
+  for (const write of writes) await write;
+};
+
 type OrderRecord = Prisma.OrderGetPayload<{ include: { items: true } }>;
 type ReceiptRecord = Prisma.ReceiptGetPayload<{ include: { items: true } }>;
 type LineModifiers = OrderItem['modifiers'];
 
-@Injectable()
-export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+class PrismaOrderRepository implements OrderRepositoryPort {
+  constructor(
+    private readonly db: Db,
+    private readonly atomically: AtomicWrites,
+  ) {}
 
   async save(order: Order): Promise<void> {
     const data = {
@@ -49,14 +68,14 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
       cancelledAt: order.cancelledAt ?? null,
       cancelledReason: order.cancelledReason ?? null,
     };
-    await this.prisma.$transaction([
-      this.prisma.order.upsert({
+    await this.atomically([
+      this.db.order.upsert({
         where: { id: order.id },
         create: { id: order.id, ...data, createdAt: order.createdAt },
         update: data,
       }),
-      this.prisma.orderItem.deleteMany({ where: { orderId: order.id } }),
-      this.prisma.orderItem.createMany({
+      this.db.orderItem.deleteMany({ where: { orderId: order.id } }),
+      this.db.orderItem.createMany({
         data: order.items.map((i) => ({
           id: i.id,
           orderId: order.id,
@@ -77,12 +96,12 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
   }
 
   async findByIdAndBusinessId(id: string, businessId: string): Promise<Order | null> {
-    const record = await this.prisma.order.findFirst({ where: { id, businessId }, include: { items: true } });
+    const record = await this.db.order.findFirst({ where: { id, businessId }, include: { items: true } });
     return record ? this.toDomain(record) : null;
   }
 
   async findByBusinessId(businessId: string, filters: OrderListFilters = {}): Promise<Order[]> {
-    const records = await this.prisma.order.findMany({
+    const records = await this.db.order.findMany({
       where: {
         businessId,
         ...(filters.status ? { status: filters.status } : {}),
@@ -110,7 +129,7 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
       customerName: r.customerName ?? undefined,
       customerPhone: r.customerPhone ?? undefined,
       customerEmail: r.customerEmail ?? undefined,
-      deliveryAddress: (r.deliveryAddress as Order['deliveryAddress'] | null) ?? undefined,
+      deliveryAddress: toAddress(r.deliveryAddress),
       items: (r.items ?? []).map((i) =>
         OrderItem.reconstitute({
           id: i.id,
@@ -148,11 +167,17 @@ export class PrismaOrderRepositoryAdapter implements OrderRepositoryPort {
 }
 
 @Injectable()
-export class PrismaPaymentRepositoryAdapter implements PaymentRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+export class PrismaOrderRepositoryAdapter extends PrismaOrderRepository {
+  constructor(prisma: PrismaService) {
+    super(prisma, (writes) => prisma.$transaction(writes));
+  }
+}
+
+class PrismaPaymentRepository implements PaymentRepositoryPort {
+  constructor(private readonly db: Db) {}
 
   async save(p: PaymentRecord): Promise<void> {
-    await this.prisma.payment.create({
+    await this.db.payment.create({
       data: {
         id: p.id,
         orderId: p.orderId,
@@ -168,7 +193,7 @@ export class PrismaPaymentRepositoryAdapter implements PaymentRepositoryPort {
   }
 
   async findByOrderId(orderId: string): Promise<PaymentRecord[]> {
-    const records = await this.prisma.payment.findMany({ where: { orderId }, orderBy: { createdAt: 'asc' } });
+    const records = await this.db.payment.findMany({ where: { orderId }, orderBy: { createdAt: 'asc' } });
     return records.map((r) => ({
       id: r.id,
       orderId: r.orderId,
@@ -180,6 +205,26 @@ export class PrismaPaymentRepositoryAdapter implements PaymentRepositoryPort {
       processedAt: r.processedAt ?? undefined,
       createdAt: r.createdAt,
     }));
+  }
+}
+
+@Injectable()
+export class PrismaPaymentRepositoryAdapter extends PrismaPaymentRepository {
+  constructor(prisma: PrismaService) {
+    super(prisma);
+  }
+}
+
+@Injectable()
+export class PrismaSalesUnitOfWorkAdapter implements SalesUnitOfWorkPort {
+  constructor(private readonly prisma: PrismaService) {}
+
+  withOrderLock<T>(orderId: string, businessId: string, work: (repositories: LockedOrderRepositories) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (tx) => {
+      // Row lock held until the transaction ends; a missing order locks nothing and the work reports it.
+      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} AND "businessId" = ${businessId} FOR UPDATE`;
+      return work({ orders: new PrismaOrderRepository(tx, inOpenTransaction), payments: new PrismaPaymentRepository(tx) });
+    });
   }
 }
 
@@ -287,7 +332,7 @@ export class PrismaReceiptRepositoryAdapter implements ReceiptRepositoryPort {
       paymentReference: r.paymentReference ?? undefined,
       customerName: r.customerName ?? undefined,
       customerTaxId: r.customerTaxId ?? undefined,
-      customerAddress: (r.customerAddress as Receipt['customerAddress'] | null) ?? undefined,
+      customerAddress: toAddress(r.customerAddress),
       customerCondition: r.customerCondition ?? undefined,
       caeRequest: r.caeRequest ?? undefined,
       caeResponse: r.caeResponse ?? undefined,

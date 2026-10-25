@@ -17,7 +17,11 @@ import { ProductUseCase } from './use-cases/product-catalog.use-case';
 import { ModifierGroupUseCase } from './use-cases/product-catalog.use-case';
 import { PriceListUseCase } from './use-cases/product-catalog.use-case';
 import { StockUseCase } from './use-cases/product-catalog.use-case';
-import type { ProductInput } from './use-cases/product-catalog.use-case';
+import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
+import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+import { CreateModifierGroupDto, ModifierOptionDto, UpdateModifierGroupDto, UpdateModifierOptionDto } from './dto/modifier-group.dto';
+import { CreatePriceListDto, PriceListEntryDto, UpdatePriceListDto, UpdatePriceListEntryDto } from './dto/price-list.dto';
+import { AddStockDto, AdjustThresholdsDto, InitializeStockDto, RecordCountDto, RemoveStockDto } from './dto/stock.dto';
 import type { AuthenticatedRequest } from './authenticated-request';
 
 @ApiTags('Categorías')
@@ -32,7 +36,7 @@ export class CategoryController {
   async create(
     @Param('businessId') businessId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { name: string; description?: string; type: 'plato' | 'bebida' | 'postre' | 'extra' | 'combo'; displayOrder?: number; isActive?: boolean; parentId?: string; imageUrl?: string },
+    @Body() dto: CreateCategoryDto,
   ) {
     return unwrap(this.categoryUseCase.create({ ...dto, businessId, ownerId: req.user.sub }));
   }
@@ -58,7 +62,7 @@ export class CategoryController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { name?: string; description?: string; type?: 'plato' | 'bebida' | 'postre' | 'extra' | 'combo'; displayOrder?: number; isActive?: boolean; parentId?: string; imageUrl?: string },
+    @Body() dto: UpdateCategoryDto,
   ) {
     return unwrap(this.categoryUseCase.update({ ...dto, id, businessId, ownerId: req.user.sub }));
   }
@@ -83,7 +87,7 @@ export class ProductController {
   async create(
     @Param('businessId') businessId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: ProductInput,
+    @Body() dto: CreateProductDto,
   ) {
     return unwrap(this.productUseCase.create({ ...dto, businessId, ownerId: req.user.sub }));
   }
@@ -115,7 +119,7 @@ export class ProductController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: Partial<ProductInput>,
+    @Body() dto: UpdateProductDto,
   ) {
     return unwrap(this.productUseCase.update({ ...dto, id, businessId, ownerId: req.user.sub }));
   }
@@ -180,7 +184,7 @@ export class ModifierGroupController {
   async create(
     @Param('businessId') businessId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { name: string; description?: string; minSelection?: number; maxSelection?: number; isRequired?: boolean; displayOrder?: number; isActive?: boolean; options?: Array<{ name: string; priceDelta?: number; isDefault?: boolean; displayOrder?: number; isActive?: boolean }> },
+    @Body() dto: CreateModifierGroupDto,
   ) {
     return unwrap(this.groupUseCase.create({ ...dto, businessId, ownerId: req.user.sub }));
   }
@@ -206,7 +210,7 @@ export class ModifierGroupController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { name?: string; description?: string; minSelection?: number; maxSelection?: number; isRequired?: boolean; isActive?: boolean },
+    @Body() dto: UpdateModifierGroupDto,
   ) {
     return unwrap(this.groupUseCase.update({ ...dto, id, businessId, ownerId: req.user.sub }));
   }
@@ -217,7 +221,7 @@ export class ModifierGroupController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { name: string; priceDelta?: number; isDefault?: boolean; displayOrder?: number; isActive?: boolean },
+    @Body() dto: ModifierOptionDto,
   ) {
     return unwrap(this.groupUseCase.addOption({ groupId: id, businessId, ownerId: req.user.sub, option: dto }));
   }
@@ -229,7 +233,7 @@ export class ModifierGroupController {
     @Param('id') id: string,
     @Param('optionId') optionId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { name?: string; priceDelta?: number; isDefault?: boolean; isActive?: boolean },
+    @Body() dto: UpdateModifierOptionDto,
   ) {
     return unwrap(this.groupUseCase.updateOption({ groupId: id, businessId, ownerId: req.user.sub, optionId, updates: dto }));
   }
@@ -266,7 +270,7 @@ export class PriceListController {
   async create(
     @Param('businessId') businessId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { name: string; description?: string; type: 'standard' | 'delivery' | 'takeaway' | 'happy-hour' | 'event' | 'custom'; isDefault?: boolean; isActive?: boolean; validFrom?: string; validTo?: string; validDays?: number[]; validFromTime?: string; validToTime?: string; entries?: Array<{ productId: string; price: number; costPrice?: number; isActive?: boolean }> },
+    @Body() dto: CreatePriceListDto,
   ) {
     return unwrap(this.listUseCase.create({ ...dto, businessId, ownerId: req.user.sub }));
   }
@@ -298,7 +302,7 @@ export class PriceListController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { name?: string; description?: string; isDefault?: boolean; isActive?: boolean; validFrom?: string; validTo?: string; validDays?: number[]; validFromTime?: string; validToTime?: string },
+    @Body() dto: UpdatePriceListDto,
   ) {
     return unwrap(this.listUseCase.update({ ...dto, id, businessId, ownerId: req.user.sub }));
   }
@@ -309,7 +313,7 @@ export class PriceListController {
     @Param('businessId') businessId: string,
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { productId: string; price: number; costPrice?: number; isActive?: boolean },
+    @Body() dto: PriceListEntryDto,
   ) {
     return unwrap(this.listUseCase.addEntry({ listId: id, businessId, ownerId: req.user.sub, ...dto }));
   }
@@ -321,7 +325,7 @@ export class PriceListController {
     @Param('id') id: string,
     @Param('productId') productId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { price?: number; costPrice?: number; isActive?: boolean },
+    @Body() dto: UpdatePriceListEntryDto,
   ) {
     return unwrap(this.listUseCase.updateEntry({ listId: id, businessId, ownerId: req.user.sub, productId, ...dto }));
   }
@@ -359,7 +363,7 @@ export class StockController {
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { initialQuantity: number; minThreshold?: number; reorderPoint?: number; reorderQuantity?: number },
+    @Body() dto: InitializeStockDto,
   ) {
     return unwrap(this.stockUseCase.initializeStock({ ...dto, productId, businessId, ownerId: req.user.sub }));
   }
@@ -403,7 +407,7 @@ export class StockController {
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { quantity: number; reason: string; referenceId?: string; referenceType?: string; unitCost?: number; totalCost?: number },
+    @Body() dto: AddStockDto,
   ) {
     return unwrap(this.stockUseCase.addStock({ ...dto, productId, businessId, ownerId: req.user.sub }));
   }
@@ -414,7 +418,7 @@ export class StockController {
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { quantity: number; reason: string; referenceId?: string; referenceType?: string; unitCost?: number; totalCost?: number; type?: 'out' | 'adjustment' | 'waste' | 'transfer' | 'sale' | 'return' },
+    @Body() dto: RemoveStockDto,
   ) {
     return unwrap(this.stockUseCase.removeStock({ ...dto, productId, businessId, ownerId: req.user.sub }));
   }
@@ -425,7 +429,7 @@ export class StockController {
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { countedQuantity: number },
+    @Body() dto: RecordCountDto,
   ) {
     return unwrap(this.stockUseCase.recordCount({ ...dto, productId, businessId, ownerId: req.user.sub }));
   }
@@ -436,7 +440,7 @@ export class StockController {
     @Param('businessId') businessId: string,
     @Param('productId') productId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: { minThreshold?: number; maxThreshold?: number; reorderPoint?: number; reorderQuantity?: number },
+    @Body() dto: AdjustThresholdsDto,
   ) {
     return unwrap(this.stockUseCase.adjustThresholds({ ...dto, productId, businessId, ownerId: req.user.sub }));
   }

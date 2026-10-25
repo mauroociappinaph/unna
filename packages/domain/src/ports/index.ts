@@ -10,6 +10,8 @@ export type {
   OrderListFilters,
   PaymentRepositoryPort,
   PaymentRecord,
+  LockedOrderRepositories,
+  SalesUnitOfWorkPort,
   ReceiptRepositoryPort,
 } from './repository.port';
 export type { JwtPort, JwtPayload, TokenPair, ResetTokenPayload } from './jwt.port';

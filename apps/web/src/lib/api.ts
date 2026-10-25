@@ -1,4 +1,9 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import type {
+  Category, CategoryInput, CreateOrderInput, IssueReceiptInput, ModifierGroup, ModifierGroupInput, ModifierOptionInput,
+  Order, OrderAction, OrderLineInput, Payment, PaymentMethod, PaymentResult, Product, ProductInput, ProductStatus,
+  Receipt, StockChange, StockLevel, StockMovement, StockOutType,
+} from './api-types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -228,6 +233,124 @@ class ApiClient {
     });
     return response.data;
   }
+  // --- Catalog ---
+  async listCategories(businessId: string): Promise<Category[]> {
+    return (await this.client.get(`/businesses/${businessId}/categories`)).data;
+  }
+
+  async createCategory(businessId: string, data: CategoryInput): Promise<Category> {
+    return (await this.client.post(`/businesses/${businessId}/categories`, data)).data;
+  }
+
+  async updateCategory(businessId: string, categoryId: string, data: Partial<CategoryInput>): Promise<Category> {
+    return (await this.client.put(`/businesses/${businessId}/categories/${categoryId}`, data)).data;
+  }
+
+  async deleteCategory(businessId: string, categoryId: string): Promise<void> {
+    await this.client.delete(`/businesses/${businessId}/categories/${categoryId}`);
+  }
+
+  async listProducts(businessId: string, filters: { categoryId?: string; status?: ProductStatus; activeOnly?: boolean } = {}): Promise<Product[]> {
+    return (await this.client.get(`/businesses/${businessId}/products`, { params: filters })).data;
+  }
+
+  async createProduct(businessId: string, data: ProductInput): Promise<Product> {
+    return (await this.client.post(`/businesses/${businessId}/products`, data)).data;
+  }
+
+  async updateProduct(businessId: string, productId: string, data: Partial<ProductInput>): Promise<Product> {
+    return (await this.client.put(`/businesses/${businessId}/products/${productId}`, data)).data;
+  }
+
+  async deleteProduct(businessId: string, productId: string): Promise<void> {
+    await this.client.delete(`/businesses/${businessId}/products/${productId}`);
+  }
+
+  async listModifierGroups(businessId: string): Promise<ModifierGroup[]> {
+    return (await this.client.get(`/businesses/${businessId}/modifier-groups`)).data;
+  }
+
+  async createModifierGroup(businessId: string, data: ModifierGroupInput): Promise<ModifierGroup> {
+    return (await this.client.post(`/businesses/${businessId}/modifier-groups`, data)).data;
+  }
+
+  async updateModifierGroup(businessId: string, groupId: string, data: Omit<Partial<ModifierGroupInput>, 'options' | 'displayOrder'>): Promise<ModifierGroup> {
+    return (await this.client.put(`/businesses/${businessId}/modifier-groups/${groupId}`, data)).data;
+  }
+
+  async addModifierOption(businessId: string, groupId: string, data: ModifierOptionInput): Promise<ModifierGroup> {
+    return (await this.client.post(`/businesses/${businessId}/modifier-groups/${groupId}/options`, data)).data;
+  }
+
+  async removeModifierOption(businessId: string, groupId: string, optionId: string): Promise<void> {
+    await this.client.delete(`/businesses/${businessId}/modifier-groups/${groupId}/options/${optionId}`);
+  }
+
+  async deleteModifierGroup(businessId: string, groupId: string): Promise<void> {
+    await this.client.delete(`/businesses/${businessId}/modifier-groups/${groupId}`);
+  }
+
+  async listStockLevels(businessId: string): Promise<StockLevel[]> {
+    return (await this.client.get(`/businesses/${businessId}/stock/levels`)).data;
+  }
+
+  async listStockMovements(businessId: string, productId?: string): Promise<StockMovement[]> {
+    return (await this.client.get(`/businesses/${businessId}/stock/movements`, { params: productId ? { productId } : {} })).data;
+  }
+
+  async initializeStock(businessId: string, productId: string, data: { initialQuantity: number; minThreshold?: number }): Promise<StockLevel> {
+    return (await this.client.post(`/businesses/${businessId}/stock/initialize/${productId}`, data)).data;
+  }
+
+  async addStock(businessId: string, productId: string, data: { quantity: number; reason: string }): Promise<StockChange> {
+    return (await this.client.post(`/businesses/${businessId}/stock/in/${productId}`, data)).data;
+  }
+
+  async removeStock(businessId: string, productId: string, data: { quantity: number; reason: string; type?: StockOutType }): Promise<StockChange> {
+    return (await this.client.post(`/businesses/${businessId}/stock/out/${productId}`, data)).data;
+  }
+
+  // --- Sales / POS ---
+  async createOrder(businessId: string, data: CreateOrderInput): Promise<Order> {
+    return (await this.client.post(`/businesses/${businessId}/orders`, data)).data;
+  }
+
+  async listOrders(businessId: string, filters: { status?: string; sucursalId?: string } = {}): Promise<Order[]> {
+    return (await this.client.get(`/businesses/${businessId}/orders`, { params: filters })).data;
+  }
+
+  async getOrder(businessId: string, orderId: string): Promise<Order> {
+    return (await this.client.get(`/businesses/${businessId}/orders/${orderId}`)).data;
+  }
+
+  async addOrderItem(businessId: string, orderId: string, line: OrderLineInput): Promise<Order> {
+    return (await this.client.post(`/businesses/${businessId}/orders/${orderId}/items`, line)).data;
+  }
+
+  async removeOrderItem(businessId: string, orderId: string, itemId: string): Promise<Order> {
+    return (await this.client.delete(`/businesses/${businessId}/orders/${orderId}/items/${itemId}`)).data;
+  }
+
+  async applyOrderDiscount(businessId: string, orderId: string, amount: number): Promise<Order> {
+    return (await this.client.post(`/businesses/${businessId}/orders/${orderId}/discount`, { amount })).data;
+  }
+
+  async changeOrderStatus(businessId: string, orderId: string, action: OrderAction, reason?: string): Promise<Order> {
+    return (await this.client.post(`/businesses/${businessId}/orders/${orderId}/status`, { action, reason })).data;
+  }
+
+  async registerPayment(businessId: string, orderId: string, data: { amount: number; method: PaymentMethod; reference?: string }): Promise<PaymentResult> {
+    return (await this.client.post(`/businesses/${businessId}/orders/${orderId}/payments`, data)).data;
+  }
+
+  async listPayments(businessId: string, orderId: string): Promise<Payment[]> {
+    return (await this.client.get(`/businesses/${businessId}/orders/${orderId}/payments`)).data;
+  }
+
+  async issueReceipt(businessId: string, orderId: string, data: IssueReceiptInput): Promise<Receipt> {
+    return (await this.client.post(`/businesses/${businessId}/orders/${orderId}/receipts`, data)).data;
+  }
 }
+
 
 export const api = new ApiClient();

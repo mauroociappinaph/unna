@@ -1,0 +1,274 @@
+// Response and request shapes of the catalog and sales API.
+// They mirror real responses captured in src/__tests__/fixtures/api-shapes.json.
+// Amounts are integer cents.
+
+export interface Money {
+  amount: number;
+  currency: string;
+}
+
+export const CATEGORY_TYPES = ['plato', 'bebida', 'postre', 'extra', 'combo'] as const;
+export type CategoryType = (typeof CATEGORY_TYPES)[number];
+
+export interface Category {
+  id: string;
+  businessId: string;
+  name: string;
+  description?: string;
+  type: CategoryType;
+  displayOrder: number;
+  parentId?: string;
+  imageUrl?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryInput {
+  name: string;
+  type: CategoryType;
+  description?: string;
+  displayOrder?: number;
+  parentId?: string;
+  isActive?: boolean;
+}
+
+export interface ModifierOption {
+  id: string;
+  name: string;
+  priceDelta: number;
+  isDefault: boolean;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+export interface ModifierGroup {
+  id: string;
+  businessId: string;
+  name: string;
+  description?: string;
+  minSelection: number;
+  maxSelection: number;
+  isRequired: boolean;
+  displayOrder: number;
+  isActive: boolean;
+  options: ModifierOption[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ModifierOptionInput {
+  name: string;
+  priceDelta?: number;
+  isDefault?: boolean;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+export interface ModifierGroupInput {
+  name: string;
+  description?: string;
+  minSelection?: number;
+  maxSelection?: number;
+  isRequired?: boolean;
+  displayOrder?: number;
+  options?: ModifierOptionInput[];
+}
+
+export const PRODUCT_TYPES = ['simple', 'composite', 'combo'] as const;
+export const PRODUCT_STATUSES = ['draft', 'active', 'archived'] as const;
+export type ProductType = (typeof PRODUCT_TYPES)[number];
+export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+
+export interface Product {
+  id: string;
+  businessId: string;
+  categoryId: string;
+  name: string;
+  description?: string;
+  sku?: string;
+  barcode?: string;
+  type: ProductType;
+  status: ProductStatus;
+  basePrice: Money;
+  costPrice?: Money;
+  taxRate: number;
+  displayOrder: number;
+  isActive: boolean;
+  images: string[];
+  modifierGroupIds: string[];
+  components: Array<{ productId: string; quantity: number }>;
+  allergens: string[];
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductInput {
+  categoryId: string;
+  name: string;
+  type: ProductType;
+  basePrice: number;
+  status?: ProductStatus;
+  description?: string;
+  sku?: string;
+  barcode?: string;
+  costPrice?: number;
+  taxRate?: number;
+  displayOrder?: number;
+  modifierGroupIds?: string[];
+}
+
+export interface StockLevel {
+  productId: string;
+  businessId: string;
+  currentQuantity: number;
+  reservedQuantity: number;
+  minThreshold: number;
+  maxThreshold?: number;
+  reorderPoint: number;
+  reorderQuantity: number;
+  lastMovementAt?: string;
+  updatedAt: string;
+}
+
+export const STOCK_OUT_TYPES = ['out', 'adjustment', 'waste', 'transfer', 'sale', 'return'] as const;
+export type StockOutType = (typeof STOCK_OUT_TYPES)[number];
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  businessId: string;
+  type: 'in' | StockOutType;
+  quantity: number;
+  reason: string;
+  performedBy: string;
+  createdAt: string;
+}
+
+export interface StockChange {
+  level: StockLevel;
+  movement: StockMovement;
+}
+
+export const ORDER_TYPES = ['dine_in', 'takeaway', 'delivery', 'pickup'] as const;
+export const ORDER_ACTIONS = ['confirm', 'prepare', 'ready', 'deliver', 'cancel'] as const;
+export const PAYMENT_METHODS = ['cash', 'card', 'mercado_pago', 'transfer', 'qr'] as const;
+export const RECEIPT_TYPES = ['ticket', 'A', 'B', 'C'] as const;
+export type OrderType = (typeof ORDER_TYPES)[number];
+export type OrderAction = (typeof ORDER_ACTIONS)[number];
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+export type ReceiptType = (typeof RECEIPT_TYPES)[number];
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'refunded';
+export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'cancelled';
+
+export interface SelectedModifier {
+  modifierGroupId: string;
+  optionId: string;
+}
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: Money;
+  totalPrice: Money;
+  taxRate: number;
+  taxAmount: Money;
+  notes?: string;
+  modifiers: Array<SelectedModifier & { name: string; priceDelta: number }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Order {
+  id: string;
+  businessId: string;
+  sucursalId: string;
+  sucursalName: string;
+  orderNumber: string;
+  type: OrderType;
+  status: OrderStatus;
+  tableNumber?: string;
+  customerName?: string;
+  notes?: string;
+  items: OrderItem[];
+  subtotal: Money;
+  taxAmount: Money;
+  discountAmount: Money;
+  totalAmount: Money;
+  paymentStatus: PaymentStatus;
+  paymentMethod?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderLineInput {
+  productId: string;
+  quantity: number;
+  notes?: string;
+  modifiers?: SelectedModifier[];
+}
+
+export interface CreateOrderInput {
+  sucursalId: string;
+  type: OrderType;
+  items: OrderLineInput[];
+  tableNumber?: string;
+  customerName?: string;
+  notes?: string;
+}
+
+export interface Payment {
+  id: string;
+  orderId: string;
+  businessId: string;
+  amount: number;
+  method: PaymentMethod;
+  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  reference?: string;
+  processedAt?: string;
+  createdAt: string;
+}
+
+export interface PaymentResult {
+  order: Order;
+  payments: Payment[];
+  remaining: number;
+}
+
+export interface Receipt {
+  id: string;
+  businessId: string;
+  sucursalId: string;
+  orderId: string;
+  orderNumber: string;
+  receiptNumber: string;
+  pointOfSale: string;
+  type: ReceiptType;
+  receiptType: string;
+  status: string;
+  subtotal: Money;
+  taxAmount: Money;
+  discountAmount: Money;
+  totalAmount: Money;
+  paymentMethod?: string;
+  items: Array<Omit<OrderItem, 'orderId'> & { receiptId: string }>;
+  issuedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueReceiptInput {
+  type: ReceiptType;
+  customerName?: string;
+  customerTaxId?: string;
+  customerCondition?: string;
+}
+
+/** Formats integer cents as Argentine pesos, e.g. 150000 -> "$ 1.500,00". */
+export function formatMoney(cents: number): string {
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(cents / 100);
+}

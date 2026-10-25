@@ -1,0 +1,902 @@
+{
+  "POST categories": {
+    "status": 201,
+    "body": {
+      "id": "d440222b-739d-49a6-882f-f5caaac4f11b",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "name": "Platos",
+      "type": "plato",
+      "displayOrder": 0,
+      "isActive": true,
+      "createdAt": "2026-10-25T20:09:39.306Z",
+      "updatedAt": "2026-10-25T20:09:39.306Z"
+    }
+  },
+  "GET categories": {
+    "status": 200,
+    "body": [
+      {
+        "id": "d440222b-739d-49a6-882f-f5caaac4f11b",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "name": "Platos",
+        "type": "plato",
+        "displayOrder": 0,
+        "isActive": true,
+        "createdAt": "2026-10-25T20:09:39.306Z",
+        "updatedAt": "2026-10-25T20:09:39.307Z"
+      }
+    ]
+  },
+  "POST modifier-groups": {
+    "status": 201,
+    "body": {
+      "id": "09d51026-1a26-48ef-a8b0-050e8ead5eac",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "name": "Guarnición",
+      "minSelection": 1,
+      "maxSelection": 1,
+      "isRequired": true,
+      "displayOrder": 0,
+      "isActive": true,
+      "options": [
+        {
+          "id": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+          "name": "Papas",
+          "priceDelta": 20000,
+          "isDefault": false,
+          "displayOrder": 0,
+          "isActive": true
+        },
+        {
+          "id": "b3364382-a406-46ef-a2cb-c2372474621c",
+          "name": "Ensalada",
+          "priceDelta": 0,
+          "isDefault": false,
+          "displayOrder": 0,
+          "isActive": true
+        }
+      ],
+      "createdAt": "2026-10-25T20:09:39.321Z",
+      "updatedAt": "2026-10-25T20:09:39.321Z"
+    }
+  },
+  "GET modifier-groups": {
+    "status": 200,
+    "body": [
+      {
+        "id": "09d51026-1a26-48ef-a8b0-050e8ead5eac",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "name": "Guarnición",
+        "minSelection": 1,
+        "maxSelection": 1,
+        "isRequired": true,
+        "displayOrder": 0,
+        "isActive": true,
+        "options": [
+          {
+            "id": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+            "name": "Papas",
+            "priceDelta": 20000,
+            "isDefault": false,
+            "displayOrder": 0,
+            "isActive": true
+          },
+          {
+            "id": "b3364382-a406-46ef-a2cb-c2372474621c",
+            "name": "Ensalada",
+            "priceDelta": 0,
+            "isDefault": false,
+            "displayOrder": 0,
+            "isActive": true
+          }
+        ],
+        "createdAt": "2026-10-25T20:09:39.321Z",
+        "updatedAt": "2026-10-25T20:09:39.322Z"
+      }
+    ]
+  },
+  "POST products": {
+    "status": 201,
+    "body": {
+      "id": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "categoryId": "d440222b-739d-49a6-882f-f5caaac4f11b",
+      "name": "Milanesa",
+      "type": "simple",
+      "status": "active",
+      "basePrice": {
+        "amount": 150000,
+        "currency": "ARS"
+      },
+      "taxRate": 21,
+      "displayOrder": 0,
+      "isActive": true,
+      "images": [],
+      "modifierGroupIds": [
+        "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+      ],
+      "components": [],
+      "allergens": [],
+      "tags": [],
+      "createdAt": "2026-10-25T20:09:39.344Z",
+      "updatedAt": "2026-10-25T20:09:39.344Z"
+    }
+  },
+  "GET products": {
+    "status": 200,
+    "body": [
+      {
+        "id": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "categoryId": "d440222b-739d-49a6-882f-f5caaac4f11b",
+        "name": "Milanesa",
+        "type": "simple",
+        "status": "active",
+        "basePrice": {
+          "amount": 150000,
+          "currency": "ARS"
+        },
+        "taxRate": 21,
+        "displayOrder": 0,
+        "isActive": true,
+        "images": [],
+        "modifierGroupIds": [
+          "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+        ],
+        "components": [],
+        "allergens": [],
+        "tags": [],
+        "createdAt": "2026-10-25T20:09:39.344Z",
+        "updatedAt": "2026-10-25T20:09:39.345Z"
+      }
+    ]
+  },
+  "GET products/:id": {
+    "status": 200,
+    "body": {
+      "id": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "categoryId": "d440222b-739d-49a6-882f-f5caaac4f11b",
+      "name": "Milanesa",
+      "type": "simple",
+      "status": "active",
+      "basePrice": {
+        "amount": 150000,
+        "currency": "ARS"
+      },
+      "taxRate": 21,
+      "displayOrder": 0,
+      "isActive": true,
+      "images": [],
+      "modifierGroupIds": [
+        "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+      ],
+      "components": [],
+      "allergens": [],
+      "tags": [],
+      "createdAt": "2026-10-25T20:09:39.344Z",
+      "updatedAt": "2026-10-25T20:09:39.345Z"
+    }
+  },
+  "POST price-lists": {
+    "status": 201,
+    "body": {
+      "id": "2c36da38-b7ed-418d-ac44-46232a4388b5",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "name": "Delivery",
+      "type": "delivery",
+      "isDefault": false,
+      "isActive": true,
+      "entries": [
+        {
+          "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+          "price": {
+            "amount": 170000,
+            "currency": "ARS"
+          },
+          "isActive": true
+        }
+      ],
+      "createdAt": "2026-10-25T20:09:39.363Z",
+      "updatedAt": "2026-10-25T20:09:39.363Z"
+    }
+  },
+  "GET price-lists": {
+    "status": 200,
+    "body": [
+      {
+        "id": "2c36da38-b7ed-418d-ac44-46232a4388b5",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "name": "Delivery",
+        "type": "delivery",
+        "isDefault": false,
+        "isActive": true,
+        "entries": [
+          {
+            "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+            "price": {
+              "amount": 170000,
+              "currency": "ARS"
+            },
+            "isActive": true
+          }
+        ],
+        "createdAt": "2026-10-25T20:09:39.363Z",
+        "updatedAt": "2026-10-25T20:09:39.364Z"
+      }
+    ]
+  },
+  "POST stock/initialize": {
+    "status": 201,
+    "body": {
+      "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "currentQuantity": 50,
+      "reservedQuantity": 0,
+      "minThreshold": 10,
+      "reorderPoint": 5,
+      "reorderQuantity": 20,
+      "updatedAt": "2026-10-25T20:09:39.381Z"
+    }
+  },
+  "POST stock/in": {
+    "status": 201,
+    "body": {
+      "level": {
+        "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "currentQuantity": 55,
+        "reservedQuantity": 0,
+        "minThreshold": 10,
+        "reorderPoint": 5,
+        "reorderQuantity": 20,
+        "lastMovementAt": "2026-10-25T20:09:39.391Z",
+        "updatedAt": "2026-10-25T20:09:39.391Z"
+      },
+      "movement": {
+        "id": "6eb20686-688e-4a6f-b7e6-916ace4ab89d",
+        "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "type": "in",
+        "quantity": 5,
+        "reason": "Compra",
+        "performedBy": "f3658d0f-8efc-4835-85cd-eeaeee1973d3",
+        "createdAt": "2026-10-25T20:09:39.391Z"
+      }
+    }
+  },
+  "GET stock/levels": {
+    "status": 200,
+    "body": [
+      {
+        "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "currentQuantity": 55,
+        "reservedQuantity": 0,
+        "minThreshold": 10,
+        "reorderPoint": 5,
+        "reorderQuantity": 20,
+        "lastMovementAt": "2026-10-25T20:09:39.391Z",
+        "updatedAt": "2026-10-25T20:09:39.391Z"
+      }
+    ]
+  },
+  "GET stock/movements": {
+    "status": 200,
+    "body": [
+      {
+        "id": "6eb20686-688e-4a6f-b7e6-916ace4ab89d",
+        "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "type": "in",
+        "quantity": 5,
+        "reason": "Compra",
+        "performedBy": "f3658d0f-8efc-4835-85cd-eeaeee1973d3",
+        "createdAt": "2026-10-25T20:09:39.391Z"
+      },
+      {
+        "id": "b71fd19b-4ac7-4d5e-b0cd-0023722e11fc",
+        "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "type": "in",
+        "quantity": 50,
+        "reason": "Stock inicial",
+        "performedBy": "f3658d0f-8efc-4835-85cd-eeaeee1973d3",
+        "createdAt": "2026-10-25T20:09:39.384Z"
+      }
+    ]
+  },
+  "POST orders": {
+    "status": 201,
+    "body": {
+      "id": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "sucursalId": "d73fd91a-aae5-4928-adfa-87533c8a0480",
+      "orderNumber": "261025-81077",
+      "type": "dine_in",
+      "status": "pending",
+      "tableNumber": "4",
+      "items": [
+        {
+          "id": "5b0db376-f71e-43fc-a2f3-012664d2b2ca",
+          "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+          "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+          "productName": "Milanesa",
+          "quantity": 2,
+          "unitPrice": {
+            "amount": 170000,
+            "currency": "ARS"
+          },
+          "totalPrice": {
+            "amount": 340000,
+            "currency": "ARS"
+          },
+          "taxRate": 21,
+          "taxAmount": {
+            "amount": 71400,
+            "currency": "ARS"
+          },
+          "modifiers": [
+            {
+              "modifierGroupId": "09d51026-1a26-48ef-a8b0-050e8ead5eac",
+              "optionId": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+              "name": "Papas",
+              "priceDelta": 20000
+            }
+          ],
+          "createdAt": "2026-10-25T20:09:39.410Z",
+          "updatedAt": "2026-10-25T20:09:39.410Z"
+        }
+      ],
+      "subtotal": {
+        "amount": 340000,
+        "currency": "ARS"
+      },
+      "taxAmount": {
+        "amount": 71400,
+        "currency": "ARS"
+      },
+      "discountAmount": {
+        "amount": 0,
+        "currency": "ARS"
+      },
+      "totalAmount": {
+        "amount": 411400,
+        "currency": "ARS"
+      },
+      "paymentStatus": "pending",
+      "sucursalName": "Central",
+      "createdAt": "2026-10-25T20:09:39.410Z",
+      "updatedAt": "2026-10-25T20:09:39.410Z"
+    }
+  },
+  "GET orders": {
+    "status": 200,
+    "body": [
+      {
+        "id": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "sucursalId": "d73fd91a-aae5-4928-adfa-87533c8a0480",
+        "orderNumber": "261025-81077",
+        "type": "dine_in",
+        "status": "pending",
+        "tableNumber": "4",
+        "items": [
+          {
+            "id": "5b0db376-f71e-43fc-a2f3-012664d2b2ca",
+            "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+            "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+            "productName": "Milanesa",
+            "quantity": 2,
+            "unitPrice": {
+              "amount": 170000,
+              "currency": "ARS"
+            },
+            "totalPrice": {
+              "amount": 340000,
+              "currency": "ARS"
+            },
+            "taxRate": 21,
+            "taxAmount": {
+              "amount": 71400,
+              "currency": "ARS"
+            },
+            "modifiers": [
+              {
+                "name": "Papas",
+                "optionId": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+                "priceDelta": 20000,
+                "modifierGroupId": "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+              }
+            ],
+            "createdAt": "2026-10-25T20:09:39.410Z",
+            "updatedAt": "2026-10-25T20:09:39.411Z"
+          }
+        ],
+        "subtotal": {
+          "amount": 340000,
+          "currency": "ARS"
+        },
+        "taxAmount": {
+          "amount": 71400,
+          "currency": "ARS"
+        },
+        "discountAmount": {
+          "amount": 0,
+          "currency": "ARS"
+        },
+        "totalAmount": {
+          "amount": 411400,
+          "currency": "ARS"
+        },
+        "paymentStatus": "pending",
+        "sucursalName": "Central",
+        "createdAt": "2026-10-25T20:09:39.410Z",
+        "updatedAt": "2026-10-25T20:09:39.411Z"
+      }
+    ]
+  },
+  "POST orders/:id/discount": {
+    "status": 201,
+    "body": {
+      "id": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "sucursalId": "d73fd91a-aae5-4928-adfa-87533c8a0480",
+      "orderNumber": "261025-81077",
+      "type": "dine_in",
+      "status": "pending",
+      "tableNumber": "4",
+      "items": [
+        {
+          "id": "5b0db376-f71e-43fc-a2f3-012664d2b2ca",
+          "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+          "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+          "productName": "Milanesa",
+          "quantity": 2,
+          "unitPrice": {
+            "amount": 170000,
+            "currency": "ARS"
+          },
+          "totalPrice": {
+            "amount": 340000,
+            "currency": "ARS"
+          },
+          "taxRate": 21,
+          "taxAmount": {
+            "amount": 71400,
+            "currency": "ARS"
+          },
+          "modifiers": [
+            {
+              "name": "Papas",
+              "optionId": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+              "priceDelta": 20000,
+              "modifierGroupId": "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+            }
+          ],
+          "createdAt": "2026-10-25T20:09:39.410Z",
+          "updatedAt": "2026-10-25T20:09:39.411Z"
+        }
+      ],
+      "subtotal": {
+        "amount": 340000,
+        "currency": "ARS"
+      },
+      "taxAmount": {
+        "amount": 71400,
+        "currency": "ARS"
+      },
+      "discountAmount": {
+        "amount": 1000,
+        "currency": "ARS"
+      },
+      "totalAmount": {
+        "amount": 410400,
+        "currency": "ARS"
+      },
+      "paymentStatus": "pending",
+      "sucursalName": "Central",
+      "createdAt": "2026-10-25T20:09:39.410Z",
+      "updatedAt": "2026-10-25T20:09:39.427Z"
+    }
+  },
+  "POST orders/:id/payments (partial)": {
+    "status": 201,
+    "body": {
+      "order": {
+        "id": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "sucursalId": "d73fd91a-aae5-4928-adfa-87533c8a0480",
+        "orderNumber": "261025-81077",
+        "type": "dine_in",
+        "status": "pending",
+        "tableNumber": "4",
+        "items": [
+          {
+            "id": "5b0db376-f71e-43fc-a2f3-012664d2b2ca",
+            "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+            "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+            "productName": "Milanesa",
+            "quantity": 2,
+            "unitPrice": {
+              "amount": 170000,
+              "currency": "ARS"
+            },
+            "totalPrice": {
+              "amount": 340000,
+              "currency": "ARS"
+            },
+            "taxRate": 21,
+            "taxAmount": {
+              "amount": 71400,
+              "currency": "ARS"
+            },
+            "modifiers": [
+              {
+                "name": "Papas",
+                "optionId": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+                "priceDelta": 20000,
+                "modifierGroupId": "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+              }
+            ],
+            "createdAt": "2026-10-25T20:09:39.410Z",
+            "updatedAt": "2026-10-25T20:09:39.428Z"
+          }
+        ],
+        "subtotal": {
+          "amount": 340000,
+          "currency": "ARS"
+        },
+        "taxAmount": {
+          "amount": 71400,
+          "currency": "ARS"
+        },
+        "discountAmount": {
+          "amount": 1000,
+          "currency": "ARS"
+        },
+        "totalAmount": {
+          "amount": 410400,
+          "currency": "ARS"
+        },
+        "paymentStatus": "pending",
+        "sucursalName": "Central",
+        "createdAt": "2026-10-25T20:09:39.410Z",
+        "updatedAt": "2026-10-25T20:09:39.428Z"
+      },
+      "payments": [
+        {
+          "id": "ee30fd59-223c-49bf-9387-fa3daf2f879e",
+          "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+          "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+          "amount": 100000,
+          "method": "cash",
+          "status": "completed",
+          "processedAt": "2026-10-25T20:09:39.435Z",
+          "createdAt": "2026-10-25T20:09:39.435Z"
+        }
+      ],
+      "remaining": 310400
+    }
+  },
+  "POST orders/:id/payments (rest)": {
+    "status": 201,
+    "body": {
+      "order": {
+        "id": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "sucursalId": "d73fd91a-aae5-4928-adfa-87533c8a0480",
+        "orderNumber": "261025-81077",
+        "type": "dine_in",
+        "status": "pending",
+        "tableNumber": "4",
+        "items": [
+          {
+            "id": "5b0db376-f71e-43fc-a2f3-012664d2b2ca",
+            "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+            "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+            "productName": "Milanesa",
+            "quantity": 2,
+            "unitPrice": {
+              "amount": 170000,
+              "currency": "ARS"
+            },
+            "totalPrice": {
+              "amount": 340000,
+              "currency": "ARS"
+            },
+            "taxRate": 21,
+            "taxAmount": {
+              "amount": 71400,
+              "currency": "ARS"
+            },
+            "modifiers": [
+              {
+                "name": "Papas",
+                "optionId": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+                "priceDelta": 20000,
+                "modifierGroupId": "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+              }
+            ],
+            "createdAt": "2026-10-25T20:09:39.410Z",
+            "updatedAt": "2026-10-25T20:09:39.428Z"
+          }
+        ],
+        "subtotal": {
+          "amount": 340000,
+          "currency": "ARS"
+        },
+        "taxAmount": {
+          "amount": 71400,
+          "currency": "ARS"
+        },
+        "discountAmount": {
+          "amount": 1000,
+          "currency": "ARS"
+        },
+        "totalAmount": {
+          "amount": 410400,
+          "currency": "ARS"
+        },
+        "paymentStatus": "completed",
+        "paymentMethod": "split",
+        "sucursalName": "Central",
+        "createdAt": "2026-10-25T20:09:39.410Z",
+        "updatedAt": "2026-10-25T20:09:39.443Z"
+      },
+      "payments": [
+        {
+          "id": "ee30fd59-223c-49bf-9387-fa3daf2f879e",
+          "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+          "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+          "amount": 100000,
+          "method": "cash",
+          "status": "completed",
+          "processedAt": "2026-10-25T20:09:39.435Z",
+          "createdAt": "2026-10-25T20:09:39.435Z"
+        },
+        {
+          "id": "801cba8d-0a10-4a5d-b035-63ac97a227cd",
+          "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+          "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+          "amount": 310400,
+          "method": "card",
+          "status": "completed",
+          "processedAt": "2026-10-25T20:09:39.442Z",
+          "createdAt": "2026-10-25T20:09:39.442Z"
+        }
+      ],
+      "remaining": 0
+    }
+  },
+  "GET orders/:id/payments": {
+    "status": 200,
+    "body": [
+      {
+        "id": "ee30fd59-223c-49bf-9387-fa3daf2f879e",
+        "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "amount": 100000,
+        "method": "cash",
+        "status": "completed",
+        "processedAt": "2026-10-25T20:09:39.435Z",
+        "createdAt": "2026-10-25T20:09:39.435Z"
+      },
+      {
+        "id": "801cba8d-0a10-4a5d-b035-63ac97a227cd",
+        "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "amount": 310400,
+        "method": "card",
+        "status": "completed",
+        "processedAt": "2026-10-25T20:09:39.442Z",
+        "createdAt": "2026-10-25T20:09:39.442Z"
+      }
+    ]
+  },
+  "POST orders/:id/status confirm": {
+    "status": 201,
+    "body": {
+      "id": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "sucursalId": "d73fd91a-aae5-4928-adfa-87533c8a0480",
+      "orderNumber": "261025-81077",
+      "type": "dine_in",
+      "status": "confirmed",
+      "tableNumber": "4",
+      "items": [
+        {
+          "id": "5b0db376-f71e-43fc-a2f3-012664d2b2ca",
+          "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+          "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+          "productName": "Milanesa",
+          "quantity": 2,
+          "unitPrice": {
+            "amount": 170000,
+            "currency": "ARS"
+          },
+          "totalPrice": {
+            "amount": 340000,
+            "currency": "ARS"
+          },
+          "taxRate": 21,
+          "taxAmount": {
+            "amount": 71400,
+            "currency": "ARS"
+          },
+          "modifiers": [
+            {
+              "name": "Papas",
+              "optionId": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+              "priceDelta": 20000,
+              "modifierGroupId": "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+            }
+          ],
+          "createdAt": "2026-10-25T20:09:39.410Z",
+          "updatedAt": "2026-10-25T20:09:39.445Z"
+        }
+      ],
+      "subtotal": {
+        "amount": 340000,
+        "currency": "ARS"
+      },
+      "taxAmount": {
+        "amount": 71400,
+        "currency": "ARS"
+      },
+      "discountAmount": {
+        "amount": 1000,
+        "currency": "ARS"
+      },
+      "totalAmount": {
+        "amount": 410400,
+        "currency": "ARS"
+      },
+      "paymentStatus": "completed",
+      "paymentMethod": "split",
+      "sucursalName": "Central",
+      "createdAt": "2026-10-25T20:09:39.410Z",
+      "updatedAt": "2026-10-25T20:09:39.454Z"
+    }
+  },
+  "POST receipts": {
+    "status": 201,
+    "body": {
+      "id": "5b9a8de3-a493-4314-8fe1-73c3c9145f3a",
+      "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+      "sucursalId": "d73fd91a-aae5-4928-adfa-87533c8a0480",
+      "receiptNumber": "ticket-0003-261043205073",
+      "type": "ticket",
+      "status": "issued",
+      "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+      "orderNumber": "261025-81077",
+      "pointOfSale": "0003",
+      "receiptType": "ticket",
+      "subtotal": {
+        "amount": 340000,
+        "currency": "ARS"
+      },
+      "taxAmount": {
+        "amount": 71400,
+        "currency": "ARS"
+      },
+      "discountAmount": {
+        "amount": 1000,
+        "currency": "ARS"
+      },
+      "totalAmount": {
+        "amount": 410400,
+        "currency": "ARS"
+      },
+      "paymentMethod": "split",
+      "items": [
+        {
+          "id": "5c4c8e15-6a02-4477-abc9-8decdd41a3ed",
+          "receiptId": "5b9a8de3-a493-4314-8fe1-73c3c9145f3a",
+          "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+          "productName": "Milanesa",
+          "quantity": 2,
+          "unitPrice": {
+            "amount": 170000,
+            "currency": "ARS"
+          },
+          "totalPrice": {
+            "amount": 340000,
+            "currency": "ARS"
+          },
+          "taxRate": 21,
+          "taxAmount": {
+            "amount": 71400,
+            "currency": "ARS"
+          },
+          "modifiers": [
+            {
+              "name": "Papas",
+              "optionId": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+              "priceDelta": 20000,
+              "modifierGroupId": "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+            }
+          ],
+          "createdAt": "2026-10-25T20:09:39.466Z",
+          "updatedAt": "2026-10-25T20:09:39.466Z"
+        }
+      ],
+      "createdAt": "2026-10-25T20:09:39.466Z",
+      "updatedAt": "2026-10-25T20:09:39.466Z",
+      "issuedAt": "2026-10-25T20:09:39.466Z"
+    }
+  },
+  "GET receipts": {
+    "status": 200,
+    "body": [
+      {
+        "id": "5b9a8de3-a493-4314-8fe1-73c3c9145f3a",
+        "businessId": "6cf54e83-8f32-4c3c-baeb-4e66b46fad1c",
+        "sucursalId": "d73fd91a-aae5-4928-adfa-87533c8a0480",
+        "receiptNumber": "ticket-0003-261043205073",
+        "type": "ticket",
+        "status": "issued",
+        "orderId": "80ec66ad-39e4-4bba-8e67-af721623a8ea",
+        "orderNumber": "261025-81077",
+        "pointOfSale": "0003",
+        "receiptType": "ticket",
+        "subtotal": {
+          "amount": 340000,
+          "currency": "ARS"
+        },
+        "taxAmount": {
+          "amount": 71400,
+          "currency": "ARS"
+        },
+        "discountAmount": {
+          "amount": 1000,
+          "currency": "ARS"
+        },
+        "totalAmount": {
+          "amount": 410400,
+          "currency": "ARS"
+        },
+        "paymentMethod": "split",
+        "items": [
+          {
+            "id": "5c4c8e15-6a02-4477-abc9-8decdd41a3ed",
+            "receiptId": "5b9a8de3-a493-4314-8fe1-73c3c9145f3a",
+            "productId": "0d1c3812-6475-442a-b9dd-1761a7d8c766",
+            "productName": "Milanesa",
+            "quantity": 2,
+            "unitPrice": {
+              "amount": 170000,
+              "currency": "ARS"
+            },
+            "totalPrice": {
+              "amount": 340000,
+              "currency": "ARS"
+            },
+            "taxRate": 21,
+            "taxAmount": {
+              "amount": 71400,
+              "currency": "ARS"
+            },
+            "modifiers": [
+              {
+                "name": "Papas",
+                "optionId": "826c0ae2-6449-44a1-bdc7-b833f42456ae",
+                "priceDelta": 20000,
+                "modifierGroupId": "09d51026-1a26-48ef-a8b0-050e8ead5eac"
+              }
+            ],
+            "createdAt": "2026-10-25T20:09:39.466Z",
+            "updatedAt": "2026-10-25T20:09:39.467Z"
+          }
+        ],
+        "createdAt": "2026-10-25T20:09:39.466Z",
+        "updatedAt": "2026-10-25T20:09:39.467Z",
+        "issuedAt": "2026-10-25T20:09:39.466Z"
+      }
+    ]
+  },
+  "GET businesses": {
+    "status": 200,
+    "body": []
+  }
+}

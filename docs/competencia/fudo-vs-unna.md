@@ -1,141 +1,100 @@
-# UNNA vs Fudo: comparación de producto y negocio
+# UNNA vs Fudo y los especialistas en cafés
 
-**Conclusión:** Fudo es un producto maduro (35.000+ locales, sitios para al menos Argentina, México y Colombia, ecosistema de pagos, delivery y facturación) y UNNA es un MVP con una base técnica sólida en ventas y catálogo. Hoy UNNA no compite de igual a igual: le faltan **facturación ARCA, caja/turnos, impresión de comandas, mesas, KDS, reportes y app móvil**, que en Fudo son el piso. Donde UNNA puede diferenciarse es en lo que los usuarios de Fudo más le reclaman (implementación lenta, soporte, módulos que se suman al precio, multi-sucursal "a consultar") y en el posicionamiento de comunidad.
+**Conclusión:** UNNA apunta a **cafés take away**, no a restaurantes. En ese segmento Fudo es un rival generalista: sirve, pero le cobra a un café una suite pensada para salón (piso real: **$36.000/mes** con facturación). El problema es que ir por cafés **no diferencia por sí solo**: ya hay sistemas especializados que se venden como "alternativa a Fudo para cafés" (Frambuesa, Nikao, GestResto, Payper, Madi Digital, bcnsoft), varios con ARCA incluido y precios más bajos. La diferencia de UNNA tiene que estar en **cómo resuelve la hora pico**: venta en segundos, pedido anticipado con aviso de "listo", fidelización incluida y facturación en el mismo cobro.
 
-> Relevado el 25/10/2026 desde las páginas públicas de fu.do (home, funcionalidades, precios), reseñas del App Store y artículos de terceros. **No se creó una cuenta en Fudo**: la comparación de la app de Fudo por dentro se basa en lo que publica y en reseñas, no en uso directo. Lo de UNNA es lo que está en `develop` hoy y fue probado contra la API real.
+> Relevado el 25/10/2026 desde páginas públicas (fu.do, frambuesa.app, nikao.com.ar, gestresto.com y otros), reseñas del App Store y artículos de terceros. No se creó cuenta en ningún producto: lo de los competidores sale de lo que publican. Lo de UNNA es lo que está en `develop` hoy, probado contra la API real. Los precios están en pesos y cambian seguido.
 
-## Resumen en una tabla
+## 1. Qué necesita un café take away
 
-| Eje | Fudo | UNNA hoy | Lectura |
-|---|---|---|---|
-| Alcance funcional | Suite completa: gestión, cobros, delivery, facturación, KDS, mesas | Ventas/POS, catálogo, stock, sucursales, horarios | Brecha grande |
-| Facturación ARCA | Módulo pago, con impresoras fiscales | Ticket interno; A/B/C quedan en borrador, sin CAE | Bloqueante para vender en AR |
-| Pagos | Terminal Fudo, Fudo Pagos, Mercado Pago | Registro manual de pagos (efectivo, tarjeta, MP, transferencia, QR) | Brecha |
-| Delivery | Tienda online, WhatsApp con IA, Rappi/PedidosYa/Uber Eats, repartidores | Tipo de pedido "delivery" sin canales | Brecha grande |
-| Multi-sucursal | "Contactar a ventas" | Incluido desde el onboarding (sucursales y horarios por sucursal) | **Ventaja UNNA** |
-| Integridad de datos | No observable desde afuera | Precios calculados en el servidor, bloqueo por pedido, sin edición tras cobrar, aislamiento entre negocios | **Ventaja UNNA** (verificada) |
-| Onboarding | "Listo en 15 minutos", formulario de 6 campos | Registro + wizard de 4 pasos con CUIT, sucursales y horarios | Fudo más rápido; UNNA captura datos fiscales desde el inicio |
-| Precio | Planes de $22.500 a $69.500/mes + módulos | Sin modelo definido | Por definir (ver sección 5) |
-| Escala y confianza | 35.000+ locales, 350M+ transacciones/año | Sin clientes | Brecha de mercado |
-
-## 1. Funcionalidades
-
-✅ tiene · 🟡 parcial · ❌ no tiene
-
-| Área | Fudo | UNNA | Nota sobre UNNA |
-|---|---|---|---|
-| Venta por mostrador / take away | ✅ | ✅ | POS con tipos salón, para llevar, delivery, retiro |
-| Modificadores y adicionales | ✅ | ✅ | Mínimo/máximo/obligatorio; opciones con precio negativo ("sin X") |
-| Descuentos | ✅ fijos, %, automáticos por cliente | 🟡 | Solo monto fijo por pedido |
-| Pagos divididos y parciales | ✅ | ✅ | Con bloqueo contra pagos simultáneos |
-| Propinas | ✅ | ❌ | |
-| Cierre parcial / venta por comensal | ✅ (módulo) | ❌ | |
-| Caja: arqueo, arqueo ciego, múltiples cajas, turnos | ✅ | ❌ | |
-| Impresión de comandas y precuentas | ✅ USB/Serie/Ethernet | ❌ | |
-| Monitor de cocina (KDS) | ✅ tiempos y alertas | ❌ | Hay estados de pedido (confirmar → preparar → listo → entregar) |
-| Gestión de mesas (mapa, traslados, camareros) | ✅ módulo $8.500 | 🟡 | Solo número de mesa en el pedido |
-| Catálogo: categorías, productos, combos | ✅ | ✅ | Combos/compuestos soportados en dominio |
-| Listas de precios | ✅ (Pro) | 🟡 | Existen en la API, el POS todavía usa el precio base |
-| Stock: niveles, movimientos, conteo, mermas | ✅ | ✅ | Ingreso, egreso con tipo, conteo, umbrales |
-| Recetas con costeo e ingredientes | ✅ | ❌ | |
-| Gastos, estado de resultados | ✅ | ❌ | |
-| Clientes y cuentas corrientes | ✅ | ❌ | |
-| Proveedores | ✅ | ❌ | |
-| Usuarios ilimitados, roles, PIN por mozo | ✅ | 🟡 | Roles en el dominio de auth, sin gestión de equipo en la UI |
-| Reportes y exportación a Excel | ✅ | ❌ | |
-| Facturación electrónica ARCA | ✅ módulo $13.500 | ❌ | Planificado (T26) |
-| Carta QR / pedido desde la mesa | ✅ | ❌ | |
-| Tienda online, WhatsApp, IA, repartidores | ✅ | ❌ | Planificado (T25) |
-| Integraciones delivery (Rappi, PedidosYa, Uber Eats) | ✅ módulo $19.500 | ❌ | |
-| App móvil (mozos) y app para comensales | ✅ | ❌ | Web responsive |
-| API pública | ✅ (Pro) | 🟡 | API REST interna documentada con Swagger; sin API pública para terceros |
-| Multi-sucursal | 🟡 ventas consultivas | ✅ | Sucursales y horarios desde el día uno |
-| Autenticación completa (verificación, recupero) | — | ✅ | Registro, login, verificación de email, recupero de contraseña |
-
-## 2. UI/UX
-
-| Aspecto | Fudo | UNNA |
-|---|---|---|
-| Promesa de entrada | "Listo en 15 minutos", "Sin tarjeta de crédito" | Registro + onboarding guiado |
-| Alta | Un formulario: negocio, nombre, teléfono, email, contraseña, términos | Mismos datos + wizard: datos fiscales con CUIT validado, sucursales, horarios, confirmación |
-| Plataformas | Web, app móvil iOS/Android, app para comensales | Web (Next.js), sin app nativa |
-| POS | Grilla de productos, mesas, comandas | Grilla por categoría con búsqueda, diálogo de modificadores que bloquea si falta una opción obligatoria, totales del servidor, cobro dividido, ticket |
-| Accesibilidad | Sin datos públicos | Contraste AA en botones (verificado por test), roles ARIA en pestañas, diálogos y alertas |
-| Percepción de usuarios | "muy sencillo de utilizar. Intuitivo y útil" (App Store) | Sin usuarios aún |
-| Quejas de usuarios | "Se pone en gris la aplicación muy seguido", "la parte de inventarios esta bien complicada" | — |
-
-**Lectura:** Fudo optimiza el tiempo hasta la primera venta. UNNA pide más datos al principio, lo que agrega fricción pero deja listo el terreno para facturar (CUIT, condición frente al IVA, punto de venta). Vale la pena medir el abandono del wizard y permitir completar los datos fiscales después de la primera venta.
-
-## 3. Comportamiento y reglas de negocio
-
-| Regla | Fudo | UNNA |
-|---|---|---|
-| Quién calcula precios y totales | No observable | Siempre el servidor; el cliente no puede mandar precios |
-| Editar un pedido ya cobrado | No observable | Bloqueado desde el primer pago |
-| Cancelar un pedido con pagos | No observable | Rechazado: corresponde reembolso |
-| Pagos simultáneos sobre el mismo pedido | No observable | Serializados con bloqueo de fila; probado: 10 pagos a la vez → 1 aceptado |
-| Comandas sin caja abierta | Reclamado por un usuario: "dejan q manden comandas sin q el cajero abra caja" | No aplica todavía (no hay caja) |
-| Aislamiento entre negocios | No observable | Verificado: un negocio no puede leer ni modificar datos de otro |
-| Validación de entrada | Formulario de alta con reglas claras | Validación en API (DTOs) y en web, mensajes en rioplatense |
-
-**Lectura:** las reglas de integridad son una ventaja real de UNNA, pero invisibles para el cliente. Hay que traducirlas a beneficios concretos ("nunca perdés un cobro", "el ticket siempre coincide con lo cobrado").
-
-## 4. Modelo de negocio de Fudo
-
-**Suscripción mensual en pesos, por plan, más módulos que se suman** (Argentina, lista publicada en junio de 2026):
-
-| Plan | Precio final/mes | Qué agrega |
-|---|---|---|
-| Inicial | $22.500 | Mostrador, caja, comandas, descuentos, carta QR |
-| Avanzado (recomendado) | $43.900 | + inventario, recetas, clientes y proveedores, reportes, pedido desde la mesa |
-| Pro | $69.500 | + múltiples cajas y turnos, estado de resultados, listas de precios, inventario valorizado, API |
-
-| Módulo | Precio final/mes |
+| Necesidad | Por qué importa |
 |---|---|
-| Gestión de Mesas | $8.500 |
-| Facturación Electrónica | $13.500 |
-| Delivery Apps | $19.500 |
-| Recepcionista IA | $55.000 |
+| Venta en segundos en el mostrador | Ticket chico, mucho volumen, cola en hora pico (8–11 h) |
+| Opciones de cada café | Tamaño, tipo de leche, shot extra, sin azúcar: cada una puede sumar o restar precio |
+| Pedido con nombre y aviso de "listo" | El cliente espera parado; llamar por nombre o avisar por el celular |
+| Pedido anticipado para retirar | El cliente pide en el camino y pasa a buscar |
+| Cobro con QR (Mercado Pago) y tarjeta | Pocos pagan en efectivo; el cobro tiene que conciliarse solo |
+| Facturación ARCA en el mismo cobro | Obligatoria; no puede agregar pasos al mostrador |
+| Caja y turnos | Turnos cortos, cierre rápido y sin diferencias |
+| Fidelización (tarjeta de sellos, puntos) | Clientes que vuelven todos los días |
+| Stock de insumos y costo por taza | Café, leches, vasos: el margen está en el costo por taza |
+| Varias sucursales | Las cadenas de café crecen por locales chicos |
 
-- **Incluido en todos:** usuarios ilimitados, capacitaciones, app móvil, cobro con Terminal Fudo.
-- **Sin contrato ni costo de instalación**, prueba gratis sin tarjeta.
-- **Multi-sucursal:** a consultar con ventas.
-- **Otros ingresos probables:** Terminal Fudo / Fudo Pagos (comisiones no publicadas), logística (Rapiboy).
-- **Ejemplo:** un restaurante con salón que factura y toma delivery en plan Avanzado paga $43.900 + $8.500 + $13.500 + $19.500 = **$85.400/mes**.
-- **Mensaje comercial:** "Sin comisiones del 30%" (contra las apps de delivery).
+Lo que **pesa poco** en este segmento: mapa de mesas, traslados entre mesas, venta por comensal, reservas, integraciones con apps de delivery.
 
-## 5. Oportunidades para UNNA
+## 2. Cómo cubre cada uno el segmento
 
-Ordenadas por impacto para poder vender en Argentina.
+✅ tiene · 🟡 parcial · ❌ no tiene · — no publicado
 
-| Prioridad | Qué | Por qué |
+| Necesidad | Fudo | Frambuesa | Nikao | GestResto | **UNNA hoy** |
+|---|---|---|---|---|---|
+| Venta rápida en mostrador | ✅ "Pedidos rápidos desde mostrador" | ✅ varias ventas a la vez con nombre | ✅ "Abrís el pedido en un toque" | ✅ por teclado, sin mouse | 🟡 grilla con búsqueda; sin modo rápido ni favoritos |
+| Opciones del café (tamaño, leche) con precio | ✅ modificadores | — | — | — | ✅ mínimo/máximo/obligatorio, deltas positivos y negativos |
+| Pedido con nombre / aviso de "listo" | 🟡 estados de pedido; aviso por WhatsApp en tienda online | 🟡 nombre o referencia | — | — | 🟡 estados (confirmar → preparar → listo → entregar), sin nombre ni aviso |
+| Pedido anticipado para retirar | ✅ tienda online / WhatsApp | ✅ pedidos online sin comisión | ❌ | ❌ | ❌ (existe el tipo "retiro") |
+| Cobro QR Mercado Pago | ✅ | — | ✅ QR en la caja | ✅ registrado en el turno | 🟡 se registra el medio a mano |
+| ARCA | 🟡 módulo $13.500 | ✅ incluido en Pro / plan con facturación | ✅ en el mismo flujo del ticket | — | ❌ (planificado, T26) |
+| Caja y turnos | ✅ arqueo, turnos en Pro | ✅ apertura, arqueo, historial | ✅ cierre con MP, efectivo y tarjeta | ✅ esperado vs declarado | ❌ |
+| Fidelización | ❌ | ✅ puntos, sellos, cashback (Pro) | ❌ | ❌ "Todavía no" | ❌ |
+| Stock de insumos / recetas | ✅ recetas con costeo (Avanzado) | ✅ descuento de insumos (Pro) | ❌ | 🟡 en el plan superior | 🟡 stock por producto; sin recetas ni insumos |
+| Multi-sucursal | 🟡 "Contactar a ventas" | ✅ precio por sucursal | — | 🟡 plan superior | ✅ incluido desde el onboarding |
+| Integridad de cobros | — | — | — | — | ✅ precios del servidor, bloqueo contra pagos simultáneos, sin edición tras cobrar |
+
+## 3. Precios para un café (por mes, una sucursal)
+
+| Producto | Lo mínimo para operar y facturar | Con stock/recetas | Prueba |
+|---|---|---|---|
+| Fudo | Inicial $22.500 + Facturación $13.500 = **$36.000** | Avanzado $43.900 + Facturación = **$57.400** | Gratis, sin tarjeta (sin plazo publicado) |
+| Frambuesa | Inicial + Facturación Fiscal **$29.900** | Pro **$49.900** (incluye ARCA y fidelización) | 7 días de Pro, desde el primer turno |
+| Nikao | Básico **$29.500** (ARCA en el flujo; plan no especificado) | Pro $69.900 | 30 días, sin tarjeta |
+| GestResto | Básico **$19.990** IVA incluido (ARCA no publicado) | Plan superior (sin precio en la página) | 14 días, sin tarjeta |
+| bcnsoft | Desde **$54.900 + IVA** | — | — |
+| **UNNA** | Sin precio definido | — | — |
+
+Fudo además usa como mensaje "Sin comisiones del 30%" (contra las apps de delivery) y vende un módulo Recepcionista IA a $55.000/mes.
+
+## 4. Dónde puede diferenciarse UNNA
+
+| Idea | Qué es | Quién lo tiene hoy |
 |---|---|---|
-| 1 | Facturación ARCA (CAE, numeración secuencial) | Sin esto no se puede operar legalmente; hoy el ticket tiene numeración aleatoria |
-| 2 | Caja y turnos (apertura, arqueo, cierre) | Es la rutina diaria de cualquier local; además evita el problema que reportan en Fudo |
-| 3 | Impresión de comandas y KDS | La cocina necesita ver el pedido; los estados ya existen en UNNA |
-| 4 | Mesas (mapa y traslados) | Salones y bares lo esperan de entrada |
-| 5 | Reportes básicos | Ventas por día, producto y medio de pago |
-| 6 | Integración de cobro (Mercado Pago QR/Point) | Cobro sin cargar el pago a mano |
+| **Modo hora pico** | Venta en 2–3 toques: favoritos, repetir el último pedido, teclado, opciones del café en un solo panel. Medible: segundos por venta | GestResto (teclado), Nikao ("un toque") |
+| **Pedido anticipado + "tu café está listo"** | El cliente pide por link/QR, paga y recibe aviso (WhatsApp o web) cuando está listo; en el mostrador el pedido entra con su nombre | Nadie lo resuelve completo |
+| **Fidelización incluida** | Tarjeta de sellos digital ("el 10.º café gratis") sin plan superior | Solo Frambuesa Pro |
+| **ARCA y QR en el mismo cobro, incluidos** | Un solo toque cobra, concilia y factura | Nikao, Frambuesa (con condiciones) |
+| **Costo por taza** | Recetas simples (café, leche, vaso) y margen por producto | Fudo Avanzado, Frambuesa Pro |
+| **Cadenas de cafés** | Multi-sucursal incluido y precio por sucursal claro | Frambuesa |
+| **Confiabilidad del cobro** | Lo que UNNA ya garantiza: el ticket siempre coincide con lo cobrado, nunca se pierde un pago | Nadie lo comunica |
 
-**Diferenciadores a sostener:**
+## 5. Prioridades de producto para el segmento
 
-- **Multi-sucursal incluido**, sin "contactar a ventas".
-- **Precio todo incluido** (o con menos módulos): el ejemplo de Fudo suma $85.400/mes con los módulos que usa un restaurante típico.
-- **Implementación acompañada y rápida**: es la queja más fuerte en reseñas ("Tarde 2 meses para dejar el sistema al 100", "nadie te da una solución").
-- **Confiabilidad visible**: estabilidad y reglas de cobro como argumento de venta.
-- **Comunidad ("A Community of Sharing")**: algo que Fudo no ofrece. Ideas: benchmarks anónimos entre locales parecidos, compras colectivas a proveedores, referidos con beneficio para los dos.
-
-**Modelos de precio posibles (para decidir, no decididos):**
-
-| Modelo | A favor | En contra |
+| Orden | Qué | Por qué primero |
 |---|---|---|
-| Plan único todo incluido por sucursal | Simple, contrasta con los módulos de Fudo | Menos margen en locales chicos |
-| Freemium (POS gratis, pago por facturación, reportes y multi-sucursal) | Baja la barrera de entrada | Requiere escala para monetizar |
-| Comisión por pagos procesados | Alinea precio con uso | Depende de integrar pagos; Fudo usa "sin comisiones" como mensaje |
+| 1 | Facturación ARCA en el cobro + numeración secuencial | Sin esto no se puede vender en Argentina |
+| 2 | Caja y turnos | Rutina diaria del café, y todos los rivales lo tienen |
+| 3 | Modo hora pico (favoritos, repetir, teclado) | Es el diferencial más visible en el mostrador |
+| 4 | Cobro QR de Mercado Pago integrado | Medio de pago dominante en el segmento |
+| 5 | Pedido con nombre + pantalla de barra + aviso de "listo" | Base del pedido anticipado; los estados ya existen |
+| 6 | Pedido anticipado por link/QR | Diferencial que nadie resuelve completo |
+| 7 | Tarjeta de sellos | Retención diaria; solo un rival la ofrece, y en Pro |
+| 8 | Recetas e insumos (costo por taza) | Margen; puede venir después de vender |
+
+Se postergan: mapa de mesas, venta por comensal, integraciones con apps de delivery, KDS completo de cocina.
+
+## 6. Modelo de negocio (para decidir)
+
+| Opción | A favor | En contra |
+|---|---|---|
+| Plan único por sucursal con ARCA y sellos incluidos, por debajo del piso de Fudo ($36.000) | Mensaje simple contra los módulos de Fudo y los planes Pro | Compite en precio con Frambuesa y Nikao (~$29.500–29.900) |
+| Freemium: POS gratis; pago por ARCA, pedido anticipado, sellos y multi-sucursal | Entrada sin fricción para cafés chicos | Necesita escala para monetizar |
+| Suscripción + comisión baja sobre pedidos anticipados | Cobra cuando el café vende más | Choca con el "sin comisión" de Fudo y Frambuesa |
+
+## 7. Contexto: Fudo como suite completa
+
+Para referencia, lo que Fudo cubre más allá del café (y que UNNA no necesita priorizar): gestión de mesas ($8.500/mes), venta por comensal, KDS con tiempos y alertas, integraciones con Rappi, PedidosYa y Uber Eats ($19.500/mes), app para comensales, impresoras fiscales, API pública (Pro), recepcionista IA ($55.000/mes). Planes generales: Inicial $22.500, Avanzado $43.900, Pro $69.500 por mes (lista de junio de 2026).
+
+**Percepción de usuarios de Fudo** (App Store México, 3,3/5 con 32 calificaciones): elogian la facilidad ("muy sencillo de utilizar. Intuitivo y útil") y se quejan del soporte e implementación ("Tarde 2 meses para dejar el sistema al 100", "nadie te da una solución") y de la estabilidad ("Se pone en gris la aplicación muy seguido").
 
 ## Fuentes
 
-- fu.do: [home](https://fu.do/es-ar/), [funcionalidades](https://fu.do/es-ar/funcionalidades/), [precios](https://fu.do/es-ar/precios/), [preguntas frecuentes](https://fu.do/es-ar/preguntas-frecuentes/), [crear cuenta](https://fu.do/es-ar/crear-cuenta/), [lista de precios AR junio 2026 (PDF)](https://fu.do/assets/files/AR_FUDO_Planes-y-precios_JUN-26.pdf).
-- [Reseñas App Store México](https://apps.apple.com/mx/app/fudo-software-gastron%C3%B3mico/id1137158486?see-all=reviews): 3,3/5 con 32 calificaciones.
-- [Viteunetable: cuánto cuesta un software para restaurante en Argentina](https://viteunetable.com/es/cuanto-cuesta-software-restaurante-argentina) (confirma la lista de junio 2026).
-- UNNA: `odd/tasks/unna-platform.md` (S1–S10, L1–L27) y el código de `develop`.
+- Fudo: [home AR](https://fu.do/es-ar/), [home general (cafeterías)](https://fu.do/es/), [funcionalidades](https://fu.do/es-ar/funcionalidades/), [precios](https://fu.do/es-ar/precios/), [lista AR junio 2026 (PDF)](https://fu.do/assets/files/AR_FUDO_Planes-y-precios_JUN-26.pdf), [caso Hábito Café](https://fu.do/es-ar/historias-de-exito/habito-cafe/), [reseñas App Store MX](https://apps.apple.com/mx/app/fudo-software-gastron%C3%B3mico/id1137158486?see-all=reviews).
+- Especialistas: [Frambuesa vs Fudo](https://www.frambuesa.app/comparison), [Nikao para cafeterías](https://nikao.com.ar/sistema-para-cafeterias), [GestResto para cafés](https://gestresto.com/para/cafes/), [bcnsoft para cafeterías](https://bcnsoft.com.ar/sistema-para-cafeterias-bcnsoft/), [Payper](https://payperapp.io/sistema-gestion-cafeterias-argentina), [Madi Digital](https://app.madi-digital.com/software-para-cafeteria).
+- UNNA: `odd/tasks/unna-platform.md` (S1–S11) y el código de `develop`.

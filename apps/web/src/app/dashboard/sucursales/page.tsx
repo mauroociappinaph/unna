@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
@@ -54,11 +54,7 @@ export default function SucursalesPage() {
   const [editingSucursal, setEditingSucursal] = useState<Sucursal | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
-  useEffect(() => {
-    loadBusiness();
-  }, []);
-
-  const loadBusiness = async () => {
+  const loadBusiness = useCallback(async () => {
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
@@ -82,7 +78,11 @@ export default function SucursalesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    loadBusiness();
+  }, [loadBusiness]);
 
   const handleSubmitSucursal = async (data: SucursalFormData) => {
     if (!business) return;

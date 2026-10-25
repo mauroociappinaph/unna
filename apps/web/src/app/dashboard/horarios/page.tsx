@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
@@ -46,18 +46,13 @@ function HorariosContent() {
     sunday: { open: string; close: string; isClosed: boolean };
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Bumped on every loaded schedule so the editor re-initializes with the fetched data.
+  const [scheduleVersion, setScheduleVersion] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const sucursalParam = searchParams.get('sucursal');
-    if (sucursalParam) {
-      setSelectedSucursal(sucursalParam);
-    }
-    loadBusiness();
-  }, [searchParams]);
-
-  const loadBusiness = async () => {
+  // Loads for an explicit sucursal so it never reads a stale selection from state.
+  const loadBusiness = useCallback(async (sucursalId: 'main' | string) => {
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
@@ -73,11 +68,12 @@ function HorariosContent() {
 
       const mainBusiness = businesses[0];
       setBusiness(mainBusiness);
+      setScheduleVersion((v) => v + 1);
 
-      if (selectedSucursal === 'main') {
+      if (sucursalId === 'main') {
         setSchedule(mainBusiness.schedule);
       } else {
-        const sucursal = mainBusiness.sucursales?.find((s) => s.id === selectedSucursal);
+        const sucursal = mainBusiness.sucursales?.find((s) => s.id === sucursalId);
         if (sucursal) {
           setSchedule(sucursal.schedule);
         } else {
@@ -90,7 +86,13 @@ function HorariosContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    const sucursalId = searchParams.get('sucursal') ?? 'main';
+    setSelectedSucursal(sucursalId);
+    loadBusiness(sucursalId);
+  }, [searchParams, loadBusiness]);
 
   const handleSubmit = async (data: ScheduleFormData) => {
     if (!business) return;
@@ -103,7 +105,7 @@ function HorariosContent() {
         await api.updateSucursalSchedule(business.id, selectedSucursal, data);
       }
       alert('Horarios guardados correctamente');
-      loadBusiness();
+      loadBusiness(selectedSucursal);
     } catch (err) {
       console.error(err);
       alert('Error al guardar los horarios');
@@ -190,6 +192,7 @@ function HorariosContent() {
 
           {schedule && (
             <HorarioEditor
+              key={scheduleVersion}
               initialData={schedule}
               onSubmit={handleSubmit}
               onCancel={() => {}}

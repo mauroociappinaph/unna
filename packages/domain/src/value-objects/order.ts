@@ -89,27 +89,26 @@ export class OrderItem {
   }
 
   public addModifier(modifier: { modifierGroupId: string; optionId: string; name: string; priceDelta: number }): OrderItem {
-    const modifierPrice = Money.fromCents(modifier.priceDelta).multiply(this.quantity);
-    return new OrderItem({
-      ...this.toProps(),
-      modifiers: [...this.modifiers, modifier],
-      unitPrice: this.unitPrice.add(Money.fromCents(modifier.priceDelta)),
-      totalPrice: this.totalPrice.add(modifierPrice),
-      taxAmount: this.totalPrice.add(modifierPrice).percentage(this.taxRate),
-      updatedAt: new Date(),
-    });
+    return this.repriced(this.unitPrice.amount + modifier.priceDelta, [...this.modifiers, modifier]);
   }
 
   public removeModifier(optionId: string): OrderItem {
     const modifier = this.modifiers.find(m => m.optionId === optionId);
     if (!modifier) return this;
-    const modifierPrice = Money.fromCents(modifier.priceDelta).multiply(this.quantity);
+    return this.repriced(this.unitPrice.amount - modifier.priceDelta, this.modifiers.filter(m => m.optionId !== optionId));
+  }
+
+  // Deltas can be negative ("sin X" options), so prices are recomputed from the unit price in cents.
+  private repriced(unitCents: number, modifiers: OrderItemProps['modifiers']): OrderItem {
+    if (unitCents < 0) throw new Error('El precio con modificadores no puede ser negativo');
+    const unitPrice = Money.fromCents(unitCents, this.unitPrice.currency);
+    const totalPrice = unitPrice.multiply(this.quantity);
     return new OrderItem({
       ...this.toProps(),
-      modifiers: this.modifiers.filter(m => m.optionId !== optionId),
-      unitPrice: this.unitPrice.subtract(Money.fromCents(modifier.priceDelta)),
-      totalPrice: this.totalPrice.subtract(modifierPrice),
-      taxAmount: this.totalPrice.subtract(modifierPrice).percentage(this.taxRate),
+      modifiers,
+      unitPrice,
+      totalPrice,
+      taxAmount: totalPrice.percentage(this.taxRate),
       updatedAt: new Date(),
     });
   }

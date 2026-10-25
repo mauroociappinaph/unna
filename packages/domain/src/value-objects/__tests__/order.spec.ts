@@ -1,4 +1,4 @@
-import { Order } from '../order';
+import { Order, OrderItem } from '../order';
 import { Money } from '../money';
 
 const item = (overrides: Partial<{ productId: string; quantity: number; unitCents: number; taxRate: number }> = {}) => {
@@ -119,5 +119,35 @@ describe('Order', () => {
       expect(refunded.status).toBe('refunded');
       expect(refunded.paymentStatus).toBe('refunded');
     });
+  });
+});
+
+describe('OrderItem modifiers', () => {
+  const item = () =>
+    OrderItem.create({
+      orderId: 'order-1', productId: 'p', productName: 'Milanesa', quantity: 2,
+      unitPrice: Money.fromCents(150000), totalPrice: Money.fromCents(300000),
+      taxRate: 21, taxAmount: Money.fromCents(63000), modifiers: [],
+    });
+  const sinGuarnicion = { modifierGroupId: 'grp', optionId: 'opt', name: 'Sin guarnición', priceDelta: -15050 };
+
+  it('applies a negative option to unit and total price', () => {
+    const withOption = item().addModifier(sinGuarnicion);
+
+    expect(withOption.unitPrice.amount).toBe(134950);
+    expect(withOption.totalPrice.amount).toBe(269900);
+    expect(withOption.taxAmount.amount).toBe(56679);
+  });
+
+  it('restores the price when a negative option is removed', () => {
+    const restored = item().addModifier(sinGuarnicion).removeModifier('opt');
+
+    expect(restored.unitPrice.amount).toBe(150000);
+    expect(restored.totalPrice.amount).toBe(300000);
+    expect(restored.modifiers).toEqual([]);
+  });
+
+  it('rejects an option that makes the price negative', () => {
+    expect(() => item().addModifier({ ...sinGuarnicion, priceDelta: -200000 })).toThrow('El precio con modificadores no puede ser negativo');
   });
 });

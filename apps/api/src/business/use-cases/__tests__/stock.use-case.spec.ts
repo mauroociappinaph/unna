@@ -1,4 +1,4 @@
-import { StockUseCase } from '../product-catalog.use-case';
+import { StockUseCase } from '../stock.use-case';
 import {
   ProductRepositoryPort,
   StockLevel,

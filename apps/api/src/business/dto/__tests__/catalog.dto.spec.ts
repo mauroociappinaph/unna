@@ -7,7 +7,11 @@ import { CreateProductDto, TopSellersQueryDto, UpdateProductDto } from '../produ
 import { CreateModifierGroupDto, ModifierOptionDto, UpdateModifierGroupDto, UpdateModifierOptionDto } from '../modifier-group.dto';
 import { CreatePriceListDto, PriceListEntryDto, UpdatePriceListDto, UpdatePriceListEntryDto } from '../price-list.dto';
 import { AddStockDto, AdjustThresholdsDto, InitializeStockDto, RecordCountDto, RemoveStockDto } from '../stock.dto';
-import { CategoryController, ModifierGroupController, PriceListController, ProductController, StockController } from '../../catalog.controller';
+import { CategoryController } from '../../category.controller';
+import { ModifierGroupController } from '../../modifier-group.controller';
+import { PriceListController } from '../../price-list.controller';
+import { ProductController } from '../../product.controller';
+import { StockController } from '../../stock.controller';
 
 const UUID = '3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b';
 

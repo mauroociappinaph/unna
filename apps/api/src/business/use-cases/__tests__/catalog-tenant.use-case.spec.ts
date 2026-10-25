@@ -1,4 +1,6 @@
-import { CategoryUseCase, ProductInput, ProductUseCase, StockUseCase } from '../product-catalog.use-case';
+import { CategoryUseCase } from '../category.use-case';
+import { ProductInput, ProductUseCase } from '../product.use-case';
+import { StockUseCase } from '../stock.use-case';
 import { StockLevel } from '@unna/domain';
 import { fake } from './test-doubles';
 

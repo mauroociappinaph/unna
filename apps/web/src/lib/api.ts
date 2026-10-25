@@ -93,6 +93,141 @@ class ApiClient {
     const response = await this.client.post('/businesses', data);
     return response.data;
   }
+
+  // --- Business Settings ---
+  async updateBusinessSettings(businessId: string, settings: {
+    tradeName?: string;
+    legalName?: string;
+    ivaCondition?: 'responsable_inscripto' | 'monotributo' | 'exento' | 'consumidor_final';
+    iibbNumber?: string;
+    salePoint?: string;
+    currency?: 'ARS' | 'USD';
+    timezone?: string;
+    language?: string;
+    logoUrl?: string;
+  }) {
+    const response = await this.client.patch(`/businesses/${businessId}/settings`, settings);
+    return response.data;
+  }
+
+  async updateBusinessAddress(businessId: string, address: {
+    street: string;
+    number: string;
+    floor?: string;
+    apartment?: string;
+    neighborhood?: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    country: string;
+  }) {
+    const response = await this.client.patch(`/businesses/${businessId}/address`, address);
+    return response.data;
+  }
+
+  async updateBusinessSchedule(businessId: string, schedule: {
+    monday: { open: string; close: string; isClosed: boolean };
+    tuesday: { open: string; close: string; isClosed: boolean };
+    wednesday: { open: string; close: string; isClosed: boolean };
+    thursday: { open: string; close: string; isClosed: boolean };
+    friday: { open: string; close: string; isClosed: boolean };
+    saturday: { open: string; close: string; isClosed: boolean };
+    sunday: { open: string; close: string; isClosed: boolean };
+  }) {
+    const response = await this.client.patch(`/businesses/${businessId}/schedule`, schedule);
+    return response.data;
+  }
+
+  // --- Sucursal Management ---
+  async createSucursal(businessId: string, sucursal: {
+    name: string;
+    address: {
+      street: string;
+      number: string;
+      floor?: string;
+      apartment?: string;
+      neighborhood?: string;
+      city: string;
+      province: string;
+      postalCode: string;
+      country: string;
+    };
+    phone: string;
+    email: string;
+    schedule?: {
+      monday: { open: string; close: string; isClosed: boolean };
+      tuesday: { open: string; close: string; isClosed: boolean };
+      wednesday: { open: string; close: string; isClosed: boolean };
+      thursday: { open: string; close: string; isClosed: boolean };
+      friday: { open: string; close: string; isClosed: boolean };
+      saturday: { open: string; close: string; isClosed: boolean };
+      sunday: { open: string; close: string; isClosed: boolean };
+    };
+    isMain?: boolean;
+    isActive?: boolean;
+  }) {
+    const response = await this.client.post(`/businesses/${businessId}/sucursales`, {
+      action: 'create',
+      sucursal,
+    });
+    return response.data;
+  }
+
+  async updateSucursal(businessId: string, sucursalId: string, sucursal: {
+    name: string;
+    address: {
+      street: string;
+      number: string;
+      floor?: string;
+      apartment?: string;
+      neighborhood?: string;
+      city: string;
+      province: string;
+      postalCode: string;
+      country: string;
+    };
+    phone: string;
+    email: string;
+    schedule?: {
+      monday: { open: string; close: string; isClosed: boolean };
+      tuesday: { open: string; close: string; isClosed: boolean };
+      wednesday: { open: string; close: string; isClosed: boolean };
+      thursday: { open: string; close: string; isClosed: boolean };
+      friday: { open: string; close: string; isClosed: boolean };
+      saturday: { open: string; close: string; isClosed: boolean };
+      sunday: { open: string; close: string; isClosed: boolean };
+    };
+    isMain?: boolean;
+    isActive?: boolean;
+  }) {
+    const response = await this.client.put(`/businesses/${businessId}/sucursales/${sucursalId}`, {
+      action: 'update',
+      sucursal: { ...sucursal, id: sucursalId },
+    });
+    return response.data;
+  }
+
+  async deleteSucursal(businessId: string, sucursalId: string) {
+    const response = await this.client.delete(`/businesses/${businessId}/sucursales/${sucursalId}`);
+    return response.data;
+  }
+
+  // --- Schedule Management ---
+  async updateSucursalSchedule(businessId: string, sucursalId: string, schedule: {
+    monday: { open: string; close: string; isClosed: boolean };
+    tuesday: { open: string; close: string; isClosed: boolean };
+    wednesday: { open: string; close: string; isClosed: boolean };
+    thursday: { open: string; close: string; isClosed: boolean };
+    friday: { open: string; close: string; isClosed: boolean };
+    saturday: { open: string; close: string; isClosed: boolean };
+    sunday: { open: string; close: string; isClosed: boolean };
+  }) {
+    const response = await this.client.patch(`/businesses/${businessId}/schedule`, {
+      sucursalId,
+      schedule,
+    });
+    return response.data;
+  }
 }
 
 export const api = new ApiClient();

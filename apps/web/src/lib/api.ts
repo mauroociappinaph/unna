@@ -3,9 +3,32 @@ import type {
   CashMovementInput, CashSession, Category, CategoryInput, CloseCashSessionInput, CreateOrderInput, IssueReceiptInput,
   ModifierGroup, ModifierGroupInput, ModifierOptionInput, Order, OrderAction, OrderLineInput, Payment, PaymentMethod,
   PaymentResult, Product, ProductInput, ProductStatus, Receipt, StockChange, StockLevel, StockMovement, StockOutType,
+  TopSeller,
 } from './api-types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+/**
+ * Renews the session with the stored refresh token and returns the new access token. Without a
+ * refresh token it returns null and leaves the page alone (e.g. a wrong password on /login); when
+ * the renewal itself fails it clears the session and sends the user to /login.
+ */
+export async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return null;
+  try {
+    const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, { refreshToken });
+    const { accessToken, refreshToken: newRefreshToken } = response.data;
+    localStorage.setItem('auth_token', accessToken);
+    localStorage.setItem('refresh_token', newRefreshToken);
+    return accessToken;
+  } catch {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    window.location.href = '/login';
+    return null;
+  }
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -39,25 +62,10 @@ class ApiClient {
 
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
-
-          try {
-            const refreshToken = localStorage.getItem('refresh_token');
-            if (refreshToken) {
-              const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
-                refreshToken,
-              });
-
-              const { accessToken, refreshToken: newRefreshToken } = response.data;
-              localStorage.setItem('auth_token', accessToken);
-              localStorage.setItem('refresh_token', newRefreshToken);
-
-              originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-              return this.client(originalRequest);
-            }
-          } catch {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('refresh_token');
-            window.location.href = '/login';
+          const accessToken = await refreshAccessToken();
+          if (accessToken) {
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+            return this.client(originalRequest);
           }
         }
 
@@ -264,6 +272,14 @@ class ApiClient {
 
   async deleteProduct(businessId: string, productId: string): Promise<void> {
     await this.client.delete(`/businesses/${businessId}/products/${productId}`);
+  }
+
+  async setProductFavorite(businessId: string, productId: string, isFavorite: boolean): Promise<Product> {
+    return (await this.client.put(`/businesses/${businessId}/products/${productId}`, { isFavorite })).data;
+  }
+
+  async getTopSellers(businessId: string, query: { days?: number; limit?: number } = {}): Promise<TopSeller[]> {
+    return (await this.client.get(`/businesses/${businessId}/products/top-sellers`, { params: query })).data;
   }
 
   async listModifierGroups(businessId: string): Promise<ModifierGroup[]> {

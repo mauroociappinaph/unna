@@ -24,6 +24,7 @@ jest.mock('@/lib/api', () => ({
     registerPayment: jest.fn(),
     issueReceipt: jest.fn(),
     getCurrentCashSession: jest.fn(),
+    getTopSellers: jest.fn(),
   },
 }));
 
@@ -84,7 +85,8 @@ const productButton = (name: string) => screen.getByRole('button', { name: new R
 async function renderPos() {
   const user = userEvent.setup();
   render(<PosPage />);
-  await screen.findByRole('button', { name: /^Agua/ });
+  // The favorites strip may repeat a product card.
+  await screen.findAllByRole('button', { name: /^Agua/ });
   return user;
 }
 
@@ -105,6 +107,7 @@ beforeEach(() => {
   mocked.createOrder.mockResolvedValue(createdOrder);
   mocked.addOrderItem.mockResolvedValue(withAgua);
   mocked.getCurrentCashSession.mockResolvedValue(openSession);
+  mocked.getTopSellers.mockResolvedValue([]);
 });
 
 describe('POS page', () => {
@@ -551,6 +554,245 @@ describe('POS page', () => {
       expect(await screen.findByText('CAE: 70003060000001')).toBeInTheDocument();
       expect(screen.queryByText('ARCA no está disponible; el comprobante quedó en borrador')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+    });
+  });
+  describe('peak hour', () => {
+    const product = (id: string, name: string, extra: Partial<Product> = {}): Product => ({
+      ...agua, id, name, isFavorite: false, ...extra,
+    });
+    const strip = () => screen.getByRole('region', { name: 'Favoritos' });
+    const stripNames = () => within(strip()).getAllByRole('button').map((b) => b.textContent?.split('$')[0].trim());
+    const search = () => screen.getByLabelText('Buscar producto') as HTMLInputElement;
+
+    describe('favorites strip', () => {
+      it('shows pinned products first, then top sellers without duplicates, up to 8', async () => {
+        const cafe = product('prod-cafe', 'Café', { isFavorite: true });
+        const pinnedMilanesa = { ...milanesa, isFavorite: true };
+        const extras = [1, 2, 3, 4, 5, 6, 7].map((n) => product(`prod-${n}`, `Medialuna ${n}`));
+        mocked.listProducts.mockResolvedValue([pinnedMilanesa, agua, cafe, ...extras]);
+        mocked.getTopSellers.mockResolvedValue([
+          { productId: agua.id, name: 'Agua', quantity: 9 },
+          { productId: milanesa.id, name: 'Milanesa', quantity: 8 },
+          { productId: 'prod-archived', name: 'Archivado', quantity: 7 },
+          ...extras.map((p, i) => ({ productId: p.id, name: p.name, quantity: 6 - i })),
+        ]);
+        await renderPos();
+
+        expect(mocked.getTopSellers).toHaveBeenCalledWith('biz-1', { days: 7, limit: 8 });
+        expect(stripNames()).toEqual([
+          'Café', 'Milanesa', 'Agua', 'Medialuna 1', 'Medialuna 2', 'Medialuna 3', 'Medialuna 4', 'Medialuna 5',
+        ]);
+      });
+
+      it('adds a favorite with one tap and opens the modifier dialog when required', async () => {
+        mocked.getTopSellers.mockResolvedValue([
+          { productId: agua.id, name: 'Agua', quantity: 3 },
+          { productId: milanesa.id, name: 'Milanesa', quantity: 2 },
+        ]);
+        const user = await renderPos();
+
+        await user.click(within(strip()).getByRole('button', { name: /^Agua/ }));
+        await waitFor(() =>
+          expect(mocked.createOrder).toHaveBeenCalledWith('biz-1', {
+            sucursalId: 'suc-1',
+            type: 'dine_in',
+            items: [{ productId: 'prod-agua', quantity: 1 }],
+          }),
+        );
+
+        await user.click(within(strip()).getByRole('button', { name: /^Milanesa/ }));
+        expect(await screen.findByRole('dialog', { name: 'Milanesa' })).toBeInTheDocument();
+      });
+
+      it('hides the strip without favorites and still sells when top sellers fail', async () => {
+        mocked.getTopSellers.mockRejectedValue(apiError('boom'));
+        const user = await renderPos();
+
+        expect(screen.queryByRole('region', { name: 'Favoritos' })).not.toBeInTheDocument();
+        await addAgua(user);
+      });
+
+      it('disables favorites without an open caja', async () => {
+        mocked.getCurrentCashSession.mockResolvedValue(null);
+        mocked.getTopSellers.mockResolvedValue([{ productId: agua.id, name: 'Agua', quantity: 3 }]);
+        await renderPos();
+
+        expect(within(strip()).getByRole('button', { name: /^Agua/ })).toBeDisabled();
+      });
+    });
+
+    describe('keyboard', () => {
+      it('focuses the search with "/" without typing it', async () => {
+        const user = await renderPos();
+
+        await user.keyboard('/');
+
+        expect(search()).toHaveFocus();
+        expect(search().value).toBe('');
+      });
+
+      it('does not steal "/" while typing in another input', async () => {
+        const user = await renderPos();
+
+        await user.type(screen.getByLabelText('Mesa'), '4/');
+
+        expect((screen.getByLabelText('Mesa') as HTMLInputElement).value).toBe('4/');
+        expect(search()).not.toHaveFocus();
+      });
+
+      it('adds the first visible match with Enter', async () => {
+        const user = await renderPos();
+
+        await user.keyboard('/');
+        await user.keyboard('agu{Enter}');
+
+        await waitFor(() =>
+          expect(mocked.createOrder).toHaveBeenCalledWith('biz-1', expect.objectContaining({
+            items: [{ productId: 'prod-agua', quantity: 1 }],
+          })),
+        );
+      });
+
+      it('opens the modifier dialog when the first match requires modifiers', async () => {
+        const user = await renderPos();
+
+        await user.type(search(), 'mila{Enter}');
+
+        expect(await screen.findByRole('dialog', { name: 'Milanesa' })).toBeInTheDocument();
+        expect(mocked.createOrder).not.toHaveBeenCalled();
+      });
+
+      it('adds nothing with Enter on an empty search or without matches', async () => {
+        const user = await renderPos();
+
+        await user.type(search(), '{Enter}');
+        await user.type(search(), 'zzz{Enter}');
+
+        expect(mocked.createOrder).not.toHaveBeenCalled();
+      });
+
+      it('clears the search with Escape', async () => {
+        const user = await renderPos();
+        await user.type(search(), 'agu');
+        expect(screen.queryByRole('button', { name: /^Milanesa/ })).not.toBeInTheDocument();
+
+        await user.keyboard('{Escape}');
+
+        expect(search().value).toBe('');
+        expect(productButton('Milanesa')).toBeInTheDocument();
+      });
+    });
+
+    describe('repeat last order', () => {
+      const lastOrder = orderWith({
+        id: 'order-last',
+        items: [
+          { ...createdOrder.items[0], quantity: 2, notes: 'Sin sal' },
+          { ...withAgua.items[1], quantity: 3 },
+        ],
+      });
+      const repeatedLines = [
+        {
+          productId: milanesa.id,
+          quantity: 2,
+          notes: 'Sin sal',
+          modifiers: [{ modifierGroupId: guarnicion.id, optionId: papas.id }],
+        },
+        { productId: 'prod-agua', quantity: 3 },
+      ];
+      const repeatButton = () => screen.getByRole('button', { name: 'Repetir último pedido' });
+
+      it('is not offered before an order is completed nor while one is in progress', async () => {
+        mocked.createOrder.mockResolvedValue(lastOrder);
+        const user = await renderPos();
+        expect(screen.queryByRole('button', { name: 'Repetir último pedido' })).not.toBeInTheDocument();
+
+        await addAgua(user);
+
+        expect(screen.queryByRole('button', { name: 'Repetir último pedido' })).not.toBeInTheDocument();
+      });
+
+      it('re-creates the same lines as a new order after a new order is started', async () => {
+        mocked.createOrder.mockResolvedValueOnce(lastOrder).mockResolvedValueOnce({ ...lastOrder, id: 'order-repeat' });
+        const user = await renderPos();
+        await addAgua(user);
+        await user.click(screen.getByRole('button', { name: 'Nuevo pedido' }));
+
+        await user.click(repeatButton());
+
+        await waitFor(() => expect(mocked.createOrder).toHaveBeenCalledTimes(2));
+        expect(mocked.createOrder).toHaveBeenLastCalledWith('biz-1', {
+          sucursalId: 'suc-1',
+          type: 'dine_in',
+          items: repeatedLines,
+        });
+        expect(await screen.findByRole('button', { name: 'Quitar Milanesa' })).toBeInTheDocument();
+        expect(mocked.addOrderItem).not.toHaveBeenCalled();
+      });
+
+      it('is offered after the order is paid and its receipt issued', async () => {
+        const paidLast = { ...lastOrder, paymentStatus: 'completed' as const };
+        mocked.createOrder.mockResolvedValueOnce(lastOrder).mockResolvedValueOnce({ ...lastOrder, id: 'order-repeat' });
+        mocked.registerPayment.mockResolvedValue({ order: paidLast, payments: (shapes['POST orders/:id/payments (rest)'].body as PaymentResult).payments, remaining: 0 });
+        mocked.issueReceipt.mockResolvedValue(shapes['POST receipts'].body as never);
+        const user = await renderPos();
+        await addAgua(user);
+        await user.click(screen.getByRole('button', { name: 'Cobrar' }));
+        await user.click(screen.getByRole('button', { name: 'Registrar pago' }));
+        expect(screen.queryByRole('button', { name: 'Repetir último pedido' })).not.toBeInTheDocument();
+
+        await user.click(await screen.findByRole('button', { name: 'Emitir ticket' }));
+        await screen.findByRole('region', { name: 'Comprobante' });
+        await user.click(repeatButton());
+
+        await waitFor(() => expect(mocked.createOrder).toHaveBeenCalledTimes(2));
+        expect(mocked.createOrder).toHaveBeenLastCalledWith('biz-1', expect.objectContaining({ items: repeatedLines }));
+        await waitFor(() => expect(screen.queryByRole('region', { name: 'Comprobante' })).not.toBeInTheDocument());
+        expect(screen.queryByRole('button', { name: 'Registrar pago' })).not.toBeInTheDocument();
+      });
+
+      it('respects the closed caja of the selected sucursal', async () => {
+        mocked.getCurrentCashSession.mockImplementation(async (_biz, sucursalId) => (sucursalId === 'suc-1' ? openSession : null));
+        mocked.createOrder.mockResolvedValue(lastOrder);
+        const user = await renderPos();
+        await addAgua(user);
+        await user.click(screen.getByRole('button', { name: 'Nuevo pedido' }));
+
+        await user.selectOptions(screen.getByLabelText('Sucursal'), 'suc-2');
+        await screen.findByText('Abrí la caja para empezar a vender');
+
+        expect(repeatButton()).toBeDisabled();
+        await user.click(repeatButton());
+        expect(mocked.createOrder).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('customer name', () => {
+      it('sends the trimmed customer name when the order is created', async () => {
+        const user = await renderPos();
+
+        await user.type(screen.getByLabelText('Nombre del cliente'), '  Juana Pérez ');
+        await addAgua(user);
+
+        expect(mocked.createOrder).toHaveBeenCalledWith('biz-1', {
+          sucursalId: 'suc-1',
+          type: 'dine_in',
+          customerName: 'Juana Pérez',
+          items: [{ productId: 'prod-agua', quantity: 1 }],
+        });
+        expect(screen.getByLabelText('Nombre del cliente')).toBeDisabled();
+      });
+
+      it('clears the customer name when a new order starts', async () => {
+        const user = await renderPos();
+        await user.type(screen.getByLabelText('Nombre del cliente'), 'Juana');
+        await addAgua(user);
+
+        await user.click(screen.getByRole('button', { name: 'Nuevo pedido' }));
+
+        expect((screen.getByLabelText('Nombre del cliente') as HTMLInputElement).value).toBe('');
+        expect(screen.getByLabelText('Nombre del cliente')).toBeEnabled();
+      });
     });
   });
 });

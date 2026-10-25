@@ -17,17 +17,20 @@ interface PosSetupProps {
   sucursalId: string;
   type: OrderType;
   tableNumber: string;
+  customerName: string;
   disabled: boolean;
   onSucursalChange: (id: string) => void;
   onTypeChange: (type: OrderType) => void;
   onTableNumberChange: (table: string) => void;
+  onCustomerNameChange: (name: string) => void;
 }
 
 export function PosSetup({
-  sucursales, sucursalId, type, tableNumber, disabled, onSucursalChange, onTypeChange, onTableNumberChange,
+  sucursales, sucursalId, type, tableNumber, customerName, disabled,
+  onSucursalChange, onTypeChange, onTableNumberChange, onCustomerNameChange,
 }: PosSetupProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <Select
         id="pos-sucursal"
         label="Sucursal"
@@ -54,6 +57,15 @@ export function PosSetup({
           onChange={(e) => onTableNumberChange(e.target.value)}
         />
       )}
+      <Input
+        id="pos-customer"
+        label="Nombre del cliente"
+        value={customerName}
+        disabled={disabled}
+        maxLength={100}
+        placeholder="Opcional, para llamarlo cuando esté listo"
+        onChange={(e) => onCustomerNameChange(e.target.value)}
+      />
     </div>
   );
 }

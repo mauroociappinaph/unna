@@ -1,14 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import type {
-  CashSession, Category, IssueReceiptInput, IvaCondition, ModifierGroup, Order, OrderAction, OrderLineInput, OrderType,
-  Payment, PaymentMethod, Product, Receipt, SelectedModifier,
+  CashSession, Category, CreateOrderInput, IssueReceiptInput, IvaCondition, ModifierGroup, Order, OrderAction,
+  OrderLineInput, OrderType, Payment, PaymentMethod, Product, Receipt, SelectedModifier, TopSeller,
 } from '@/lib/api-types';
+import { FavoritesStrip, MAX_FAVORITES, selectFavorites } from '@/components/pos/FavoritesStrip';
 import { ModifierDialog } from '@/components/pos/ModifierDialog';
 import { OpenOrders, selectOpenOrders } from '@/components/pos/OpenOrders';
 import { OrderStatusActions } from '@/components/pos/OrderStatusActions';
@@ -18,7 +19,7 @@ import { PosSetup, type PosSucursal } from '@/components/pos/PosSetup';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { ReceiptIssuer } from '@/components/pos/ReceiptIssuer';
 import { ReceiptView } from '@/components/pos/ReceiptView';
-import { CLOSED_STATUSES } from '@/components/pos/pos-format';
+import { CLOSED_STATUSES, toOrderLine } from '@/components/pos/pos-format';
 import { apiErrorMessage } from '@/lib/api-errors';
 import { UnnaSymbol } from '@/components/brand/UnnaSymbol';
 
@@ -37,6 +38,9 @@ interface CashState {
 
 const isUnavailable = (err: unknown) => (err as { response?: { status?: number } })?.response?.status === 503;
 
+/** Top sellers fill the favorites strip from the paid orders of the last week (S13). */
+const TOP_SELLERS_QUERY = { days: 7, limit: MAX_FAVORITES };
+
 const mainSucursalId = (sucursales: PosSucursal[]) => (sucursales.find((s) => s.isMain) ?? sucursales[0])?.id ?? '';
 
 export default function PosPage() {
@@ -46,6 +50,7 @@ export default function PosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>([]);
+  const [topSellers, setTopSellers] = useState<TopSeller[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,6 +58,7 @@ export default function PosPage() {
   const [sucursalId, setSucursalId] = useState('');
   const [type, setType] = useState<OrderType>('dine_in');
   const [tableNumber, setTableNumber] = useState('');
+  const [customerName, setCustomerName] = useState('');
 
   const [order, setOrder] = useState<Order | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -64,10 +70,14 @@ export default function PosPage() {
   const [cash, setCash] = useState<CashState | null>(null);
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
   const [showPayment, setShowPayment] = useState(false);
+  // Last completed order (receipt issued or left for a new one), offered to repeat.
+  const [lastOrder, setLastOrder] = useState<Order | null>(null);
 
   const [showOpenOrders, setShowOpenOrders] = useState(false);
   const [openOrders, setOpenOrders] = useState<Order[]>([]);
   const [openOrdersLoading, setOpenOrdersLoading] = useState(false);
+
+  const favorites = useMemo(() => selectFavorites(products, topSellers), [products, topSellers]);
 
   const loadData = useCallback(async () => {
     try {
@@ -85,11 +95,13 @@ export default function PosPage() {
       const current = businesses[0];
       const active = (current.sucursales || []).filter((s) => s.isActive !== false);
       const initialSucursalId = mainSucursalId(active);
-      const [categoryList, productList, groupList, session] = await Promise.all([
+      const [categoryList, productList, groupList, session, sellers] = await Promise.all([
         api.listCategories(current.id),
         api.listProducts(current.id, { status: 'active' }),
         api.listModifierGroups(current.id),
         initialSucursalId ? api.getCurrentCashSession(current.id, initialSucursalId) : Promise.resolve(null),
+        // Selling does not depend on the ranking: without it the strip shows only the pinned products.
+        api.getTopSellers(current.id, TOP_SELLERS_QUERY).catch((): TopSeller[] => []),
       ]);
       setBusiness(current);
       setSucursales(active);
@@ -98,6 +110,7 @@ export default function PosPage() {
       setCategories(categoryList);
       setProducts(productList);
       setModifierGroups(groupList);
+      setTopSellers(sellers);
     } catch (err) {
       setError(apiErrorMessage(err, 'Error al cargar el punto de venta'));
     } finally {
@@ -139,6 +152,18 @@ export default function PosPage() {
     }
   };
 
+  const newOrderInput = (items: OrderLineInput[]): CreateOrderInput => {
+    const table = tableNumber.trim();
+    const customer = customerName.trim();
+    return {
+      sucursalId,
+      type,
+      ...(type === 'dine_in' && table ? { tableNumber: table } : {}),
+      ...(customer ? { customerName: customer } : {}),
+      items,
+    };
+  };
+
   const addLine = (line: OrderLineInput) => {
     if (!business) return;
     return run(async () => {
@@ -146,13 +171,7 @@ export default function PosPage() {
         setOrder(await api.addOrderItem(business.id, order.id, line));
         return;
       }
-      const table = tableNumber.trim();
-      setOrder(await api.createOrder(business.id, {
-        sucursalId,
-        type,
-        ...(type === 'dine_in' && table ? { tableNumber: table } : {}),
-        items: [line],
-      }));
+      setOrder(await api.createOrder(business.id, newOrderInput([line])));
     }, 'No se pudo agregar el producto');
   };
 
@@ -203,6 +222,7 @@ export default function PosPage() {
     setRetryReceipt(null);
     try {
       setReceipt(await api.issueReceipt(business.id, order.id, input));
+      setLastOrder(order);
     } catch (err) {
       if (isUnavailable(err)) setRetryReceipt(input);
       else setError(apiErrorMessage(err, 'No se pudo emitir el comprobante'));
@@ -246,11 +266,12 @@ export default function PosPage() {
       setSucursalId(fresh.sucursalId);
       setType(fresh.type);
       setTableNumber(fresh.tableNumber ?? '');
+      setCustomerName(fresh.customerName ?? '');
       setShowOpenOrders(false);
     }, 'No se pudo abrir el pedido');
   };
 
-  const handleNewOrder = () => {
+  const clearOrder = () => {
     setOrder(null);
     setPayments([]);
     setPaidRemaining(null);
@@ -259,10 +280,27 @@ export default function PosPage() {
     setPendingProduct(null);
     setShowPayment(false);
     setShowOpenOrders(false);
+  };
+
+  const handleNewOrder = () => {
+    if (order && order.items.length > 0 && order.status !== 'cancelled') setLastOrder(order);
+    clearOrder();
     setError(null);
     setSucursalId(mainSucursalId(sucursales));
     setType('dine_in');
     setTableNumber('');
+    setCustomerName('');
+  };
+
+  // Same lines as a new order with the current setup; the server applies the open caja gate again.
+  const handleRepeatLastOrder = () => {
+    if (!business || !lastOrder) return;
+    const lines = lastOrder.items.map(toOrderLine);
+    run(async () => {
+      const created = await api.createOrder(business.id, newOrderInput(lines));
+      clearOrder();
+      setOrder(created);
+    }, 'No se pudo repetir el último pedido');
   };
 
   if (isLoading) {
@@ -280,6 +318,8 @@ export default function PosPage() {
   const cashKnown = !!cash && cash.sucursalId === sucursalId;
   const cashOpen = cashKnown && !!cash.session;
   const canIssueReceipt = payments.length > 0 && remaining === 0 && !receipt;
+  // Offered only when nothing is in progress: no order yet or the current one already has its receipt.
+  const canRepeat = !!lastOrder && (!order || !!receipt);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -308,6 +348,11 @@ export default function PosPage() {
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={toggleOpenOrders}>Pedidos abiertos</Button>
+              {canRepeat && (
+                <Button variant="secondary" disabled={busy || !cashOpen} onClick={handleRepeatLastOrder}>
+                  Repetir último pedido
+                </Button>
+              )}
               <Button onClick={handleNewOrder}>Nuevo pedido</Button>
             </div>
           </div>
@@ -341,19 +386,23 @@ export default function PosPage() {
               sucursalId={sucursalId}
               type={type}
               tableNumber={tableNumber}
+              customerName={customerName}
               disabled={!!order}
               onSucursalChange={setSucursalId}
               onTypeChange={setType}
               onTableNumberChange={setTableNumber}
+              onCustomerNameChange={setCustomerName}
             />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-6">
+            <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-6 space-y-6">
+              <FavoritesStrip favorites={favorites} disabled={locked || busy || !cashOpen} onSelect={handleSelectProduct} />
               <ProductGrid
                 categories={categories}
                 products={products}
                 disabled={locked || busy || !cashOpen}
+                shortcutsEnabled={!pendingProduct}
                 onSelect={handleSelectProduct}
               />
             </div>

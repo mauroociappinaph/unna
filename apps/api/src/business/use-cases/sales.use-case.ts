@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   BusinessRepositoryPort,
+  LockedOrderRepositories,
   ModifierGroupRepositoryPort,
   OrderListFilters,
   OrderRepositoryPort,
@@ -114,68 +115,78 @@ export class SalesUseCase {
     }
   }
 
+  // Each change below reads, checks and saves under the order's lock, so it cannot slip past a
+  // concurrent payment: once a payment commits, the change sees it and is rejected.
   async addItem(command: { businessId: string; orderId: string; line: OrderLineInput }): Promise<Result<Order>> {
-    const order = await this.findModifiable(command.businessId, command.orderId);
-    if (!order.ok) return order;
-    const built = await this.buildLine(command.businessId, command.line);
-    if (!built.ok) return fail(built.error!.message);
-    const updated = order.value!.addItem(built.value!);
-    await this.orders.save(updated);
-    return ok(updated);
+    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async (repositories) => {
+      const order = await this.findModifiable(repositories, command.businessId, command.orderId);
+      if (!order.ok) return order;
+      const built = await this.buildLine(command.businessId, command.line);
+      if (!built.ok) return fail<Order>(built.error!.message);
+      const updated = order.value!.addItem(built.value!);
+      await repositories.orders.save(updated);
+      return ok(updated);
+    });
   }
 
   async removeItem(command: { businessId: string; orderId: string; itemId: string }): Promise<Result<Order>> {
-    const order = await this.findModifiable(command.businessId, command.orderId);
-    if (!order.ok) return order;
-    if (!order.value!.items.some((i) => i.id === command.itemId)) return fail('Item no encontrado');
-    const updated = order.value!.removeItem(command.itemId);
-    await this.orders.save(updated);
-    return ok(updated);
+    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async (repositories) => {
+      const order = await this.findModifiable(repositories, command.businessId, command.orderId);
+      if (!order.ok) return order;
+      if (!order.value!.items.some((i) => i.id === command.itemId)) return fail<Order>('Item no encontrado');
+      const updated = order.value!.removeItem(command.itemId);
+      await repositories.orders.save(updated);
+      return ok(updated);
+    });
   }
 
   async applyDiscount(command: { businessId: string; orderId: string; amount: number }): Promise<Result<Order>> {
-    const order = await this.findModifiable(command.businessId, command.orderId);
-    if (!order.ok) return order;
-    const updated =
-      command.amount === 0 ? order.value!.removeDiscount() : order.value!.applyDiscount(Money.fromCents(command.amount));
-    await this.orders.save(updated);
-    return ok(updated);
+    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async (repositories) => {
+      const order = await this.findModifiable(repositories, command.businessId, command.orderId);
+      if (!order.ok) return order;
+      const updated =
+        command.amount === 0 ? order.value!.removeDiscount() : order.value!.applyDiscount(Money.fromCents(command.amount));
+      await repositories.orders.save(updated);
+      return ok(updated);
+    });
   }
 
   async changeStatus(command: { businessId: string; orderId: string; action: string; reason?: string }): Promise<Result<Order>> {
-    const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
-    if (!order) return fail('Pedido no encontrado');
+    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async ({ orders, payments }) => {
+      const order = await orders.findByIdAndBusinessId(command.orderId, command.businessId);
+      if (!order) return fail<Order>('Pedido no encontrado');
 
-    let updated: Order;
-    switch (command.action) {
-      case 'confirm':
-        updated = order.confirm();
-        break;
-      case 'prepare':
-        updated = order.startPreparing();
-        break;
-      case 'ready':
-        updated = order.markReady();
-        break;
-      case 'deliver':
-        updated = order.deliver();
-        break;
-      case 'cancel':
-        if (!command.reason?.trim()) return fail('El motivo de cancelación es obligatorio');
-        if (order.paymentStatus === 'completed') {
-          return fail('El pedido ya está pagado; corresponde un reembolso, no una cancelación');
-        }
-        if ((await this.payments.findByOrderId(order.id)).some((p) => p.status === 'completed')) {
-          return fail('El pedido tiene pagos registrados; corresponde un reembolso, no una cancelación');
-        }
-        updated = order.cancel(command.reason.trim());
-        break;
-      default:
-        return fail('Acción inválida');
-    }
+      let updated: Order;
+      switch (command.action) {
+        case 'confirm':
+          updated = order.confirm();
+          break;
+        case 'prepare':
+          updated = order.startPreparing();
+          break;
+        case 'ready':
+          updated = order.markReady();
+          break;
+        case 'deliver':
+          updated = order.deliver();
+          break;
+        case 'cancel':
+          if (!command.reason?.trim()) return fail<Order>('El motivo de cancelación es obligatorio');
+          if (order.paymentStatus === 'completed') {
+            return fail<Order>('El pedido ya está pagado; corresponde un reembolso, no una cancelación');
+          }
+          if ((await payments.findByOrderId(order.id)).some((p) => p.status === 'completed')) {
+            return fail<Order>('El pedido tiene pagos registrados; corresponde un reembolso, no una cancelación');
+          }
+          updated = order.cancel(command.reason.trim());
+          break;
+        default:
+          return fail<Order>('Acción inválida');
+      }
 
-    await this.orders.save(updated);
-    return ok(updated);
+      await orders.save(updated);
+      return ok(updated);
+    });
   }
 
   async registerPayment(command: {
@@ -318,15 +329,19 @@ export class SalesUseCase {
     return ok(await this.receipts.findByBusinessId(businessId));
   }
 
-  private async findModifiable(businessId: string, orderId: string): Promise<Result<Order>> {
-    const order = await this.orders.findByIdAndBusinessId(orderId, businessId);
+  /** Reads the order through the lock-bound repositories and checks it still accepts changes. */
+  private async findModifiable(
+    { orders, payments }: LockedOrderRepositories,
+    businessId: string,
+    orderId: string,
+  ): Promise<Result<Order>> {
+    const order = await orders.findByIdAndBusinessId(orderId, businessId);
     if (!order) return fail('Pedido no encontrado');
     if (!order.canBeModified() || order.paymentStatus !== 'pending') {
       return fail('El pedido ya no se puede modificar');
     }
     // A partial payment keeps paymentStatus 'pending', so check the payments themselves.
-    const payments = await this.payments.findByOrderId(order.id);
-    if (payments.some((p) => p.status === 'completed')) {
+    if ((await payments.findByOrderId(order.id)).some((p) => p.status === 'completed')) {
       return fail('El pedido tiene pagos registrados y ya no se puede modificar');
     }
     return ok(order);
@@ -365,7 +380,10 @@ export class SalesUseCase {
       }
     }
 
-    const unitPrice = modifiers.reduce((sum, m) => sum.add(Money.fromCents(m.priceDelta)), product.basePrice);
+    // Deltas can be negative ("sin X" options), so add them in cents and validate only the final price.
+    const unitCents = modifiers.reduce((sum, m) => sum + m.priceDelta, product.basePrice.amount);
+    if (unitCents < 0) return fail<NewOrderLine>(`El precio de "${product.name}" con sus modificadores no puede ser negativo`);
+    const unitPrice = Money.fromCents(unitCents, product.basePrice.currency);
     const totalPrice = unitPrice.multiply(line.quantity);
     return ok({
       productId: product.id,

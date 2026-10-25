@@ -51,28 +51,26 @@ const lockingUnitOfWork = (state: { order: Order; payments: PaymentRecord[] }) =
   return { unitOfWork: fake<SalesUnitOfWorkPort>({ withOrderLock }), withOrderLock };
 };
 
+const product = {
+  id: 'p', name: 'Milanesa', sku: undefined, taxRate: 21, basePrice: m(1000), modifierGroupIds: [],
+  canBeSold: () => true,
+};
+
 const paymentSales = (state: { order: Order; payments: PaymentRecord[] }) => {
   const { unitOfWork, withOrderLock } = lockingUnitOfWork(state);
-  const sales = new SalesUseCase(outsideLock(), outsideLock(), fake({}), fake({}), fake({}), fake({}), unitOfWork);
+  const sales = new SalesUseCase(
+    outsideLock(),
+    outsideLock(),
+    fake({}),
+    fake({ findByIdAndBusinessId: async () => product }),
+    fake({ findByIdAndBusinessId: async () => null }),
+    fake({}),
+    unitOfWork,
+  );
   return { sales, withOrderLock };
 };
 
 describe('SalesUseCase', () => {
-  it('rejects cancelling an order that has a partial payment', async () => {
-    let order = openOrder();
-    const sales = new SalesUseCase(
-      fake({ findByIdAndBusinessId: async () => order, save: async (o: Order) => { order = o; } }),
-      fake({ findByOrderId: async () => [{ amount: 400, method: 'cash', status: 'completed' }] }),
-      fake({}), fake({}), fake({}), fake({}), fake({}),
-    );
-
-    const result = await sales.changeStatus({ businessId: 'biz-A', orderId: order.id, action: 'cancel', reason: 'cliente se fue' });
-
-    expect(result.ok).toBe(false);
-    expect(result.error!.message).toBe('El pedido tiene pagos registrados; corresponde un reembolso, no una cancelación');
-    expect(order.status).toBe('pending');
-  });
-
   it('retries with a new order number when the generated one already exists', async () => {
     const savedNumbers: string[] = [];
     const orders = {
@@ -80,10 +78,6 @@ describe('SalesUseCase', () => {
         savedNumbers.push(o.orderNumber);
         if (savedNumbers.length === 1) throw Object.assign(new Error('Unique constraint'), { code: 'P2002', meta: { target: ['businessId', 'orderNumber'] } });
       }),
-    };
-    const product = {
-      id: 'p', name: 'Milanesa', sku: undefined, taxRate: 21, basePrice: m(1000), modifierGroupIds: [],
-      canBeSold: () => true,
     };
     const sales = new SalesUseCase(
       fake(orders),
@@ -101,6 +95,40 @@ describe('SalesUseCase', () => {
     expect(orders.save).toHaveBeenCalledTimes(2);
     expect(savedNumbers[0]).not.toBe(savedNumbers[1]);
     expect(result.value!.orderNumber).toBe(savedNumbers[1]);
+  });
+
+  describe('modifier prices', () => {
+    const option = (priceDelta: number) => ({ id: 'opt', name: 'Sin guarnición', priceDelta, isActive: true });
+    const salesWith = (basePrice: number, priceDelta: number) => {
+      const withGroup = { ...product, basePrice: m(basePrice), modifierGroupIds: ['grp'] };
+      const group = { id: 'grp', name: 'Guarnición', isActive: true, isRequired: false, minSelection: 0, maxSelection: 1, options: [option(priceDelta)] };
+      return new SalesUseCase(
+        fake({ save: async () => undefined }),
+        fake({}),
+        fake({}),
+        fake({ findByIdAndBusinessId: async () => withGroup }),
+        fake({ findByIdAndBusinessId: async () => group }),
+        fake({ findById: async () => ({ id: 'biz-A', sucursales: [{ id: 'suc-1', name: 'Central', isActive: true }] }) }),
+        fake({}),
+      );
+    };
+    const order = (sales: SalesUseCase) =>
+      sales.createOrder({ businessId: 'biz-A', sucursalId: 'suc-1', type: 'takeaway', items: [{ productId: 'p', quantity: 2, modifiers: [{ modifierGroupId: 'grp', optionId: 'opt' }] }] });
+
+    it('subtracts a negative option from the unit price', async () => {
+      const result = await order(salesWith(150000, -15050));
+
+      expect(result.ok).toBe(true);
+      expect(result.value!.items[0].unitPrice.amount).toBe(134950);
+      expect(result.value!.items[0].totalPrice.amount).toBe(269900);
+    });
+
+    it('rejects a line whose modifiers make the price negative', async () => {
+      const result = await order(salesWith(1000, -5000));
+
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe('El precio de "Milanesa" con sus modificadores no puede ser negativo');
+    });
   });
 
   describe('registerPayment', () => {
@@ -159,6 +187,115 @@ describe('SalesUseCase', () => {
       expect(result.error!.message).toBe('El pedido ya está pagado');
       expect(state.payments).toEqual([]);
       expect(state.order).toBe(paid);
+    });
+  });
+
+  describe('order changes under the order lock', () => {
+    const twoItemOrder = () => openOrder().addItem(line);
+
+    type Change = (sales: SalesUseCase, order: Order) => ReturnType<SalesUseCase['addItem']>;
+    const changes: Array<[string, Change, string]> = [
+      [
+        'addItem',
+        (sales, order) => sales.addItem({ businessId: 'biz-A', orderId: order.id, line: { productId: 'p', quantity: 1 } }),
+        'El pedido tiene pagos registrados y ya no se puede modificar',
+      ],
+      [
+        'removeItem',
+        (sales, order) => sales.removeItem({ businessId: 'biz-A', orderId: order.id, itemId: order.items[0].id }),
+        'El pedido tiene pagos registrados y ya no se puede modificar',
+      ],
+      [
+        'applyDiscount',
+        (sales, order) => sales.applyDiscount({ businessId: 'biz-A', orderId: order.id, amount: 100 }),
+        'El pedido tiene pagos registrados y ya no se puede modificar',
+      ],
+      [
+        'cancel',
+        (sales, order) => sales.changeStatus({ businessId: 'biz-A', orderId: order.id, action: 'cancel', reason: 'cliente se fue' }),
+        'El pedido tiene pagos registrados; corresponde un reembolso, no una cancelación',
+      ],
+    ];
+
+    it.each(changes)('%s reads, checks and saves inside the order lock', async (_name, change) => {
+      const state = { order: twoItemOrder(), payments: [] as PaymentRecord[] };
+      const original = state.order;
+      const { sales, withOrderLock } = paymentSales(state);
+
+      const result = await change(sales, original);
+
+      expect(result.ok).toBe(true);
+      expect(withOrderLock).toHaveBeenCalledWith(original.id, 'biz-A', expect.any(Function));
+      expect(state.order).toBe(result.value);
+      expect(state.order).not.toBe(original);
+    });
+
+    it.each(changes)('%s is rejected and writes nothing when a payment completes first', async (_name, change, message) => {
+      const state = { order: twoItemOrder(), payments: [] as PaymentRecord[] };
+      const original = state.order;
+      const { sales, withOrderLock } = paymentSales(state);
+
+      const [payment, result] = await Promise.all([
+        sales.registerPayment({ businessId: 'biz-A', orderId: original.id, amount: 400, method: 'cash' }),
+        change(sales, original),
+      ]);
+
+      expect(payment.ok).toBe(true);
+      expect(withOrderLock).toHaveBeenCalledTimes(2);
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe(message);
+      expect(state.order).toBe(original);
+      expect(state.payments.map((p) => p.amount)).toEqual([400]);
+    });
+
+    it('rejects cancelling without a reason inside the lock and writes nothing', async () => {
+      const state = { order: openOrder(), payments: [] as PaymentRecord[] };
+      const original = state.order;
+      const { sales } = paymentSales(state);
+
+      const result = await sales.changeStatus({ businessId: 'biz-A', orderId: original.id, action: 'cancel', reason: '  ' });
+
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe('El motivo de cancelación es obligatorio');
+      expect(state.order).toBe(original);
+    });
+
+    it('rejects cancelling a paid order with the refund message', async () => {
+      const paid = openOrder().markPaymentCompleted('cash');
+      const state = { order: paid, payments: [] as PaymentRecord[] };
+      const { sales } = paymentSales(state);
+
+      const result = await sales.changeStatus({ businessId: 'biz-A', orderId: paid.id, action: 'cancel', reason: 'cliente se fue' });
+
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe('El pedido ya está pagado; corresponde un reembolso, no una cancelación');
+      expect(state.order).toBe(paid);
+    });
+
+    it('runs every other status change inside the order lock', async () => {
+      const state = { order: openOrder(), payments: [] as PaymentRecord[] };
+      const { sales, withOrderLock } = paymentSales(state);
+
+      for (const action of ['confirm', 'prepare', 'ready', 'deliver']) {
+        const result = await sales.changeStatus({ businessId: 'biz-A', orderId: state.order.id, action });
+        expect(result.ok).toBe(true);
+      }
+
+      expect(withOrderLock).toHaveBeenCalledTimes(4);
+      expect(state.order.status).toBe('delivered');
+    });
+
+    it('reports a missing order or item with the not-found messages', async () => {
+      const state = { order: twoItemOrder(), payments: [] as PaymentRecord[] };
+      const original = state.order;
+      const { sales } = paymentSales(state);
+
+      const missingOrder = await sales.removeItem({ businessId: 'biz-A', orderId: 'nope', itemId: original.items[0].id });
+      const missingItem = await sales.removeItem({ businessId: 'biz-A', orderId: original.id, itemId: 'nope' });
+
+      expect(missingOrder.error!.message).toBe('Pedido no encontrado');
+      expect(missingItem.error!.message).toBe('Item no encontrado');
+      expect(state.order).toBe(original);
     });
   });
 });

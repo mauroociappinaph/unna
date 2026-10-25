@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Requ
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OnboardBusinessUseCase, OnboardBusinessCommand } from './use-cases/onboard-business.use-case';
 import { BusinessManagementUseCase, SUCURSAL_NOT_FOUND } from './use-cases/business-management.use-case';
+import { BusinessView, toBusinessView } from './business.presenter';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { IsString, IsNotEmpty, ValidateNested, IsArray, ArrayMinSize, IsOptional, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -280,15 +281,16 @@ export class BusinessController {
   // --- Getters ---
   @Get()
   @ApiOperation({ summary: 'Listar negocios del usuario autenticado' })
-  async findMine() {
-    // TODO: implement using repository
-    return [];
+  async findMine(@Request() req: AuthenticatedRequest): Promise<BusinessView[]> {
+    const businesses = await this.businessManagementUseCase.listMine(req.user.sub);
+    return businesses.map(toBusinessView);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener negocio por ID' })
-  async findOne(@Param('id') id: string) {
-    // TODO: implement using repository
-    return { id };
+  async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest): Promise<BusinessView> {
+    const result = await this.businessManagementUseCase.getMine(id, req.user.sub);
+    if (!result.ok) throw new NotFoundException(result.error.message);
+    return toBusinessView(result.value);
   }
 }

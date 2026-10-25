@@ -1,0 +1,707 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { CategoryRepositoryPort, ProductRepositoryPort, ModifierGroupRepositoryPort, PriceListRepositoryPort, StockLevelRepositoryPort, StockMovementRepositoryPort } from '@unna/domain';
+import { Category, Product, ModifierGroup, ModifierOption, PriceList, PriceListEntry, StockLevel, StockMovement, Money, ProductType, ProductStatus, Schedule } from '@unna/domain';
+import { Result, ok, err } from '@unna/domain';
+
+interface CategoryInput {
+  name: string;
+  description?: string;
+  type: 'plato' | 'bebida' | 'postre' | 'extra' | 'combo';
+  displayOrder?: number;
+  isActive?: boolean;
+  parentId?: string;
+  imageUrl?: string;
+}
+
+interface ProductInput {
+  categoryId: string;
+  name: string;
+  description?: string;
+  type: 'simple' | 'composite' | 'combo';
+  status?: 'draft' | 'active' | 'archived';
+  basePrice: number; // in cents
+  currency?: string;
+  costPrice?: number;
+  taxRate?: number;
+  sku?: string;
+  barcode?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+  images?: string[];
+  modifierGroupIds?: string[];
+  components?: Array<{ productId: string; quantity: number }>;
+  preparationTimeMinutes?: number;
+  calories?: number;
+  allergens?: string[];
+  tags?: string[];
+}
+
+interface ModifierOptionInput {
+  name: string;
+  priceDelta?: number;
+  isDefault?: boolean;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+interface ModifierGroupInput {
+  name: string;
+  description?: string;
+  minSelection?: number;
+  maxSelection?: number;
+  isRequired?: boolean;
+  displayOrder?: number;
+  isActive?: boolean;
+  options?: Array<ModifierOptionInput>;
+}
+
+interface PriceListInput {
+  name: string;
+  description?: string;
+  type: 'standard' | 'delivery' | 'takeaway' | 'happy-hour' | 'event' | 'custom';
+  isDefault?: boolean;
+  isActive?: boolean;
+  validFrom?: string;
+  validTo?: string;
+  validDays?: number[];
+  validFromTime?: string;
+  validToTime?: string;
+  entries?: Array<{
+    productId: string;
+    price: number;
+    costPrice?: number;
+    isActive?: boolean;
+  }>;
+}
+
+interface StockMovementInput {
+  productId: string;
+  type: 'in' | 'out' | 'adjustment' | 'waste' | 'transfer' | 'sale' | 'return';
+  quantity: number;
+  reason: string;
+  referenceId?: string;
+  referenceType?: string;
+  unitCost?: number;
+  totalCost?: number;
+  performedBy: string;
+}
+
+@Injectable()
+export class CategoryUseCase {
+  constructor(
+    @Inject('CategoryRepositoryPort')
+    private readonly categoryRepository: any,
+  ) {}
+
+  async create(command: { businessId: string; ownerId: string } & CategoryInput): Promise<any> {
+    const parentError = await this.checkParent(command.parentId, command.businessId);
+    if (parentError) return parentError;
+    const category = Category.create({
+      ...command,
+      businessId: command.businessId,
+      displayOrder: command.displayOrder ?? 0,
+      isActive: command.isActive ?? true,
+    });
+    await this.categoryRepository.save(category);
+    return { ok: true, value: category };
+  }
+
+  async update(command: { id: string; businessId: string; ownerId: string } & Partial<CategoryInput>): Promise<any> {
+    let category = await this.categoryRepository.findByIdAndBusinessId(command.id, command.businessId);
+    if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
+    if (command.parentId === command.id) return { ok: false, error: new Error('Una categoría no puede ser su propia categoría padre') };
+    const parentError = await this.checkParent(command.parentId, command.businessId);
+    if (parentError) return parentError;
+
+    if (command.name !== undefined) category = category.updateName(command.name);
+    if (command.description !== undefined) category = category.updateDescription(command.description);
+    if (command.type !== undefined) category = category.updateType(command.type);
+    if (command.displayOrder !== undefined) category = category.updateDisplayOrder(command.displayOrder);
+    if (command.parentId !== undefined) category = category.setParent(command.parentId);
+    if (command.imageUrl !== undefined) category = category.updateImage(command.imageUrl);
+    if (command.isActive !== undefined) {
+      category = command.isActive ? category.activate() : category.deactivate();
+    }
+
+    await this.categoryRepository.save(category);
+    return { ok: true, value: category };
+  }
+
+  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<any> {
+    const category = await this.categoryRepository.findByIdAndBusinessId(command.id, command.businessId);
+    if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
+    await this.categoryRepository.delete(command.id);
+    return { ok: true };
+  }
+
+  async getById(id: string, businessId: string): Promise<any> {
+    const category = await this.categoryRepository.findByIdAndBusinessId(id, businessId);
+    return category ? { ok: true, value: category } : { ok: false, error: new Error('Categoría no encontrada') };
+  }
+
+  private async checkParent(parentId: string | undefined, businessId: string): Promise<any | null> {
+    if (!parentId) return null;
+    const parent = await this.categoryRepository.findByIdAndBusinessId(parentId, businessId);
+    return parent ? null : { ok: false, error: new Error('Categoría padre no encontrada') };
+  }
+
+  async list(businessId: string, activeOnly = false): Promise<any> {
+    const categories = activeOnly 
+      ? await this.categoryRepository.findActiveByBusinessId(businessId)
+      : await this.categoryRepository.findByBusinessId(businessId);
+    return { ok: true, value: categories };
+  }
+}
+
+@Injectable()
+export class ProductUseCase {
+  constructor(
+    @Inject('ProductRepositoryPort')
+    private readonly productRepository: any,
+    @Inject('CategoryRepositoryPort')
+    private readonly categoryRepository: any,
+    @Inject('ModifierGroupRepositoryPort')
+    private readonly modifierGroupRepository: any,
+  ) {}
+
+  /** Every id a product references must belong to the same business. */
+  private async checkReferences(
+    businessId: string,
+    refs: { modifierGroupIds?: string[]; components?: Array<{ productId: string }> },
+  ): Promise<any | null> {
+    for (const groupId of refs.modifierGroupIds ?? []) {
+      if (!(await this.modifierGroupRepository.findByIdAndBusinessId(groupId, businessId))) {
+        return { ok: false, error: new Error(`Grupo de modificadores ${groupId} no encontrado`) };
+      }
+    }
+    for (const component of refs.components ?? []) {
+      if (!(await this.productRepository.findByIdAndBusinessId(component.productId, businessId))) {
+        return { ok: false, error: new Error(`Producto componente ${component.productId} no encontrado`) };
+      }
+    }
+    return null;
+  }
+
+  async create(command: { businessId: string; ownerId: string } & any): Promise<any> {
+    // Validate category exists and belongs to business
+    const category = await this.categoryRepository.findByIdAndBusinessId(command.categoryId, command.businessId);
+    if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
+    const refError = await this.checkReferences(command.businessId, command);
+    if (refError) return refError;
+
+    const product = Product.create({
+      businessId: command.businessId,
+      categoryId: command.categoryId,
+      name: command.name,
+      description: command.description,
+      type: command.type,
+      status: command.status ?? 'draft',
+      basePrice: Money.fromCents(command.basePrice, command.currency ?? 'ARS'),
+      costPrice: command.costPrice ? Money.fromCents(command.costPrice, command.currency ?? 'ARS') : undefined,
+      taxRate: command.taxRate ?? 21,
+      sku: command.sku,
+      barcode: command.barcode,
+      displayOrder: command.displayOrder ?? 0,
+      isActive: command.isActive ?? true,
+      images: command.images,
+      modifierGroupIds: command.modifierGroupIds,
+      components: command.components,
+      preparationTimeMinutes: command.preparationTimeMinutes,
+      calories: command.calories,
+      allergens: command.allergens,
+      tags: command.tags,
+    });
+
+    await this.productRepository.save(product);
+    return { ok: true, value: product };
+  }
+
+  async update(command: { id: string; businessId: string; ownerId: string } & Partial<any>): Promise<any> {
+    let product = await this.productRepository.findByIdAndBusinessId(command.id, command.businessId);
+    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+    const refError = await this.checkReferences(command.businessId, command as any);
+    if (refError) return refError;
+
+    if (command.name !== undefined) product = product.updateName(command.name);
+    if (command.description !== undefined) product = product.updateDescription(command.description);
+    if (command.basePrice !== undefined) product = product.updateBasePrice(Money.fromCents(command.basePrice, 'ARS'));
+    if (command.costPrice !== undefined) product = product.updateCostPrice(command.costPrice ? Money.fromCents(command.costPrice, 'ARS') : undefined);
+    if (command.taxRate !== undefined) product = product.updateTaxRate(command.taxRate);
+    if (command.sku !== undefined) product = product.updateSKU(command.sku);
+    if (command.barcode !== undefined) product = product.updateBarcode(command.barcode);
+    if (command.displayOrder !== undefined) product = product.setDisplayOrder(command.displayOrder);
+    if (command.images !== undefined) {
+      product = Product.reconstitute({
+        ...product,
+        images: command.images,
+        updatedAt: new Date(),
+      });
+    }
+    if (command.modifierGroupIds !== undefined) product = product.setModifierGroups(command.modifierGroupIds);
+    if (command.components !== undefined) {
+      product = Product.reconstitute({
+        ...product,
+        components: command.components,
+        updatedAt: new Date(),
+      });
+    }
+    if (command.preparationTimeMinutes !== undefined) product = product.setPreparationTime(command.preparationTimeMinutes);
+    if (command.calories !== undefined) product = product.setCalories(command.calories);
+    if (command.allergens !== undefined) {
+      product = Product.reconstitute({
+        ...product,
+        allergens: command.allergens,
+        updatedAt: new Date(),
+      });
+    }
+    if (command.tags !== undefined) {
+      product = Product.reconstitute({
+        ...product,
+        tags: command.tags,
+        updatedAt: new Date(),
+      });
+    }
+    if (command.status !== undefined) {
+      if (command.status === 'active') product = product.activate();
+      else if (command.status === 'archived') product = product.archive();
+      else product = Product.reconstitute({ ...product, status: command.status, updatedAt: new Date() });
+    }
+    if (command.isActive !== undefined) {
+      product = command.isActive ? product.activate() : product.deactivate();
+    }
+
+    await this.productRepository.save(product);
+    return { ok: true, value: product };
+  }
+
+  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<any> {
+    const product = await this.productRepository.findByIdAndBusinessId(command.id, command.businessId);
+    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+    await this.productRepository.delete(command.id);
+    return { ok: true };
+  }
+
+  async getById(id: string, businessId: string): Promise<any> {
+    const product = await this.productRepository.findByIdAndBusinessId(id, businessId);
+    return product ? { ok: true, value: product } : { ok: false, error: new Error('Producto no encontrado') };
+  }
+
+  async list(businessId: string, filters?: { status?: string; categoryId?: string; activeOnly?: boolean }): Promise<any> {
+    let products: any[];
+    if (filters?.categoryId) {
+      const category = await this.categoryRepository.findByIdAndBusinessId(filters.categoryId, businessId);
+      if (!category) return { ok: false, error: new Error('Categoría no encontrada') };
+      products = await this.productRepository.findByCategoryId(filters.categoryId);
+    } else if (filters?.status) {
+      products = await this.productRepository.findByBusinessIdAndStatus(businessId, filters.status);
+    } else if (filters?.activeOnly) {
+      products = await this.productRepository.findActiveByBusinessId(businessId);
+    } else {
+      products = await this.productRepository.findByBusinessId(businessId);
+    }
+    return { ok: true, value: products };
+  }
+}
+
+@Injectable()
+export class ModifierGroupUseCase {
+  constructor(
+    @Inject('ModifierGroupRepositoryPort')
+    private readonly groupRepository: any,
+  ) {}
+
+  async create(command: { businessId: string; ownerId: string } & any): Promise<any> {
+    const group = ModifierGroup.create({
+      businessId: command.businessId,
+      name: command.name,
+      description: command.description,
+      minSelection: command.minSelection ?? 0,
+      maxSelection: command.maxSelection ?? 0,
+      isRequired: command.isRequired ?? false,
+      displayOrder: command.displayOrder ?? 0,
+      isActive: command.isActive ?? true,
+      options: command.options?.map((o: any) => ModifierOption.create({
+        name: o.name,
+        priceDelta: o.priceDelta ?? 0,
+        isDefault: o.isDefault ?? false,
+        displayOrder: o.displayOrder ?? 0,
+        isActive: o.isActive ?? true,
+      })) ?? [],
+    });
+    await this.groupRepository.save(group);
+    return { ok: true, value: group };
+  }
+
+  async update(command: { id: string; businessId: string; ownerId: string } & Partial<any>): Promise<any> {
+    let group = await this.groupRepository.findByIdAndBusinessId(command.id, command.businessId);
+    if (!group) return { ok: false, error: new Error('Grupo de modificadores no encontrado') };
+
+    if (command.name !== undefined) group = group.updateName(command.name);
+    if (command.description !== undefined) group = group.updateDescription(command.description);
+    if (command.minSelection !== undefined) group = group.setMinSelection(command.minSelection);
+    if (command.maxSelection !== undefined) group = group.setMaxSelection(command.maxSelection);
+    if (command.isRequired !== undefined) group = group.setRequired(command.isRequired);
+    if (command.isActive !== undefined) {
+      group = command.isActive ? group.activate() : group.deactivate();
+    }
+
+    await this.groupRepository.save(group);
+    return { ok: true, value: group };
+  }
+
+  async addOption(command: { groupId: string; businessId: string; ownerId: string; option: any }): Promise<any> {
+    let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
+    if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
+    const option = ModifierOption.create({
+      name: command.option.name,
+      priceDelta: command.option.priceDelta ?? 0,
+      isDefault: command.option.isDefault ?? false,
+      displayOrder: command.option.displayOrder ?? 0,
+      isActive: command.option.isActive ?? true,
+    });
+    group = group.addOption(option);
+    await this.groupRepository.save(group);
+    return { ok: true, value: group };
+  }
+
+  async updateOption(command: { groupId: string; businessId: string; ownerId: string; optionId: string; updates: Partial<any> }): Promise<any> {
+    let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
+    if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
+    group = group.updateOption(command.optionId, (o: ModifierOption) => {
+      if (command.updates.name !== undefined) o = o.updateName(command.updates.name);
+      if (command.updates.priceDelta !== undefined) o = o.updatePriceDelta(command.updates.priceDelta);
+      if (command.updates.isDefault !== undefined) o = command.updates.isDefault ? o.setAsDefault() : o.unsetAsDefault();
+      if (command.updates.isActive !== undefined) o = command.updates.isActive ? o.activate() : o.deactivate();
+      return o;
+    });
+    await this.groupRepository.save(group);
+    return { ok: true, value: group };
+  }
+
+  async deleteOption(command: { groupId: string; businessId: string; ownerId: string; optionId: string }): Promise<any> {
+    let group = await this.groupRepository.findByIdAndBusinessId(command.groupId, command.businessId);
+    if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
+    group = group.removeOption(command.optionId);
+    await this.groupRepository.save(group);
+    return { ok: true, value: group };
+  }
+
+  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<any> {
+    const group = await this.groupRepository.findByIdAndBusinessId(command.id, command.businessId);
+    if (!group) return { ok: false, error: new Error('Grupo no encontrado') };
+    await this.groupRepository.delete(command.id);
+    return { ok: true };
+  }
+
+  async getById(id: string, businessId: string): Promise<any> {
+    const group = await this.groupRepository.findByIdAndBusinessId(id, businessId);
+    return group ? { ok: true, value: group } : { ok: false, error: new Error('Grupo no encontrado') };
+  }
+
+  async list(businessId: string, activeOnly = false): Promise<any> {
+    const groups = activeOnly 
+      ? await this.groupRepository.findActiveByBusinessId(businessId)
+      : await this.groupRepository.findByBusinessId(businessId);
+    return { ok: true, value: groups };
+  }
+}
+
+@Injectable()
+export class PriceListUseCase {
+  constructor(
+    @Inject('PriceListRepositoryPort')
+    private readonly listRepository: any,
+    @Inject('ProductRepositoryPort')
+    private readonly productRepository: any,
+  ) {}
+
+  async create(command: { businessId: string; ownerId: string } & any): Promise<any> {
+    // Validate products exist
+    if (command.entries) {
+      for (const entry of command.entries) {
+        const product = await this.productRepository.findByIdAndBusinessId(entry.productId, command.businessId);
+        if (!product) return { ok: false, error: new Error(`Producto ${entry.productId} no encontrado`) };
+      }
+    }
+
+    let list = PriceList.create({
+      businessId: command.businessId,
+      name: command.name,
+      description: command.description,
+      type: command.type,
+      isDefault: command.isDefault ?? false,
+      isActive: command.isActive ?? true,
+      validFrom: command.validFrom ? new Date(command.validFrom) : undefined,
+      validTo: command.validTo ? new Date(command.validTo) : undefined,
+      validDays: command.validDays,
+      validFromTime: command.validFromTime,
+      validToTime: command.validToTime,
+      entries: command.entries?.map((e: any) => PriceListEntry.create({
+        productId: e.productId,
+        price: Money.fromCents(e.price, 'ARS'),
+        costPrice: e.costPrice ? Money.fromCents(e.costPrice, 'ARS') : undefined,
+        isActive: e.isActive ?? true,
+      })) ?? [],
+    });
+
+    // If this is set as default, unset others
+    if (command.isDefault) {
+      const lists = await this.listRepository.findActiveByBusinessId(command.businessId);
+      for (const other of lists) {
+        if (other.isDefault) {
+          await this.listRepository.save(other.unsetAsDefault());
+        }
+      }
+    }
+
+    await this.listRepository.save(list);
+    return { ok: true, value: list };
+  }
+
+  async update(command: { id: string; businessId: string; ownerId: string } & Partial<any>): Promise<any> {
+    let list = await this.listRepository.findByIdAndBusinessId(command.id, command.businessId);
+    if (!list) return { ok: false, error: new Error('Lista de precios no encontrada') };
+
+    if (command.name !== undefined) list = list.updateName(command.name);
+    if (command.description !== undefined) list = list.updateDescription(command.description);
+    if (command.isDefault !== undefined) list = command.isDefault ? list.setAsDefault() : list.unsetAsDefault();
+    if (command.isActive !== undefined) list = command.isActive ? list.activate() : list.deactivate();
+    if (command.validFrom !== undefined || command.validTo !== undefined) list = list.setValidityPeriod(command.validFrom ? new Date(command.validFrom) : undefined, command.validTo ? new Date(command.validTo) : undefined);
+    if (command.validDays !== undefined) list = list.setValidDays(command.validDays);
+    if (command.validFromTime !== undefined || command.validToTime !== undefined) list = list.setValidHours(command.validFromTime, command.validToTime);
+
+    // If setting as default, unset others
+    if (command.isDefault) {
+      const lists = await this.listRepository.findActiveByBusinessId(command.businessId);
+      for (const other of lists) {
+        if (other.id !== command.id && other.isDefault) {
+          await this.listRepository.save(other.unsetAsDefault());
+        }
+      }
+    }
+
+    await this.listRepository.save(list);
+    return { ok: true, value: list };
+  }
+
+  async addEntry(command: { listId: string; businessId: string; ownerId: string; productId: string; price: number; costPrice?: number; isActive?: boolean }): Promise<any> {
+    let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
+    if (!list) return { ok: false, error: new Error('Lista no encontrada') };
+
+    const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
+    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+
+    const entry = PriceListEntry.create({
+      productId: command.productId,
+      price: Money.fromCents(command.price, 'ARS'),
+      costPrice: command.costPrice ? Money.fromCents(command.costPrice, 'ARS') : undefined,
+      isActive: command.isActive ?? true,
+    });
+
+    list = list.addEntry(entry);
+    await this.listRepository.save(list);
+    return { ok: true, value: list };
+  }
+
+  async updateEntry(command: { listId: string; businessId: string; ownerId: string; productId: string; price?: number; costPrice?: number; isActive?: boolean }): Promise<any> {
+    let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
+    if (!list) return { ok: false, error: new Error('Lista no encontrada') };
+
+    if (command.price !== undefined) list = list.setEntryPrice(command.productId, Money.fromCents(command.price, 'ARS'));
+    if (command.costPrice !== undefined) list = list.updateEntry(command.productId, (e: PriceListEntry) => e.updateCostPrice(command.costPrice ? Money.fromCents(command.costPrice, 'ARS') : undefined));
+    if (command.isActive !== undefined) list = list.updateEntry(command.productId, (e: PriceListEntry) => command.isActive ? e.activate() : e.deactivate());
+
+    await this.listRepository.save(list);
+    return { ok: true, value: list };
+  }
+
+  async removeEntry(command: { listId: string; businessId: string; ownerId: string; productId: string }): Promise<any> {
+    let list = await this.listRepository.findByIdAndBusinessId(command.listId, command.businessId);
+    if (!list) return { ok: false, error: new Error('Lista no encontrada') };
+    list = list.removeEntry(command.productId);
+    await this.listRepository.save(list);
+    return { ok: true, value: list };
+  }
+
+  async delete(command: { id: string; businessId: string; ownerId: string }): Promise<any> {
+    const list = await this.listRepository.findByIdAndBusinessId(command.id, command.businessId);
+    if (!list) return { ok: false, error: new Error('Lista no encontrada') };
+    await this.listRepository.delete(command.id);
+    return { ok: true };
+  }
+
+  async getById(id: string, businessId: string): Promise<any> {
+    const list = await this.listRepository.findByIdAndBusinessId(id, businessId);
+    return list ? { ok: true, value: list } : { ok: false, error: new Error('Lista no encontrada') };
+  }
+
+  async list(businessId: string, activeOnly = false): Promise<any> {
+    const lists = activeOnly 
+      ? await this.listRepository.findActiveByBusinessId(businessId)
+      : await this.listRepository.findByBusinessId(businessId);
+    return { ok: true, value: lists };
+  }
+
+  async getDefault(businessId: string): Promise<any> {
+    const list = await this.listRepository.findDefaultByBusinessId(businessId);
+    return list ? { ok: true, value: list } : { ok: false, error: new Error('No hay lista por defecto') };
+  }
+}
+
+@Injectable()
+export class StockUseCase {
+  constructor(
+    @Inject('StockLevelRepositoryPort')
+    private readonly stockRepository: any,
+    @Inject('StockMovementRepositoryPort')
+    private readonly movementRepository: any,
+    @Inject('ProductRepositoryPort')
+    private readonly productRepository: any,
+  ) {}
+
+  async addStock(command: { productId: string; businessId: string; ownerId: string } & any): Promise<any> {
+    const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
+    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+
+    const level = await this.stockRepository.findByProductId(command.productId);
+    if (!level) {
+      return { ok: false, error: new Error('Nivel de stock no inicializado para este producto') };
+    }
+
+    const movement = StockMovement.create({
+      productId: command.productId,
+      businessId: command.businessId,
+      type: 'in',
+      quantity: command.quantity,
+      reason: command.reason,
+      referenceId: command.referenceId,
+      referenceType: command.referenceType,
+      unitCost: command.unitCost,
+      totalCost: command.totalCost,
+      performedBy: command.ownerId,
+    });
+
+    const updatedLevel = level.addStock(command.quantity, movement);
+    await this.stockRepository.save(updatedLevel);
+    await this.movementRepository.save(movement);
+
+    return { ok: true, value: { level: updatedLevel, movement } };
+  }
+
+  async removeStock(command: { productId: string; businessId: string; ownerId: string } & any): Promise<any> {
+    const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
+    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+
+    const level = await this.stockRepository.findByProductId(command.productId);
+    if (!level) return { ok: false, error: new Error('Nivel de stock no encontrado') };
+
+    const movement = StockMovement.create({
+      productId: command.productId,
+      businessId: command.businessId,
+      type: command.type,
+      quantity: command.quantity,
+      reason: command.reason,
+      referenceId: command.referenceId,
+      referenceType: command.referenceType,
+      unitCost: command.unitCost,
+      totalCost: command.totalCost,
+      performedBy: command.ownerId,
+    });
+
+    const updatedLevel = level.removeStock(command.quantity, movement);
+    await this.stockRepository.save(updatedLevel);
+    await this.movementRepository.save(movement);
+
+    return { ok: true, value: { level: updatedLevel, movement } };
+  }
+
+  private async productMissing(productId: string, businessId: string): Promise<any | null> {
+    const product = await this.productRepository.findByIdAndBusinessId(productId, businessId);
+    return product ? null : { ok: false, error: new Error('Producto no encontrado') };
+  }
+
+  async recordCount(command: { productId: string; businessId: string; ownerId: string; countedQuantity: number }): Promise<any> {
+    const missing = await this.productMissing(command.productId, command.businessId);
+    if (missing) return missing;
+    const level = await this.stockRepository.findByProductId(command.productId);
+    if (!level) return { ok: false, error: new Error('Nivel de stock no encontrado') };
+
+    const updatedLevel = level.recordCount(command.countedQuantity);
+    await this.stockRepository.save(updatedLevel);
+    return { ok: true, value: updatedLevel };
+  }
+
+  async adjustThresholds(command: { productId: string; businessId: string; ownerId: string; minThreshold?: number; maxThreshold?: number; reorderPoint?: number; reorderQuantity?: number }): Promise<any> {
+    const missing = await this.productMissing(command.productId, command.businessId);
+    if (missing) return missing;
+    const level = await this.stockRepository.findByProductId(command.productId);
+    if (!level) return { ok: false, error: new Error('Nivel de stock no encontrado') };
+
+    const updatedLevel = level.adjustThresholds(command.minThreshold, command.maxThreshold, command.reorderPoint, command.reorderQuantity);
+    await this.stockRepository.save(updatedLevel);
+    return { ok: true, value: updatedLevel };
+  }
+
+  async initializeStock(command: { productId: string; businessId: string; ownerId: string; initialQuantity: number; minThreshold?: number; reorderPoint?: number; reorderQuantity?: number }): Promise<any> {
+    const product = await this.productRepository.findByIdAndBusinessId(command.productId, command.businessId);
+    if (!product) return { ok: false, error: new Error('Producto no encontrado') };
+
+    const existing = await this.stockRepository.findByProductId(command.productId);
+    if (existing) return { ok: false, error: new Error('El stock ya está inicializado para este producto') };
+
+    const level = StockLevel.create({
+      productId: command.productId,
+      businessId: command.businessId,
+      currentQuantity: command.initialQuantity,
+      reservedQuantity: 0,
+      minThreshold: command.minThreshold ?? 10,
+      reorderPoint: command.reorderPoint ?? 5,
+      reorderQuantity: command.reorderQuantity ?? 20,
+    });
+
+    await this.stockRepository.save(level);
+
+    const movement = StockMovement.create({
+      productId: command.productId,
+      businessId: command.businessId,
+      type: 'in',
+      quantity: command.initialQuantity,
+      reason: 'Stock inicial',
+      performedBy: command.ownerId,
+    });
+    await this.movementRepository.save(movement);
+
+    return { ok: true, value: level };
+  }
+
+  async getLevel(productId: string, businessId: string): Promise<any> {
+    const missing = await this.productMissing(productId, businessId);
+    if (missing) return missing;
+    const level = await this.stockRepository.findByProductId(productId);
+    return level ? { ok: true, value: level } : { ok: false, error: new Error('Nivel de stock no encontrado') };
+  }
+
+  async getLowStock(businessId: string): Promise<any> {
+    const levels = await this.stockRepository.findLowStock(businessId);
+    return { ok: true, value: levels };
+  }
+
+  async listByBusiness(businessId: string): Promise<any> {
+    const levels = await this.stockRepository.findByBusinessId(businessId);
+    return { ok: true, value: levels };
+  }
+
+  async listMovements(businessId: string, filters?: { productId?: string; from?: Date; to?: Date }): Promise<any> {
+    let movements: any[];
+    if (filters?.from && filters?.to) {
+      movements = await this.movementRepository.findByBusinessIdAndDateRange(businessId, filters.from, filters.to);
+    } else if (filters?.productId) {
+      const missing = await this.productMissing(filters.productId, businessId);
+      if (missing) return missing;
+      movements = await this.movementRepository.findByProductId(filters.productId);
+    } else {
+      movements = await this.movementRepository.findByBusinessId(businessId);
+    }
+    return { ok: true, value: movements };
+  }
+}

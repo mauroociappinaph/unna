@@ -1,5 +1,6 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
+import { toConflict } from '../use-case-result';
 
 @Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
@@ -12,6 +13,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
       const res = exception.getResponse();
       return response.status(status).json(res);
     }
+
+    const conflict = toConflict(exception);
+    if (conflict) return response.status(conflict.getStatus()).json(conflict.getResponse());
 
     const error = exception as Error;
     const domainErrors = [

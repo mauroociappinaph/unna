@@ -13,8 +13,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variants = {
-      primary: 'bg-unna-green text-white hover:bg-unna-green-dark focus:ring-unna-green',
-      secondary: 'bg-white text-unna-green border-2 border-unna-green hover:bg-unna-green hover:text-white focus:ring-unna-green',
+      // Text-bearing fills use green-dark (5.02:1 with white); #16a34a stays for borders and focus (3:1 is enough there).
+      primary: 'bg-unna-green-dark text-white hover:bg-primary-900 focus:ring-unna-green',
+      secondary: 'bg-white text-unna-green-dark border-2 border-unna-green hover:bg-unna-green-dark hover:text-white focus:ring-unna-green',
       outline: 'bg-transparent text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:text-gray-900 focus:ring-gray-500',
       ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-500',
     };

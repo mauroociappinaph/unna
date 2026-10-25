@@ -102,7 +102,7 @@ Medido contra blanco. AA pide 4,5:1 para texto normal y 3:1 para texto grande (�
 
 **Regla práctica:** `#16a34a` para el símbolo, íconos y superficies sin texto. Si hay texto blanco encima o el texto es verde, usá `#15803d`.
 
-> **Pendiente en la app:** `.btn-primary` (`apps/web/src/app/globals.css`) hoy usa texto blanco sobre `#16a34a` (3,30:1, no cumple AA para el tamaño del botón). Recomendado: fondo `#15803d` y hover `#14532d`.
+> **Aplicado en la app:** el botón primario (`Button` y `.btn-primary`) usa fondo `#15803d` con hover `#14532d`, y el secundario texto `#15803d`. Un test (`Button.contrast.spec.tsx`) verifica el contraste AA contra los tokens de Tailwind. Quedan con blanco sobre `#16a34a` algunas etiquetas y pestañas (sucursal principal, pasos del onboarding, números de la landing).
 
 ## 4. Tipografía
 
@@ -156,7 +156,7 @@ Español rioplatense, con **voseo**, directo y amable. Hablamos del negocio del 
 | Imagen para compartir (Open Graph) | `unna-logo-tagline.svg` sobre `#f3f4f6` | 1200 × 630 |
 | Redes sociales (avatar) | `unna-app-icon.svg` | Recorte circular: el símbolo queda centrado con margen suficiente |
 
-> **Pendiente en la app:** la web pide `/manifest.json` y `/favicon.ico` y hoy no existen (404). Con los íconos exportados de este manual se completan.
+> **Aplicado en la app:** `apps/web/public/` tiene `favicon.ico` (16/32/48), `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (a sangre, para Android), `icon.svg` y `manifest.json`, generados desde `unna-app-icon.svg`.
 
 ## Checklist antes de publicar una pieza
 

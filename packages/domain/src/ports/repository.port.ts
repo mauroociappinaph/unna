@@ -114,6 +114,20 @@ export interface PaymentRepositoryPort {
   findByOrderId(orderId: string): Promise<PaymentRecord[]>;
 }
 
+/** Order and payment repositories bound to the transaction that holds the order lock. */
+export interface LockedOrderRepositories {
+  orders: OrderRepositoryPort;
+  payments: PaymentRepositoryPort;
+}
+
+export interface SalesUnitOfWorkPort {
+  /**
+   * Runs `work` in one transaction while holding a lock on the order, so concurrent calls for the
+   * same order run one after another. Writes made through `repositories` commit together or not at all.
+   */
+  withOrderLock<T>(orderId: string, businessId: string, work: (repositories: LockedOrderRepositories) => Promise<T>): Promise<T>;
+}
+
 export interface ReceiptRepositoryPort {
   save(receipt: Receipt): Promise<void>;
   findByIdAndBusinessId(id: string, businessId: string): Promise<Receipt | null>;

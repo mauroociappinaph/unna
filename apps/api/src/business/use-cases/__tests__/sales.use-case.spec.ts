@@ -1,5 +1,5 @@
 import { SalesUseCase } from '../sales.use-case';
-import { Money, Order } from '@unna/domain';
+import { LockedOrderRepositories, Money, Order, PaymentRecord, SalesUnitOfWorkPort } from '@unna/domain';
 import { fake } from './test-doubles';
 
 const m = (cents: number) => Money.fromCents(cents);
@@ -7,12 +7,55 @@ const m = (cents: number) => Money.fromCents(cents);
 type NewOrderLine = Parameters<Order['addItem']>[0];
 const line: NewOrderLine = { productId: 'p', productName: 'X', quantity: 1, unitPrice: m(1000), totalPrice: m(1000), taxRate: 0, taxAmount: m(0), modifiers: [] };
 
-// Order.create sets status and each item's orderId itself, though its signature still lists them.
 const openOrder = () =>
-  Order.create({
-    businessId: 'biz-A', sucursalId: 'suc-1', sucursalName: 'Central', type: 'dine_in',
-    items: [line],
-  } as Parameters<typeof Order.create>[0]);
+  Order.create({ businessId: 'biz-A', sucursalId: 'suc-1', sucursalName: 'Central', type: 'dine_in', items: [line] });
+
+/** Repositories that must not be reached: payments only touch the ones bound to the order lock. */
+const outsideLock = () => {
+  const refuse = async () => { throw new Error('repository used outside the order lock'); };
+  return fake<never>({ findByIdAndBusinessId: refuse, findByOrderId: refuse, save: refuse });
+};
+
+/** Runs each call after the previous one, like the row lock, over an in-memory order and its payments. */
+const lockingUnitOfWork = (state: { order: Order; payments: PaymentRecord[] }) => {
+  let held = false;
+  let queue: Promise<unknown> = Promise.resolve();
+  const guard = () => {
+    if (!held) throw new Error('repository used outside the order lock');
+  };
+  const repositories: LockedOrderRepositories = {
+    orders: fake({
+      findByIdAndBusinessId: async (id: string, businessId: string) => {
+        guard();
+        return id === state.order.id && businessId === state.order.businessId ? state.order : null;
+      },
+      save: async (o: Order) => { guard(); state.order = o; },
+    }),
+    payments: fake({
+      findByOrderId: async () => { guard(); return [...state.payments]; },
+      save: async (p: PaymentRecord) => { guard(); state.payments.push(p); },
+    }),
+  };
+  const withOrderLock = jest.fn(<T>(_orderId: string, _businessId: string, work: (r: LockedOrderRepositories) => Promise<T>) => {
+    const run = queue.then(async () => {
+      held = true;
+      try {
+        return await work(repositories);
+      } finally {
+        held = false;
+      }
+    });
+    queue = run.catch(() => undefined);
+    return run;
+  });
+  return { unitOfWork: fake<SalesUnitOfWorkPort>({ withOrderLock }), withOrderLock };
+};
+
+const paymentSales = (state: { order: Order; payments: PaymentRecord[] }) => {
+  const { unitOfWork, withOrderLock } = lockingUnitOfWork(state);
+  const sales = new SalesUseCase(outsideLock(), outsideLock(), fake({}), fake({}), fake({}), fake({}), unitOfWork);
+  return { sales, withOrderLock };
+};
 
 describe('SalesUseCase', () => {
   it('rejects cancelling an order that has a partial payment', async () => {
@@ -20,7 +63,7 @@ describe('SalesUseCase', () => {
     const sales = new SalesUseCase(
       fake({ findByIdAndBusinessId: async () => order, save: async (o: Order) => { order = o; } }),
       fake({ findByOrderId: async () => [{ amount: 400, method: 'cash', status: 'completed' }] }),
-      fake({}), fake({}), fake({}), fake({}),
+      fake({}), fake({}), fake({}), fake({}), fake({}),
     );
 
     const result = await sales.changeStatus({ businessId: 'biz-A', orderId: order.id, action: 'cancel', reason: 'cliente se fue' });
@@ -49,6 +92,7 @@ describe('SalesUseCase', () => {
       fake({ findByIdAndBusinessId: async () => product }),
       fake({ findByIdAndBusinessId: async () => null }),
       fake({ findById: async () => ({ id: 'biz-A', sucursales: [{ id: 'suc-1', name: 'Central', isActive: true }] }) }),
+      fake({}),
     );
 
     const result = await sales.createOrder({ businessId: 'biz-A', sucursalId: 'suc-1', type: 'takeaway', items: [{ productId: 'p', quantity: 1 }] });
@@ -57,5 +101,64 @@ describe('SalesUseCase', () => {
     expect(orders.save).toHaveBeenCalledTimes(2);
     expect(savedNumbers[0]).not.toBe(savedNumbers[1]);
     expect(result.value!.orderNumber).toBe(savedNumbers[1]);
+  });
+
+  describe('registerPayment', () => {
+    it('checks the balance and writes inside the order lock, so concurrent payments cannot overpay', async () => {
+      const state = { order: openOrder(), payments: [] as PaymentRecord[] };
+      const { sales, withOrderLock } = paymentSales(state);
+      const pay = (amount: number) => sales.registerPayment({ businessId: 'biz-A', orderId: state.order.id, amount, method: 'cash' });
+
+      const [first, second] = await Promise.all([pay(600), pay(600)]);
+
+      expect(withOrderLock).toHaveBeenCalledTimes(2);
+      expect(withOrderLock).toHaveBeenCalledWith(state.order.id, 'biz-A', expect.any(Function));
+      expect(first.ok).toBe(true);
+      expect(first.value!.remaining).toBe(400);
+      expect(second.ok).toBe(false);
+      expect(second.error!.message).toBe(`El monto supera el saldo pendiente (${Money.fromCents(400).format()})`);
+      expect(state.payments.map((p) => p.amount)).toEqual([600]);
+      expect(state.order.paymentStatus).toBe('pending');
+    });
+
+    it('marks the order paid with "split" once several methods cover the total', async () => {
+      const state = { order: openOrder(), payments: [] as PaymentRecord[] };
+      const { sales } = paymentSales(state);
+
+      await sales.registerPayment({ businessId: 'biz-A', orderId: state.order.id, amount: 400, method: 'cash' });
+      const result = await sales.registerPayment({ businessId: 'biz-A', orderId: state.order.id, amount: 600, method: 'card' });
+
+      expect(result.ok).toBe(true);
+      expect(result.value!.remaining).toBe(0);
+      expect(result.value!.payments.map((p) => p.method)).toEqual(['cash', 'card']);
+      expect(state.order.paymentStatus).toBe('completed');
+      expect(state.order.paymentMethod).toBe('split');
+    });
+
+    it('rejects paying a cancelled order and writes nothing', async () => {
+      const cancelled = openOrder().cancel('cliente se fue');
+      const state = { order: cancelled, payments: [] as PaymentRecord[] };
+      const { sales } = paymentSales(state);
+
+      const result = await sales.registerPayment({ businessId: 'biz-A', orderId: cancelled.id, amount: 100, method: 'cash' });
+
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe('No se puede cobrar un pedido cancelado o reembolsado');
+      expect(state.payments).toEqual([]);
+      expect(state.order).toBe(cancelled);
+    });
+
+    it('rejects paying an order that is already paid and writes nothing', async () => {
+      const paid = openOrder().markPaymentCompleted('cash');
+      const state = { order: paid, payments: [] as PaymentRecord[] };
+      const { sales } = paymentSales(state);
+
+      const result = await sales.registerPayment({ businessId: 'biz-A', orderId: paid.id, amount: 100, method: 'cash' });
+
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe('El pedido ya está pagado');
+      expect(state.payments).toEqual([]);
+      expect(state.order).toBe(paid);
+    });
   });
 });

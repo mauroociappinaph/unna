@@ -220,7 +220,8 @@ export class Order {
     this.cancelledReason = props.cancelledReason;
   }
 
-  public static create(props: Omit<OrderProps, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber' | 'subtotal' | 'taxAmount' | 'discountAmount' | 'totalAmount' | 'paymentStatus' | 'items'> & { items: Array<Omit<OrderItemProps, 'id' | 'createdAt' | 'updatedAt'>> }): Order {
+  /** Status, order number, totals and each item's orderId are set here, never by the caller. */
+  public static create(props: Omit<OrderProps, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber' | 'status' | 'subtotal' | 'taxAmount' | 'discountAmount' | 'totalAmount' | 'paymentStatus' | 'items'> & { items: Array<Omit<OrderItemProps, 'id' | 'orderId' | 'createdAt' | 'updatedAt'>> }): Order {
     if (!props.businessId) throw new Error('Business ID es obligatorio');
     if (!props.sucursalId) throw new Error('Sucursal ID es obligatorio');
     if (!props.sucursalName || !props.sucursalName.trim()) throw new Error('Nombre de sucursal es obligatorio');
@@ -256,7 +257,7 @@ export class Order {
       totalAmount,
       createdAt: now,
       updatedAt: now,
-    } as OrderProps);
+    });
   }
 
   public static reconstitute(props: OrderProps): Order {

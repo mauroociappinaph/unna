@@ -7,7 +7,7 @@ import { BusinessManagementUseCase } from './use-cases/business-management.use-c
 import { CategoryUseCase, ProductUseCase, ModifierGroupUseCase, PriceListUseCase, StockUseCase } from './use-cases/product-catalog.use-case';
 import { BusinessController } from './business.controller';
 import { CategoryController, ProductController, ModifierGroupController, PriceListController, StockController } from './catalog.controller';
-import { PrismaOrderRepositoryAdapter, PrismaPaymentRepositoryAdapter, PrismaReceiptRepositoryAdapter } from './adapters/sales.repository.adapter';
+import { PrismaOrderRepositoryAdapter, PrismaPaymentRepositoryAdapter, PrismaReceiptRepositoryAdapter, PrismaSalesUnitOfWorkAdapter } from './adapters/sales.repository.adapter';
 import { SalesUseCase } from './use-cases/sales.use-case';
 import { SalesController } from './sales.controller';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
@@ -28,6 +28,7 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
     { provide: 'OrderRepositoryPort', useClass: PrismaOrderRepositoryAdapter },
     { provide: 'PaymentRepositoryPort', useClass: PrismaPaymentRepositoryAdapter },
     { provide: 'ReceiptRepositoryPort', useClass: PrismaReceiptRepositoryAdapter },
+    { provide: 'SalesUnitOfWorkPort', useClass: PrismaSalesUnitOfWorkAdapter },
     {
       provide: 'BusinessRepositoryPort',
       useClass: PrismaBusinessRepositoryAdapter,

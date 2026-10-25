@@ -8,6 +8,7 @@ import {
   PaymentRepositoryPort,
   ProductRepositoryPort,
   ReceiptRepositoryPort,
+  SalesUnitOfWorkPort,
   CUIT,
   Money,
   Order,
@@ -47,7 +48,6 @@ const formatCents = (cents: number) => Money.fromCents(cents).format();
 const isOneOf = <T extends string>(values: readonly T[], value: string): value is T =>
   (values as readonly string[]).includes(value);
 
-type NewOrder = Parameters<typeof Order.create>[0];
 /** A priced order line; the order assigns its own id to it. */
 type NewOrderLine = Parameters<Order['addItem']>[0];
 
@@ -60,6 +60,7 @@ export class SalesUseCase {
     @Inject('ProductRepositoryPort') private readonly products: ProductRepositoryPort,
     @Inject('ModifierGroupRepositoryPort') private readonly modifierGroups: ModifierGroupRepositoryPort,
     @Inject('BusinessRepositoryPort') private readonly businesses: BusinessRepositoryPort,
+    @Inject('SalesUnitOfWorkPort') private readonly unitOfWork: SalesUnitOfWorkPort,
   ) {}
 
   async createOrder(command: {
@@ -88,8 +89,7 @@ export class SalesUseCase {
       lines.push(built.value!);
     }
 
-    // Order.create sets status and each item's orderId itself, though its signature still lists them.
-    const props = {
+    const props: Parameters<typeof Order.create>[0] = {
       businessId: command.businessId,
       sucursalId: sucursal.id,
       sucursalName: sucursal.name,
@@ -100,7 +100,7 @@ export class SalesUseCase {
       customerEmail: command.customerEmail,
       notes: command.notes,
       items: lines,
-    } as NewOrder;
+    };
 
     // Order numbers are random per day; on a collision within the business, draw a new one.
     for (let attempt = 1; ; attempt++) {
@@ -185,45 +185,50 @@ export class SalesUseCase {
     method: string;
     reference?: string;
   }): Promise<Result<{ order: Order; payments: PaymentRecord[]; remaining: number }>> {
-    if (!isOneOf(PAYMENT_METHODS, command.method)) return fail('Método de pago inválido');
+    const { method } = command;
+    if (!isOneOf(PAYMENT_METHODS, method)) return fail('Método de pago inválido');
     if (!Number.isInteger(command.amount) || command.amount <= 0) return fail('El monto debe ser un entero positivo en centavos');
 
-    const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
-    if (!order) return fail('Pedido no encontrado');
-    if (['cancelled', 'refunded'].includes(order.status)) return fail('No se puede cobrar un pedido cancelado o reembolsado');
-    if (order.paymentStatus === 'completed') return fail('El pedido ya está pagado');
+    // The balance check and both writes run under the order's lock: concurrent payments queue up
+    // and each one sees the payments committed before it, so the total cannot be exceeded.
+    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async ({ orders, payments }) => {
+      const order = await orders.findByIdAndBusinessId(command.orderId, command.businessId);
+      if (!order) return fail('Pedido no encontrado');
+      if (['cancelled', 'refunded'].includes(order.status)) return fail('No se puede cobrar un pedido cancelado o reembolsado');
+      if (order.paymentStatus === 'completed') return fail('El pedido ya está pagado');
 
-    const previous = (await this.payments.findByOrderId(order.id)).filter((p) => p.status === 'completed');
-    const paid = previous.reduce((sum, p) => sum + p.amount, 0);
-    const remaining = order.totalAmount.toCents() - paid;
-    if (command.amount > remaining) {
-      return fail(`El monto supera el saldo pendiente (${formatCents(remaining)})`);
-    }
+      const previous = (await payments.findByOrderId(order.id)).filter((p) => p.status === 'completed');
+      const paid = previous.reduce((sum, p) => sum + p.amount, 0);
+      const remaining = order.totalAmount.toCents() - paid;
+      if (command.amount > remaining) {
+        return fail(`El monto supera el saldo pendiente (${formatCents(remaining)})`);
+      }
 
-    const now = new Date();
-    const payment: PaymentRecord = {
-      id: crypto.randomUUID(),
-      orderId: order.id,
-      businessId: command.businessId,
-      amount: command.amount,
-      method: command.method,
-      status: 'completed',
-      reference: command.reference,
-      processedAt: now,
-      createdAt: now,
-    };
-    await this.payments.save(payment);
+      const now = new Date();
+      const payment: PaymentRecord = {
+        id: crypto.randomUUID(),
+        orderId: order.id,
+        businessId: command.businessId,
+        amount: command.amount,
+        method,
+        status: 'completed',
+        reference: command.reference,
+        processedAt: now,
+        createdAt: now,
+      };
+      await payments.save(payment);
 
-    const all = [...previous, payment];
-    const newRemaining = remaining - command.amount;
-    let updated = order;
-    if (newRemaining === 0) {
-      const methods = new Set(all.map((p) => p.method));
-      updated = order.markPaymentCompleted(methods.size === 1 ? command.method : 'split', command.reference);
-      await this.orders.save(updated);
-    }
+      const all = [...previous, payment];
+      const newRemaining = remaining - command.amount;
+      let updated = order;
+      if (newRemaining === 0) {
+        const methods = new Set(all.map((p) => p.method));
+        updated = order.markPaymentCompleted(methods.size === 1 ? method : 'split', command.reference);
+        await orders.save(updated);
+      }
 
-    return ok({ order: updated, payments: all, remaining: newRemaining });
+      return ok({ order: updated, payments: all, remaining: newRemaining });
+    });
   }
 
   async listPayments(command: { businessId: string; orderId: string }): Promise<Result<PaymentRecord[]>> {

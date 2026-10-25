@@ -28,11 +28,11 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white bg-unna-green rounded-lg hover:bg-unna-green-dark transition-colors focus:outline-none focus:ring-2 focus:ring-unna-green focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white bg-unna-green-dark rounded-lg hover:bg-primary-900 transition-colors focus:outline-none focus:ring-2 focus:ring-unna-green focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-unna-green bg-white border-2 border-unna-green rounded-lg hover:bg-unna-green hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-unna-green focus:ring-offset-2;
+    @apply inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-unna-green-dark bg-white border-2 border-unna-green rounded-lg hover:bg-unna-green-dark hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-unna-green focus:ring-offset-2;
   }
 
   .input-field {

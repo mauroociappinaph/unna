@@ -34,12 +34,14 @@ import { OrderBoardController } from './order-board.controller';
 import { PublicOrderBoardController } from './public-order-board.controller';
 import { OrderBoardUseCase } from './use-cases/order-board.use-case';
 import { PrismaOrderBoardRepositoryAdapter } from './adapters/order-board.repository.adapter';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { publicBoardThrottlerOptions } from './public-board-throttle';
 import { CashUseCase } from './use-cases/cash.use-case';
 import { PrismaCashSessionRepositoryAdapter, PrismaCashUnitOfWorkAdapter } from './adapters/cash.repository.adapter';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ThrottlerModule.forRoot(publicBoardThrottlerOptions())],
   controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController, OrderBoardController, PublicOrderBoardController],
   providers: [
     OnboardBusinessUseCase,

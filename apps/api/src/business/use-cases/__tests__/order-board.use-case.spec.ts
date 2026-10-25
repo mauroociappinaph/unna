@@ -8,6 +8,7 @@ import { OrderBoardController } from '../../order-board.controller';
 import { PublicOrderBoardController } from '../../public-order-board.controller';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../../../common/guards/business-owner.guard';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { fake } from './test-doubles';
 
 const NOW = new Date('2026-10-25T15:00:00Z');
@@ -188,8 +189,8 @@ describe('order board controllers (S13)', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, OrderBoardController)).toEqual([JwtAuthGuard, BusinessOwnerGuard]);
   });
 
-  it('leaves the public board without auth guards and marks it no-store', () => {
-    expect(Reflect.getMetadata(GUARDS_METADATA, PublicOrderBoardController)).toBeUndefined();
+  it('leaves the public board without auth guards (only the rate limit) and marks it no-store', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, PublicOrderBoardController)).toEqual([ThrottlerGuard]);
     expect(Reflect.getMetadata(GUARDS_METADATA, PublicOrderBoardController.prototype.show)).toBeUndefined();
     expect(Reflect.getMetadata(HEADERS_METADATA, PublicOrderBoardController.prototype.show)).toEqual([{ name: 'Cache-Control', value: 'no-store' }]);
   });

@@ -1,14 +1,17 @@
-import { Controller, Get, Header, Param } from '@nestjs/common';
+import { Controller, Get, Header, Param, UseGuards } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { unwrap } from '../common/use-case-result';
 import { OrderBoardUseCase, PublicOrderBoard } from './use-cases/order-board.use-case';
 
 /**
  * Public order board (S13): no session, the secret token in the URL is the only credential.
- * Unknown, disabled and malformed tokens all answer the same 404.
+ * Unknown, disabled and malformed tokens all answer the same 404. Rate limited per client IP
+ * (public-board-throttle.ts); the rest of the API is not throttled.
  */
 @ApiTags('Pantalla pública')
 @Controller('public/order-board')
+@UseGuards(ThrottlerGuard)
 export class PublicOrderBoardController {
   constructor(private readonly orderBoard: OrderBoardUseCase) {}
 

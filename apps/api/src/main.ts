@@ -1,11 +1,17 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { trustProxyHops } from './business/public-board-throttle';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Behind a proxy (e.g. the hosting platform), use the client IP for rate limiting.
+  const hops = trustProxyHops();
+  if (hops) app.set('trust proxy', hops);
 
   app.setGlobalPrefix('api/v1');
   app.enableCors({

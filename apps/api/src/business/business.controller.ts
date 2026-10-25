@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OnboardBusinessUseCase, OnboardBusinessCommand } from './use-cases/onboard-business.use-case';
+import { BusinessManagementUseCase, UpdateBusinessSettingsCommand, ManageSucursalCommand, ManageHorariosCommand } from './use-cases/business-management.use-case';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { IsString, IsNotEmpty, ValidateNested, IsArray, ArrayMinSize, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, ValidateNested, IsArray, ArrayMinSize, IsOptional, IsUUID, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class AddressDto {
@@ -63,13 +64,47 @@ export class OnboardBusinessDto {
   @IsArray() @ArrayMinSize(1) @ValidateNested({ each: true }) @Type(() => SucursalDto) sucursales!: SucursalDto[];
 }
 
+// DTOs for BusinessManagementUseCase
+export class UpdateSettingsDto {
+  @IsString() @IsOptional() tradeName?: string;
+  @IsString() @IsOptional() legalName?: string;
+  @IsString() @IsOptional() ivaCondition?: 'responsable_inscripto' | 'monotributo' | 'exento' | 'consumidor_final';
+  @IsString() @IsOptional() iibbNumber?: string;
+  @IsString() @IsOptional() salePoint?: string;
+  @IsString() @IsOptional() currency?: 'ARS' | 'USD';
+  @IsString() @IsOptional() timezone?: string;
+  @IsString() @IsOptional() language?: string;
+  @IsString() @IsOptional() logoUrl?: string;
+}
+
+export class ManageSucursalDto {
+  @IsString() @IsNotEmpty() action!: 'create' | 'update' | 'delete';
+  @IsUUID() @IsOptional() id?: string; // required for update/delete
+  @IsString() @IsNotEmpty() name!: string;
+  @ValidateNested() @Type(() => AddressDto) address!: AddressDto;
+  @IsString() @IsNotEmpty() phone!: string;
+  @IsString() @IsNotEmpty() email!: string;
+  @ValidateNested() @Type(() => WeekScheduleDto) @IsOptional() schedule?: WeekScheduleDto;
+  @IsOptional() isMain?: boolean;
+  @IsOptional() isActive?: boolean;
+}
+
+export class ManageHorariosDto {
+  @IsString() @IsNotEmpty() sucursalId!: string; // 'main' or sucursal UUID
+  @ValidateNested() @Type(() => WeekScheduleDto) schedule!: WeekScheduleDto;
+}
+
 @ApiTags('Business')
 @Controller('businesses')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class BusinessController {
-  constructor(private readonly onboardBusinessUseCase: OnboardBusinessUseCase) {}
+  constructor(
+    private readonly onboardBusinessUseCase: OnboardBusinessUseCase,
+    private readonly businessManagementUseCase: BusinessManagementUseCase,
+  ) {}
 
+  // --- Onboarding ---
   @Post()
   @ApiOperation({ summary: 'Crear nuevo negocio para el usuario autenticado (onboarding completo)' })
   async onboard(@Request() req: any, @Body() dto: OnboardBusinessDto) {
@@ -93,6 +128,162 @@ export class BusinessController {
     return result.value;
   }
 
+  // --- Business Settings ---
+  @Patch(':id/settings')
+  @ApiOperation({ summary: 'Actualizar configuración del negocio' })
+  async updateSettings(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Body() dto: UpdateSettingsDto,
+  ) {
+    const result = await this.businessManagementUseCase.updateSettings({
+      businessId: id,
+      ownerId: req.user.sub,
+      settings: dto,
+    });
+
+    if (!result.ok) {
+      const { HttpException, HttpStatus } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    return result.value;
+  }
+
+  @Patch(':id/address')
+  @ApiOperation({ summary: 'Actualizar dirección del negocio' })
+  async updateAddress(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Body() dto: AddressDto,
+  ) {
+    const result = await this.businessManagementUseCase.updateAddress({
+      businessId: id,
+      ownerId: req.user.sub,
+      address: dto,
+    });
+
+    if (!result.ok) {
+      const { HttpException, HttpStatus } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    return result.value;
+  }
+
+  @Patch(':id/schedule')
+  @ApiOperation({ summary: 'Actualizar horario del negocio (nivel business)' })
+  async updateSchedule(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Body() dto: WeekScheduleDto,
+  ) {
+    const result = await this.businessManagementUseCase.updateSchedule({
+      businessId: id,
+      ownerId: req.user.sub,
+      schedule: dto,
+    });
+
+    if (!result.ok) {
+      const { HttpException, HttpStatus } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    return result.value;
+  }
+
+  // --- Sucursal Management ---
+  @Post(':id/sucursales')
+  @ApiOperation({ summary: 'Crear nueva sucursal' })
+  async createSucursal(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Body() dto: ManageSucursalDto,
+  ) {
+    const result = await this.businessManagementUseCase.manageSucursal({
+      businessId: id,
+      ownerId: req.user.sub,
+      action: 'create',
+      sucursal: dto,
+    });
+
+    if (!result.ok) {
+      const { HttpException, HttpStatus } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    return result.value;
+  }
+
+  @Put(':id/sucursales/:sucursalId')
+  @ApiOperation({ summary: 'Actualizar sucursal existente' })
+  async updateSucursal(
+    @Param('id') id: string,
+    @Param('sucursalId') sucursalId: string,
+    @Request() req: any,
+    @Body() dto: ManageSucursalDto,
+  ) {
+    const result = await this.businessManagementUseCase.manageSucursal({
+      businessId: id,
+      ownerId: req.user.sub,
+      action: 'update',
+      sucursal: { ...dto, id: sucursalId },
+    });
+
+    if (!result.ok) {
+      const { HttpException, HttpStatus } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    return result.value;
+  }
+
+  @Delete(':id/sucursales/:sucursalId')
+  @ApiOperation({ summary: 'Eliminar sucursal' })
+  async deleteSucursal(
+    @Param('id') id: string,
+    @Param('sucursalId') sucursalId: string,
+    @Request() req: any,
+  ) {
+    const result = await this.businessManagementUseCase.manageSucursal({
+      businessId: id,
+      ownerId: req.user.sub,
+      action: 'delete',
+      sucursal: { id: sucursalId, name: '', address: { street: '', number: '', city: '', province: '', postalCode: '', country: '' }, phone: '', email: '' },
+    });
+
+    if (!result.ok) {
+      const { HttpException, HttpStatus } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    return result.value;
+  }
+
+  // --- Schedule Management (business or sucursal) ---
+  @Patch(':id/schedule')
+  @ApiOperation({ summary: 'Actualizar horario (business o sucursal)' })
+  async manageHorarios(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Body() dto: ManageHorariosDto,
+  ) {
+    const result = await this.businessManagementUseCase.manageHorarios({
+      businessId: id,
+      ownerId: req.user.sub,
+      sucursalId: dto.sucursalId,
+      schedule: dto.schedule,
+    });
+
+    if (!result.ok) {
+      const { HttpException, HttpStatus } = require('@nestjs/common');
+      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    return result.value;
+  }
+
+  // --- Getters ---
   @Get()
   @ApiOperation({ summary: 'Listar negocios del usuario autenticado' })
   async findMine(@Request() req: any) {

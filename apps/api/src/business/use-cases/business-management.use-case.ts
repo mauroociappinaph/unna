@@ -92,6 +92,17 @@ export class BusinessManagementUseCase {
     private readonly businessRepository: BusinessRepositoryPort,
   ) {}
 
+  async listMine(ownerId: string): Promise<Business[]> {
+    return this.businessRepository.findByOwnerId(ownerId);
+  }
+
+  /** Another owner's business is reported as not found, so ids do not leak. */
+  async getMine(businessId: string, ownerId: string): Promise<Result<Business, Error>> {
+    const business = await this.businessRepository.findById(businessId);
+    if (!business || business.ownerId !== ownerId) return err(new Error('Negocio no encontrado'));
+    return ok(business);
+  }
+
   // Update business-level settings
   async updateSettings(command: UpdateBusinessSettingsCommand): Promise<Result<Business, Error>> {
     const business = await this.businessRepository.findById(command.businessId);

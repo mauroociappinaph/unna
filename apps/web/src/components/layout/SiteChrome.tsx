@@ -4,8 +4,11 @@ import { usePathname } from 'next/navigation';
 import { Header } from './Header';
 import { Footer } from './Footer';
 
-/** Routes shown on their own, without the site header and footer (e.g. the TV order screen). */
-const BARE_ROUTES = ['/pantalla'];
+/**
+ * Routes shown without the public site header and footer: the TV order screen, and the dashboard,
+ * which has its own header with the business navigation and logout.
+ */
+const BARE_ROUTES = ['/pantalla', '/dashboard'];
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? '';

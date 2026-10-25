@@ -156,6 +156,18 @@ describe('POS page', () => {
     expect(mocked.createOrder).toHaveBeenCalledTimes(1);
   });
 
+  it('starts in "Para llevar" and returns to it on a new order', async () => {
+    const user = await renderPos();
+    expect(screen.getByLabelText('Tipo de pedido')).toHaveValue('takeaway');
+    expect(screen.queryByLabelText('Mesa')).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Tipo de pedido'), 'dine_in');
+    await addAgua(user);
+    await user.click(screen.getByRole('button', { name: 'Nuevo pedido' }));
+
+    expect(screen.getByLabelText('Tipo de pedido')).toHaveValue('takeaway');
+  });
+
   it('sends no table number for takeaway orders', async () => {
     const user = await renderPos();
     await user.selectOptions(screen.getByLabelText('Tipo de pedido'), 'takeaway');
@@ -595,7 +607,7 @@ describe('POS page', () => {
         await waitFor(() =>
           expect(mocked.createOrder).toHaveBeenCalledWith('biz-1', {
             sucursalId: 'suc-1',
-            type: 'dine_in',
+            type: 'takeaway',
             items: [{ productId: 'prod-agua', quantity: 1 }],
           }),
         );
@@ -633,7 +645,7 @@ describe('POS page', () => {
 
       it('does not steal "/" while typing in another input', async () => {
         const user = await renderPos();
-
+        await user.selectOptions(screen.getByLabelText('Tipo de pedido'), 'dine_in');
         await user.type(screen.getByLabelText('Mesa'), '4/');
 
         expect((screen.getByLabelText('Mesa') as HTMLInputElement).value).toBe('4/');
@@ -723,7 +735,7 @@ describe('POS page', () => {
         await waitFor(() => expect(mocked.createOrder).toHaveBeenCalledTimes(2));
         expect(mocked.createOrder).toHaveBeenLastCalledWith('biz-1', {
           sucursalId: 'suc-1',
-          type: 'dine_in',
+          type: 'takeaway',
           items: repeatedLines,
         });
         expect(await screen.findByRole('button', { name: 'Quitar Milanesa' })).toBeInTheDocument();
@@ -776,7 +788,7 @@ describe('POS page', () => {
 
         expect(mocked.createOrder).toHaveBeenCalledWith('biz-1', {
           sucursalId: 'suc-1',
-          type: 'dine_in',
+          type: 'takeaway',
           customerName: 'Juana Pérez',
           items: [{ productId: 'prod-agua', quantity: 1 }],
         });

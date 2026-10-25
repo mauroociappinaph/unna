@@ -56,7 +56,7 @@ export default function PosPage() {
   const [busy, setBusy] = useState(false);
 
   const [sucursalId, setSucursalId] = useState('');
-  const [type, setType] = useState<OrderType>('dine_in');
+  const [type, setType] = useState<OrderType>('takeaway');
   const [tableNumber, setTableNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
 
@@ -287,7 +287,7 @@ export default function PosPage() {
     clearOrder();
     setError(null);
     setSucursalId(mainSucursalId(sucursales));
-    setType('dine_in');
+    setType('takeaway');
     setTableNumber('');
     setCustomerName('');
   };

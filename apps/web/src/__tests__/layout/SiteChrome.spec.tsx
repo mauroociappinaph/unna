@@ -8,8 +8,8 @@ jest.mock('next/navigation', () => ({
 }));
 
 describe('SiteChrome', () => {
-  it('wraps regular pages with the site header and footer', () => {
-    pathname = '/dashboard';
+  it('wraps public pages with the site header and footer', () => {
+    pathname = '/';
     render(<SiteChrome><p>contenido</p></SiteChrome>);
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
@@ -24,5 +24,21 @@ describe('SiteChrome', () => {
     expect(screen.queryByRole('banner')).not.toBeInTheDocument();
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
     expect(screen.getByText('pedidos')).toBeInTheDocument();
+  });
+
+  it.each(['/dashboard', '/dashboard/pos'])('shows %s with its own header only, without the public site chrome', (path) => {
+    pathname = path;
+    render(<SiteChrome><p>panel</p></SiteChrome>);
+
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    expect(screen.getByText('panel')).toBeInTheDocument();
+  });
+
+  it('keeps the site chrome on routes that only share the prefix', () => {
+    pathname = '/dashboarding';
+    render(<SiteChrome><p>otra</p></SiteChrome>);
+
+    expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 });

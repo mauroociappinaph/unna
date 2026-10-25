@@ -83,6 +83,8 @@ export interface ManageHorariosCommand {
   schedule: WeekScheduleInput;
 }
 
+export const SUCURSAL_NOT_FOUND = 'Sucursal no encontrada';
+
 @Injectable()
 export class BusinessManagementUseCase {
   constructor(
@@ -205,6 +207,9 @@ export class BusinessManagementUseCase {
       const deleteInput = sucursal as UpdateSucursalInput;
       if (!deleteInput.id) {
         return err(new Error('ID de sucursal requerido para eliminar'));
+      }
+      if (!business.sucursales.some((s) => s.id === deleteInput.id)) {
+        return err(new Error(SUCURSAL_NOT_FOUND));
       }
       business.removeSucursal(deleteInput.id);
     }

@@ -606,8 +606,7 @@ export class StockUseCase {
     const movement = StockMovement.create({
       productId: command.productId,
       businessId: command.businessId,
-      // The body's type is optional and is forwarded as received, even when omitted.
-      type: command.type as StockMovementType,
+      type: command.type ?? 'out',
       quantity: command.quantity,
       reason: command.reason,
       referenceId: command.referenceId,

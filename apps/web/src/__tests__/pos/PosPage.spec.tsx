@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PosPage from '@/app/dashboard/pos/page';
 import { api } from '@/lib/api';
-import { formatMoney, type Order, type PaymentResult, type Product } from '@/lib/api-types';
+import { formatMoney, type CashSession, type Order, type PaymentResult, type Product, type Receipt } from '@/lib/api-types';
 import shapes from '../fixtures/api-shapes.json';
 
 const router = { push: jest.fn() };
@@ -23,6 +23,7 @@ jest.mock('@/lib/api', () => ({
     changeOrderStatus: jest.fn(),
     registerPayment: jest.fn(),
     issueReceipt: jest.fn(),
+    getCurrentCashSession: jest.fn(),
   },
 }));
 
@@ -48,6 +49,7 @@ const agua: Product = {
   modifierGroupIds: [],
 };
 const createdOrder = shapes['POST orders'].body as Order;
+const openSession = shapes['GET cash-sessions/current'].body.session as CashSession;
 const guarnicion = modifierGroups[0];
 const papas = guarnicion.options[0];
 
@@ -102,6 +104,7 @@ beforeEach(() => {
   mocked.listPayments.mockResolvedValue([]);
   mocked.createOrder.mockResolvedValue(createdOrder);
   mocked.addOrderItem.mockResolvedValue(withAgua);
+  mocked.getCurrentCashSession.mockResolvedValue(openSession);
 });
 
 describe('POS page', () => {
@@ -116,6 +119,7 @@ describe('POS page', () => {
     await renderPos();
 
     expect((screen.getByLabelText('Sucursal') as HTMLSelectElement).value).toBe('suc-1');
+    expect(mocked.getCurrentCashSession).toHaveBeenCalledWith('biz-1', 'suc-1');
     expect(mocked.listProducts).toHaveBeenCalledWith('biz-1', { status: 'active' });
     expect(screen.getByRole('heading', { name: 'Platos' })).toBeInTheDocument();
   });
@@ -281,7 +285,7 @@ describe('POS page', () => {
       await user.click(await screen.findByRole('button', { name: 'Emitir ticket' }));
       await waitFor(() => expect(mocked.issueReceipt).toHaveBeenCalledWith('biz-1', discounted.id, { type: 'ticket' }));
       const receipt = await screen.findByRole('region', { name: 'Comprobante' });
-      expect(within(receipt).getByText(/ticket-0003-261043205073/)).toBeInTheDocument();
+      expect(within(receipt).getByText('Ticket N° 0003-00000001')).toBeInTheDocument();
       expect(within(receipt).getByText(/Punto de venta: 0003/)).toBeInTheDocument();
       expect(within(receipt).getByText(/Milanesa/)).toBeInTheDocument();
       expect(within(receipt).getAllByText(shown(410400)).length).toBeGreaterThan(0);
@@ -366,6 +370,187 @@ describe('POS page', () => {
       await user.click(productButton('Agua'));
       await waitFor(() => expect(mocked.createOrder).toHaveBeenCalledTimes(2));
       expect(mocked.addOrderItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('caja', () => {
+    it('blocks selling without an open caja and links to it', async () => {
+      mocked.getCurrentCashSession.mockResolvedValue(null);
+      await renderPos();
+
+      const banner = await screen.findByRole('status', { name: 'Caja cerrada' });
+      expect(within(banner).getByText('Abrí la caja para empezar a vender')).toBeInTheDocument();
+      expect(within(banner).getByRole('link', { name: 'Ir a la caja' })).toHaveAttribute('href', '/dashboard/caja');
+      expect(productButton('Agua')).toBeDisabled();
+      expect(productButton('Milanesa')).toBeDisabled();
+      expect(mocked.createOrder).not.toHaveBeenCalled();
+    });
+
+    it('reloads the caja when the sucursal changes', async () => {
+      mocked.getCurrentCashSession.mockImplementation(async (_biz, sucursalId) => (sucursalId === 'suc-1' ? openSession : null));
+      const user = await renderPos();
+      expect(productButton('Agua')).toBeEnabled();
+
+      await user.selectOptions(screen.getByLabelText('Sucursal'), 'suc-2');
+
+      expect(await screen.findByText('Abrí la caja para empezar a vender')).toBeInTheDocument();
+      expect(mocked.getCurrentCashSession).toHaveBeenLastCalledWith('biz-1', 'suc-2');
+      expect(productButton('Agua')).toBeDisabled();
+    });
+
+    it('still shows the API rejection when the caja was closed meanwhile', async () => {
+      mocked.createOrder.mockRejectedValue(apiError(shapes['POST orders without open caja'].body.message));
+      const user = await renderPos();
+
+      await user.click(productButton('Agua'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Abrí la caja para empezar a vender');
+    });
+  });
+
+  describe('fiscal receipts', () => {
+    const discounted = shapes['POST orders/:id/discount'].body as Order;
+    const rest = shapes['POST orders/:id/payments (rest)'].body as PaymentResult;
+    const facturaB = shapes['POST receipts (factura B)'].body as Receipt;
+    const facturaA = shapes['POST receipts (factura A)'].body as Receipt;
+    const withCondition = (ivaCondition: string) => ({ ...business, settings: { ivaCondition } });
+
+    beforeEach(() => {
+      mocked.createOrder.mockResolvedValue(discounted);
+      mocked.registerPayment.mockResolvedValue(rest);
+    });
+
+    async function payInFull(ivaCondition: string) {
+      mocked.getBusinesses.mockResolvedValue([withCondition(ivaCondition)]);
+      const user = await renderPos();
+      await addAgua(user);
+      await user.click(screen.getByRole('button', { name: 'Cobrar' }));
+      await user.click(screen.getByRole('button', { name: 'Registrar pago' }));
+      await screen.findByRole('group', { name: 'Comprobante' });
+      return user;
+    }
+
+    it('offers factura B by default, factura A and ticket to a responsable inscripto', async () => {
+      mocked.issueReceipt.mockResolvedValue(facturaB);
+      const user = await payInFull('responsable_inscripto');
+
+      const choice = screen.getByRole('group', { name: 'Comprobante' });
+      expect(within(choice).getByLabelText('Factura B')).toBeChecked();
+      expect(within(choice).getByLabelText('Factura A')).not.toBeChecked();
+      expect(within(choice).getByLabelText('Ticket')).toBeInTheDocument();
+      expect(within(choice).queryByLabelText('Factura C')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Emitir factura B' }));
+
+      await waitFor(() => expect(mocked.issueReceipt).toHaveBeenCalledWith('biz-1', discounted.id, { type: 'B' }));
+    });
+
+    it('shows CAE, its expiration, IVA lines and the ARCA link of an issued factura', async () => {
+      mocked.issueReceipt.mockResolvedValue(facturaB);
+      const user = await payInFull('responsable_inscripto');
+
+      await user.click(screen.getByRole('button', { name: 'Emitir factura B' }));
+
+      const receipt = await screen.findByRole('region', { name: 'Comprobante' });
+      expect(within(receipt).getByText('Factura B N° 0003-00000001')).toBeInTheDocument();
+      expect(within(receipt).getByText('CAE: 70003060000001')).toBeInTheDocument();
+      expect(within(receipt).getByText('Vencimiento CAE: 04/11/2026')).toBeInTheDocument();
+      expect(within(receipt).getByText('IVA 21%')).toBeInTheDocument();
+      expect(within(receipt).getByText(shown(35700))).toBeInTheDocument();
+      expect(within(receipt).getByText(shown(205700))).toBeInTheDocument();
+      expect(within(receipt).getByRole('link', { name: 'Verificar en ARCA' })).toHaveAttribute('href', facturaB.qrCode);
+      expect(screen.queryByRole('group', { name: 'Comprobante' })).not.toBeInTheDocument();
+    });
+
+    it('requires CUIT, razón social and condición for factura A and sends the customer data', async () => {
+      mocked.issueReceipt.mockResolvedValue(facturaA);
+      const user = await payInFull('responsable_inscripto');
+
+      await user.click(screen.getByLabelText('Factura A'));
+      await user.click(screen.getByRole('button', { name: 'Emitir factura A' }));
+      expect(await screen.findByText('La factura A requiere el CUIT del cliente (11 dígitos).')).toBeInTheDocument();
+      expect(mocked.issueReceipt).not.toHaveBeenCalled();
+
+      await user.type(screen.getByLabelText('CUIT del cliente'), '30-71234567-1');
+      await user.click(screen.getByRole('button', { name: 'Emitir factura A' }));
+      expect(await screen.findByText('Ingresá la razón social del cliente.')).toBeInTheDocument();
+      expect(mocked.issueReceipt).not.toHaveBeenCalled();
+
+      await user.type(screen.getByLabelText('Razón social'), 'Cliente SA');
+      await user.selectOptions(screen.getByLabelText('Condición frente al IVA'), 'responsable_inscripto');
+      await user.click(screen.getByRole('button', { name: 'Emitir factura A' }));
+
+      await waitFor(() =>
+        expect(mocked.issueReceipt).toHaveBeenCalledWith('biz-1', discounted.id, {
+          type: 'A',
+          customerName: 'Cliente SA',
+          customerTaxId: '30712345671',
+          customerCondition: 'responsable_inscripto',
+        }),
+      );
+      const receipt = await screen.findByRole('region', { name: 'Comprobante' });
+      expect(within(receipt).getByText('Factura A N° 0003-00000001')).toBeInTheDocument();
+      expect(within(receipt).getByText(/Cliente SA/)).toBeInTheDocument();
+      expect(within(receipt).getByText(/30712345671/)).toBeInTheDocument();
+    });
+
+    it('offers factura C by default and ticket to a monotributista', async () => {
+      mocked.issueReceipt.mockResolvedValue({ ...facturaB, type: 'C', receiptType: 'C', ivaBreakdown: [] });
+      const user = await payInFull('monotributo');
+
+      const choice = screen.getByRole('group', { name: 'Comprobante' });
+      expect(within(choice).getByLabelText('Factura C')).toBeChecked();
+      expect(within(choice).getByLabelText('Ticket')).toBeInTheDocument();
+      expect(within(choice).queryByLabelText('Factura B')).not.toBeInTheDocument();
+      expect(within(choice).queryByLabelText('Factura A')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Emitir factura C' }));
+
+      await waitFor(() => expect(mocked.issueReceipt).toHaveBeenCalledWith('biz-1', discounted.id, { type: 'C' }));
+      const receipt = await screen.findByRole('region', { name: 'Comprobante' });
+      expect(within(receipt).getByText('Factura C N° 0003-00000001')).toBeInTheDocument();
+      expect(within(receipt).queryByText(/^IVA/)).not.toBeInTheDocument();
+    });
+
+    it('issues a ticket when chosen instead of the factura', async () => {
+      mocked.issueReceipt.mockResolvedValue(shapes['POST receipts'].body as never);
+      const user = await payInFull('monotributo');
+
+      await user.click(screen.getByLabelText('Ticket'));
+      await user.click(screen.getByRole('button', { name: 'Emitir ticket' }));
+
+      await waitFor(() => expect(mocked.issueReceipt).toHaveBeenCalledWith('biz-1', discounted.id, { type: 'ticket' }));
+      const receipt = await screen.findByRole('region', { name: 'Comprobante' });
+      expect(within(receipt).queryByText(/CAE/)).not.toBeInTheDocument();
+      expect(within(receipt).queryByRole('link', { name: 'Verificar en ARCA' })).not.toBeInTheDocument();
+    });
+
+    it('shows the ARCA rejection message', async () => {
+      mocked.issueReceipt.mockRejectedValue(apiError('ARCA rechazó el comprobante: 10016 - Número inválido'));
+      const user = await payInFull('responsable_inscripto');
+
+      await user.click(screen.getByRole('button', { name: 'Emitir factura B' }));
+
+      expect(await screen.findByText('ARCA rechazó el comprobante: 10016 - Número inválido')).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Comprobante' })).toBeInTheDocument();
+    });
+
+    it('offers a retry when ARCA is unavailable and the retry re-issues', async () => {
+      mocked.issueReceipt
+        .mockRejectedValueOnce({ response: { status: 503, data: { message: 'ARCA no está disponible en este momento' } } })
+        .mockResolvedValueOnce(facturaB);
+      const user = await payInFull('responsable_inscripto');
+
+      await user.click(screen.getByRole('button', { name: 'Emitir factura B' }));
+
+      expect(await screen.findByText('ARCA no está disponible; el comprobante quedó en borrador')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+      await waitFor(() => expect(mocked.issueReceipt).toHaveBeenCalledTimes(2));
+      expect(mocked.issueReceipt).toHaveBeenLastCalledWith('biz-1', discounted.id, { type: 'B' });
+      expect(await screen.findByText('CAE: 70003060000001')).toBeInTheDocument();
+      expect(screen.queryByText('ARCA no está disponible; el comprobante quedó en borrador')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
     });
   });
 });

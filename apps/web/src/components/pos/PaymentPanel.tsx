@@ -12,14 +12,12 @@ interface PaymentPanelProps {
   payments: Payment[];
   remaining: number;
   busy: boolean;
-  canIssueReceipt: boolean;
   onPay: (amount: number, method: PaymentMethod) => void;
-  onIssueReceipt: () => void;
   onInvalidAmount: (message: string) => void;
 }
 
 export function PaymentPanel({
-  payments, remaining, busy, canIssueReceipt, onPay, onIssueReceipt, onInvalidAmount,
+  payments, remaining, busy, onPay, onInvalidAmount,
 }: PaymentPanelProps) {
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [amount, setAmount] = useState(centsToInput(remaining));
@@ -56,7 +54,7 @@ export function PaymentPanel({
         </div>
       </section>
 
-      {remaining > 0 ? (
+      {remaining > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
           <Select
             id="pos-payment-method"
@@ -74,8 +72,6 @@ export function PaymentPanel({
           />
           <Button disabled={busy} onClick={handlePay}>Registrar pago</Button>
         </div>
-      ) : (
-        canIssueReceipt && <Button disabled={busy} onClick={onIssueReceipt}>Emitir ticket</Button>
       )}
     </div>
   );

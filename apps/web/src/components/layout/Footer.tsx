@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { UnnaSymbol } from '@/components/brand/UnnaSymbol';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -47,13 +48,11 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
           <div className="col-span-2 lg:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4" aria-label="UNNA - Inicio">
-              <svg className="w-8 h-8 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
-                <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
-              </svg>
+              <UnnaSymbol className="w-8 h-8 text-unna-green" />
               <span className="text-xl font-bold text-gray-900">UNNA</span>
             </Link>
             <p className="text-sm text-gray-600 mb-2">
-              Todo tu restaurante. Una sola plataforma.
+              El sistema para cafés take away.
             </p>
             <p className="text-xs text-gray-500 font-medium mb-4">A Community of Sharing</p>
             <div className="flex gap-4">

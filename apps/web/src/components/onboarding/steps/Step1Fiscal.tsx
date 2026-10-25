@@ -128,7 +128,7 @@ export function Step1Fiscal({ data, onChange }: Step1FiscalProps) {
           id="businessName"
           value={data.businessName}
           onChange={(e) => handleBusinessNameChange(e.target.value)}
-          placeholder="Ej: Mi Restaurante"
+          placeholder="Ej: Café del Centro"
           maxLength={45}
           autoComplete="organization"
         />

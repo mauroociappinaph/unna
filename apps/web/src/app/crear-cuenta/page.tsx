@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { registerRequestSchema, type RegisterRequest } from '@unna/shared';
+import { UnnaSymbol } from '@/components/brand/UnnaSymbol';
 
 function formatPhone(value: string): string {
   const cleaned = value.replace(/\D/g, '');
@@ -99,13 +100,11 @@ export default function RegisterPage() {
           {/* Header */}
           <div className="text-center mb-10">
             <Link href="/" className="inline-flex items-center gap-2 mb-8" aria-label="UNNA - Inicio">
-              <svg className="w-10 h-10 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
-                <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
-              </svg>
+              <UnnaSymbol className="w-10 h-10 text-unna-green" />
               <span className="text-2xl font-bold text-gray-900">UNNA</span>
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">¡Crea tu cuenta gratis!</h1>
-            <p className="mt-3 text-gray-600">Comenzá a gestionar tu restaurante en 15 minutos.</p>
+            <p className="mt-3 text-gray-600">Empezá a vender en tu café en minutos.</p>
           </div>
 
           {/* Form Card */}
@@ -142,7 +141,7 @@ export default function RegisterPage() {
                   {...register('businessName')}
                   id="businessName"
                   type="text"
-                  placeholder="Ej: Mi Restaurante"
+                  placeholder="Ej: Café del Centro"
                   error={errors.businessName?.message}
                   maxLength={45}
                   autoComplete="organization"

@@ -3,13 +3,12 @@
 ## Specs
 
 ### S1: Landing Page Pública
-Replicar la landing page de https://fu.do/es-ar/ con:
-- Hero: "Todo tu restaurante. Una sola plataforma."
-- 3 pilares: Tu Gestión, Tus Cobros, Tu Delivery (con CTAs a crear-cuenta)
-- Funcionalidades detalladas por módulo (Ventas, Gastos, Productos, Clientes, Proveedores, Impresión, Usuarios, Reportes, KDS, Gestión Mesas, Delivery Apps, Facturación, Tienda Online)
-- Testimonios y estadísticas (35k+ restaurantes, #1 LatAm, 350M+ transacciones)
-- Tipos de negocio (8 categorías con CTAs)
-- Footer con CTA final "Probá todo lo que UNNA puede hacer"
+Alcance vigente (reescrito por S11 y L30–L31; el pedido original está literal en L1):
+- Hero para cafés take away con el lema "El sistema para cafés take away." y la bajada "Vendé rápido en el mostrador, cobrá fácil y controlá tus cobros y tu stock."
+- Funcionalidades separadas en "Disponible hoy" (solo lo que existe) y "Próximamente" (marcado como tal).
+- Tipos de café (take away, especialidad, pocas mesas, panaderías con café, carritos, cadenas).
+- Sin estadísticas, testimonios ni clientes que UNNA no tenga.
+- CTA final a crear cuenta.
 
 ### S2: Página de Registro (Crear Cuenta)
 Replicar https://fu.do/es-ar/crear-cuenta/ con formulario validado:
@@ -172,3 +171,5 @@ unna/
 **L27**: Usuario: "Hace esto : - Botón principal: el texto blanco sobre el verde #16a34a no llega al contraste mínimo de accesibilidad (WCAG AA). El manual recomienda usar #15803d. - favicon.ico y manifest.json: dan 404. Se pueden generar a partir del ícono de app del manual. Despues hace una comparacion con la competencia : https://fu.do/es-ar/ Feuture , UI/UX , Comprotyamoento . etc Modelo de negocio". Botón primario y secundario a `#15803d` (test de contraste contra tokens de Tailwind, RED 3,30 → GREEN 5,02); `apps/web/public/` con favicon.ico, apple-touch-icon, íconos PWA (incl. maskable) y manifest.json, servidos 200 en build de producción. Pendiente: etiquetas/pestañas con blanco sobre `#16a34a` (10 lugares).
 **L28**: PR #17 mergeado (c621be9). Comparación con Fudo en `docs/competencia/fudo-vs-unna.md` (funcionalidades, UI/UX, comportamiento, modelo de negocio) desde páginas públicas de fu.do (home, funcionalidades, precios jun-2026), reseñas App Store (3,3/5, 32) y terceros; sin crear cuenta en Fudo. Conclusión: brecha en ARCA, caja/turnos, comandas/KDS, mesas, reportes, app móvil; ventajas de UNNA: multi-sucursal incluido e integridad de datos verificada. Modelo de precio de UNNA queda como decisión del usuario.
 **L29**: PR #18 ya estaba mergeado (0460397) cuando llegó la aclaración; comparación reescrita para el segmento café take away (S11): necesidades del segmento, cobertura de Fudo vs especialistas (Frambuesa, Nikao, GestResto; también Payper, Madi Digital, bcnsoft), precios para un café (Fudo $36.000 con facturación), diferenciales (modo hora pico, pedido anticipado + aviso de "listo", sellos incluidos, ARCA+QR en el cobro, costo por taza) y prioridades de producto reordenadas. Hallazgo: "café take away" define el mercado pero no diferencia por sí solo. Abierto: landing y manual de marca siguen diciendo "Todo tu restaurante".
+**L30**: Usuario: "Si modifica take away. y decime q feuture faltan". Lema decidido: "El sistema para cafés take away." / "Vendé rápido en el mostrador, cobrá fácil y controlá tu caja y tu stock." Cambiados: metadatos del layout, footer, dashboard, crear-cuenta, ejemplos de formularios ("Ej: Café del Centro"), esencia del manual de marca; nueva `public/og-image.jpg`. Hallazgo: la landing (copia de fu.do) afirmaba "35.000+ restaurantes", "#1", "350M+ transacciones", testimonios y "Terminal UNNA" que no son de UNNA, y referenciaba imágenes inexistentes → reescritura (worker) que separa "Disponible hoy" de "Próximamente".
+**L31**: Lema ajustado: "controlá tu caja y tu stock" → "controlá tus cobros y tu stock", porque caja y turnos todavía es "Próximamente" y la frase prometía algo inexistente (señalado por el worker de la landing). S1 reescrito al alcance vigente. Landing nueva: 12 tests; web 129/129.

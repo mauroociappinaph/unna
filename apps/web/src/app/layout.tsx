@@ -8,11 +8,11 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: {
-    default: 'UNNA - Todo tu restaurante. Una sola plataforma. A Community of Sharing',
+    default: 'UNNA - El sistema para cafés take away. A Community of Sharing',
     template: '%s | UNNA',
   },
-  description: 'Gestión, cobros y delivery en un solo lugar. Una comunidad donde compartir conocimiento, recursos y crecimiento hace que todos ganemos. 35.000+ restaurantes activos. Prueba gratis 15 minutos.',
-  keywords: ['restaurante', 'POS', 'gestión gastronómica', 'delivery', 'facturación electrónica', 'comandas', 'stock', 'UNNA'],
+  description: 'Vendé rápido en el mostrador, cobrá fácil y controlá tus cobros y tu stock. El sistema para cafés take away, cafés de especialidad y cadenas de cafés.',
+  keywords: ['café take away', 'cafetería', 'café de especialidad', 'POS', 'punto de venta', 'mostrador', 'stock', 'UNNA'],
   authors: [{ name: 'UNNA' }],
   creator: 'UNNA',
   publisher: 'UNNA',
@@ -22,21 +22,21 @@ export const metadata: Metadata = {
     locale: 'es_AR',
     url: 'https://unna',
     siteName: 'UNNA',
-    title: 'UNNA - Todo tu restaurante. Una sola plataforma. A Community of Sharing',
-    description: 'Gestión, cobros y delivery en un solo lugar. Una comunidad donde compartir conocimiento, recursos y crecimiento hace que todos ganemos.',
+    title: 'UNNA - El sistema para cafés take away. A Community of Sharing',
+    description: 'Vendé rápido en el mostrador, cobrá fácil y controlá tus cobros y tu stock. El sistema para cafés take away, cafés de especialidad y cadenas de cafés.',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'UNNA - Plataforma gastronómica',
+        alt: 'UNNA - El sistema para cafés take away',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'UNNA - Todo tu restaurante. Una sola plataforma. A Community of Sharing',
-    description: 'Gestión, cobros y delivery en un solo lugar. Una comunidad donde compartir conocimiento, recursos y crecimiento hace que todos ganemos.',
+    title: 'UNNA - El sistema para cafés take away. A Community of Sharing',
+    description: 'Vendé rápido en el mostrador, cobrá fácil y controlá tus cobros y tu stock. El sistema para cafés take away, cafés de especialidad y cadenas de cafés.',
     images: ['/og-image.jpg'],
   },
   verification: {

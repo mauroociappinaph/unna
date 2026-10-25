@@ -1,2 +1,2 @@
-// Cash register sessions (caja y turnos, S12). Implemented by task T30b.
-export {};
+// Cash register sessions (caja y turnos, S12).
+export * from './cash-session';

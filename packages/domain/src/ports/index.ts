@@ -11,6 +11,7 @@ export type {
   PaymentRepositoryPort,
   PaymentRecord,
   LockedOrderRepositories,
+  LockedCashSessionsPort,
   SalesUnitOfWorkPort,
   ReceiptRepositoryPort,
 } from './repository.port';

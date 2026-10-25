@@ -10,11 +10,14 @@ import { CategoryController, ProductController, ModifierGroupController, PriceLi
 import { PrismaOrderRepositoryAdapter, PrismaPaymentRepositoryAdapter, PrismaReceiptRepositoryAdapter, PrismaSalesUnitOfWorkAdapter } from './adapters/sales.repository.adapter';
 import { SalesUseCase } from './use-cases/sales.use-case';
 import { SalesController } from './sales.controller';
+import { CashController } from './cash.controller';
+import { CashUseCase } from './use-cases/cash.use-case';
+import { PrismaCashSessionRepositoryAdapter, PrismaCashUnitOfWorkAdapter } from './adapters/cash.repository.adapter';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController],
+  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController],
   providers: [
     OnboardBusinessUseCase,
     BusinessManagementUseCase,
@@ -24,6 +27,9 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
     PriceListUseCase,
     StockUseCase,
     SalesUseCase,
+    CashUseCase,
+    { provide: 'CashSessionRepositoryPort', useClass: PrismaCashSessionRepositoryAdapter },
+    { provide: 'CashUnitOfWorkPort', useClass: PrismaCashUnitOfWorkAdapter },
     BusinessOwnerGuard,
     { provide: 'OrderRepositoryPort', useClass: PrismaOrderRepositoryAdapter },
     { provide: 'PaymentRepositoryPort', useClass: PrismaPaymentRepositoryAdapter },

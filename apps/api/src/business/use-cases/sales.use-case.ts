@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   BusinessRepositoryPort,
+  CashSessionRepositoryPort,
   LockedOrderRepositories,
   ModifierGroupRepositoryPort,
   OrderListFilters,
@@ -62,6 +63,7 @@ export class SalesUseCase {
     @Inject('ModifierGroupRepositoryPort') private readonly modifierGroups: ModifierGroupRepositoryPort,
     @Inject('BusinessRepositoryPort') private readonly businesses: BusinessRepositoryPort,
     @Inject('SalesUnitOfWorkPort') private readonly unitOfWork: SalesUnitOfWorkPort,
+    @Inject('CashSessionRepositoryPort') private readonly cashSessions: CashSessionRepositoryPort,
   ) {}
 
   async createOrder(command: {
@@ -82,6 +84,9 @@ export class SalesUseCase {
     if (!business) return fail('Negocio no encontrado');
     const sucursal = business.sucursales.find((s) => s.id === command.sucursalId && s.isActive);
     if (!sucursal) return fail('Sucursal no encontrada');
+    if (!(await this.cashSessions.findOpenBySucursal(command.businessId, sucursal.id))) {
+      return fail('Abrí la caja para empezar a vender');
+    }
 
     const lines: NewOrderLine[] = [];
     for (const line of command.items) {
@@ -202,11 +207,15 @@ export class SalesUseCase {
 
     // The balance check and both writes run under the order's lock: concurrent payments queue up
     // and each one sees the payments committed before it, so the total cannot be exceeded.
-    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async ({ orders, payments }) => {
+    // The cash session is read with a shared lock in the same transaction, so it cannot be closed
+    // until this payment, linked to it, commits.
+    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async ({ orders, payments, cashSessions }) => {
       const order = await orders.findByIdAndBusinessId(command.orderId, command.businessId);
       if (!order) return fail('Pedido no encontrado');
       if (['cancelled', 'refunded'].includes(order.status)) return fail('No se puede cobrar un pedido cancelado o reembolsado');
       if (order.paymentStatus === 'completed') return fail('El pedido ya está pagado');
+      const cashSession = await cashSessions.findOpenBySucursalForPayment(command.businessId, order.sucursalId);
+      if (!cashSession) return fail('Abrí la caja para cobrar');
 
       const previous = (await payments.findByOrderId(order.id)).filter((p) => p.status === 'completed');
       const paid = previous.reduce((sum, p) => sum + p.amount, 0);
@@ -225,6 +234,7 @@ export class SalesUseCase {
         status: 'completed',
         reference: command.reference,
         processedAt: now,
+        cashSessionId: cashSession.id,
         createdAt: now,
       };
       await payments.save(payment);
@@ -248,6 +258,7 @@ export class SalesUseCase {
     return ok(await this.payments.findByOrderId(order.id));
   }
 
+  /** Reads the order through the lock-bound repositories and checks it still accepts changes. */
   async issueReceipt(command: {
     businessId: string;
     orderId: string;
@@ -311,6 +322,7 @@ export class SalesUseCase {
     return ok(receipt);
   }
 
+
   async getOrder(businessId: string, orderId: string): Promise<Result<Order>> {
     const order = await this.orders.findByIdAndBusinessId(orderId, businessId);
     return order ? ok(order) : fail('Pedido no encontrado');
@@ -329,7 +341,7 @@ export class SalesUseCase {
     return ok(await this.receipts.findByBusinessId(businessId));
   }
 
-  /** Reads the order through the lock-bound repositories and checks it still accepts changes. */
+
   private async findModifiable(
     { orders, payments }: LockedOrderRepositories,
     businessId: string,

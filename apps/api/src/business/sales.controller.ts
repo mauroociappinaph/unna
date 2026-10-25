@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, ServiceUnavailableException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -18,7 +18,8 @@ import {
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 import { unwrap } from '../common/use-case-result';
-import { ORDER_ACTIONS, ORDER_TYPES, PAYMENT_METHODS, RECEIPT_TYPES, SalesUseCase } from './use-cases/sales.use-case';
+import { ORDER_ACTIONS, ORDER_TYPES, PAYMENT_METHODS, SalesUseCase } from './use-cases/sales.use-case';
+import { FiscalAuthorizerUnavailableError, InvoicingUseCase, IssuableReceiptType, RECEIPT_TYPES } from './use-cases/invoicing.use-case';
 
 class SelectedModifierDto {
   @IsUUID() modifierGroupId!: string;
@@ -59,7 +60,7 @@ class RegisterPaymentDto {
 }
 
 class IssueReceiptDto {
-  @IsIn(RECEIPT_TYPES) type!: string;
+  @IsIn(RECEIPT_TYPES) type!: IssuableReceiptType;
   @IsOptional() @IsString() @MaxLength(100) customerName?: string;
   @IsOptional() @IsString() @MaxLength(20) customerTaxId?: string;
   @IsOptional() @IsString() @MaxLength(40) customerCondition?: string;
@@ -77,7 +78,10 @@ class ListOrdersQuery {
 @UseGuards(JwtAuthGuard, BusinessOwnerGuard)
 @ApiBearerAuth()
 export class SalesController {
-  constructor(private readonly sales: SalesUseCase) {}
+  constructor(
+    private readonly sales: SalesUseCase,
+    private readonly invoicing: InvoicingUseCase,
+  ) {}
 
   @Post('orders')
   @ApiOperation({ summary: 'Crear pedido (precios tomados del catálogo)' })
@@ -145,20 +149,23 @@ export class SalesController {
   }
 
   @Post('orders/:orderId/receipts')
-  @ApiOperation({ summary: 'Emitir comprobante (ticket se emite; A/B/C quedan en borrador hasta ARCA)' })
-  issueReceipt(@Param('businessId') businessId: string, @Param('orderId') orderId: string, @Body() dto: IssueReceiptDto) {
-    return unwrap(this.sales.issueReceipt({ businessId, orderId, ...dto }));
+  @ApiOperation({ summary: 'Emitir comprobante: ticket al instante; A/B/C con CAE de ARCA (si ARCA rechaza o falla queda en borrador para reintentar)' })
+  async issueReceipt(@Param('businessId') businessId: string, @Param('orderId') orderId: string, @Body() dto: IssueReceiptDto) {
+    const result = await this.invoicing.issueReceipt(businessId, orderId, dto);
+    // ARCA not answering is not the client's fault: 503, the draft stays to retry.
+    if (result.error instanceof FiscalAuthorizerUnavailableError) throw new ServiceUnavailableException(result.error.message);
+    return unwrap(Promise.resolve(result));
   }
 
   @Get('receipts')
   @ApiOperation({ summary: 'Listar comprobantes' })
   listReceipts(@Param('businessId') businessId: string) {
-    return unwrap(this.sales.listReceipts(businessId));
+    return unwrap(this.invoicing.listReceipts(businessId));
   }
 
   @Get('receipts/:receiptId')
   @ApiOperation({ summary: 'Obtener comprobante' })
   getReceipt(@Param('businessId') businessId: string, @Param('receiptId') receiptId: string) {
-    return unwrap(this.sales.getReceipt(businessId, receiptId));
+    return unwrap(this.invoicing.getReceipt(businessId, receiptId));
   }
 }

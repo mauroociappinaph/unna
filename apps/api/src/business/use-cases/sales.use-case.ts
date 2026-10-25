@@ -9,17 +9,13 @@ import {
   PaymentRecord,
   PaymentRepositoryPort,
   ProductRepositoryPort,
-  ReceiptRepositoryPort,
   SalesUnitOfWorkPort,
-  CUIT,
   Money,
   Order,
-  Receipt,
 } from '@unna/domain';
 
 export const ORDER_TYPES = ['dine_in', 'takeaway', 'delivery', 'pickup'] as const;
 export const PAYMENT_METHODS = ['cash', 'card', 'mercado_pago', 'transfer', 'qr'] as const;
-export const RECEIPT_TYPES = ['ticket', 'A', 'B', 'C'] as const;
 const MAX_ORDER_NUMBER_ATTEMPTS = 5;
 
 function isOrderNumberCollision(error: unknown): boolean {
@@ -58,7 +54,6 @@ export class SalesUseCase {
   constructor(
     @Inject('OrderRepositoryPort') private readonly orders: OrderRepositoryPort,
     @Inject('PaymentRepositoryPort') private readonly payments: PaymentRepositoryPort,
-    @Inject('ReceiptRepositoryPort') private readonly receipts: ReceiptRepositoryPort,
     @Inject('ProductRepositoryPort') private readonly products: ProductRepositoryPort,
     @Inject('ModifierGroupRepositoryPort') private readonly modifierGroups: ModifierGroupRepositoryPort,
     @Inject('BusinessRepositoryPort') private readonly businesses: BusinessRepositoryPort,
@@ -259,70 +254,6 @@ export class SalesUseCase {
   }
 
   /** Reads the order through the lock-bound repositories and checks it still accepts changes. */
-  async issueReceipt(command: {
-    businessId: string;
-    orderId: string;
-    type: string;
-    customerName?: string;
-    customerTaxId?: string;
-    customerCondition?: string;
-  }): Promise<Result<Receipt>> {
-    if (!isOneOf(RECEIPT_TYPES, command.type)) return fail('Tipo de comprobante inválido');
-
-    const order = await this.orders.findByIdAndBusinessId(command.orderId, command.businessId);
-    if (!order) return fail('Pedido no encontrado');
-    if (order.paymentStatus !== 'completed') return fail('El pedido debe estar pagado para emitir un comprobante');
-
-    const existing = await this.receipts.findByOrderId(order.id);
-    if (existing.some((r) => !['cancelled', 'voided'].includes(r.status))) return fail('El pedido ya tiene un comprobante');
-
-    let customerTaxId: string | undefined;
-    if (command.type === 'A') {
-      if (!command.customerTaxId) return fail('La factura A requiere el CUIT del cliente');
-      customerTaxId = CUIT.create(command.customerTaxId).value;
-    } else if (command.customerTaxId) {
-      customerTaxId = command.customerTaxId;
-    }
-
-    const business = await this.businesses.findById(command.businessId);
-    if (!business) return fail('Negocio no encontrado');
-    const pointOfSale = String(business.settings.salePoint ?? '1').padStart(4, '0');
-
-    let receipt = Receipt.create({
-      businessId: command.businessId,
-      sucursalId: order.sucursalId,
-      type: command.type,
-      receiptType: command.type,
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      pointOfSale,
-      paymentMethod: order.paymentMethod ?? 'cash',
-      paymentReference: order.paymentReference,
-      customerName: command.customerName ?? order.customerName,
-      customerTaxId,
-      customerCondition: command.customerCondition,
-      discountAmount: order.discountAmount,
-      items: order.items.map((i) => ({
-        productId: i.productId,
-        productName: i.productName,
-        productSku: i.productSku,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        totalPrice: i.totalPrice,
-        taxRate: i.taxRate,
-        taxAmount: i.taxAmount,
-        modifiers: i.modifiers,
-      })),
-    });
-
-    // Fiscal receipts (A/B/C) stay as drafts until ARCA/AFIP authorizes them with a CAE (T26).
-    if (command.type === 'ticket') receipt = receipt.issue();
-
-    await this.receipts.save(receipt);
-    return ok(receipt);
-  }
-
-
   async getOrder(businessId: string, orderId: string): Promise<Result<Order>> {
     const order = await this.orders.findByIdAndBusinessId(orderId, businessId);
     return order ? ok(order) : fail('Pedido no encontrado');
@@ -331,16 +262,6 @@ export class SalesUseCase {
   async listOrders(businessId: string, filters: OrderListFilters): Promise<Result<Order[]>> {
     return ok(await this.orders.findByBusinessId(businessId, filters));
   }
-
-  async getReceipt(businessId: string, receiptId: string): Promise<Result<Receipt>> {
-    const receipt = await this.receipts.findByIdAndBusinessId(receiptId, businessId);
-    return receipt ? ok(receipt) : fail('Comprobante no encontrado');
-  }
-
-  async listReceipts(businessId: string): Promise<Result<Receipt[]>> {
-    return ok(await this.receipts.findByBusinessId(businessId));
-  }
-
 
   private async findModifiable(
     { orders, payments }: LockedOrderRepositories,

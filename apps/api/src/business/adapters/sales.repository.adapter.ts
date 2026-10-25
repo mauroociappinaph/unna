@@ -6,15 +6,12 @@ import {
   OrderListFilters,
   PaymentRepositoryPort,
   PaymentRecord,
-  ReceiptRepositoryPort,
   SalesUnitOfWorkPort,
   LockedOrderRepositories,
   LockedCashSessionsPort,
   Address,
   Order,
   OrderItem,
-  Receipt,
-  ReceiptItem,
   Money,
 } from '@unna/domain';
 
@@ -35,7 +32,6 @@ export const inOpenTransaction: AtomicWrites = async (writes) => {
 };
 
 type OrderRecord = Prisma.OrderGetPayload<{ include: { items: true } }>;
-type ReceiptRecord = Prisma.ReceiptGetPayload<{ include: { items: true } }>;
 type LineModifiers = OrderItem['modifiers'];
 
 class PrismaOrderRepository implements OrderRepositoryPort {
@@ -245,143 +241,6 @@ export class PrismaSalesUnitOfWorkAdapter implements SalesUnitOfWorkPort {
         payments: new PrismaPaymentRepository(tx),
         cashSessions: new PrismaLockedCashSessions(tx),
       });
-    });
-  }
-}
-
-@Injectable()
-export class PrismaReceiptRepositoryAdapter implements ReceiptRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
-
-  async save(receipt: Receipt): Promise<void> {
-    const data = {
-      businessId: receipt.businessId,
-      sucursalId: receipt.sucursalId,
-      receiptNumber: receipt.receiptNumber,
-      type: receipt.type,
-      status: receipt.status,
-      orderId: receipt.orderId ?? null,
-      orderNumber: receipt.orderNumber ?? null,
-      cae: receipt.cae ?? null,
-      caeExpiration: receipt.caeExpiration ?? null,
-      pointOfSale: receipt.pointOfSale,
-      receiptType: receipt.receiptType,
-      subtotal: receipt.subtotal.toCents(),
-      taxAmount: receipt.taxAmount.toCents(),
-      discountAmount: receipt.discountAmount.toCents(),
-      totalAmount: receipt.totalAmount.toCents(),
-      paymentMethod: receipt.paymentMethod,
-      paymentReference: receipt.paymentReference ?? null,
-      customerName: receipt.customerName ?? null,
-      customerTaxId: receipt.customerTaxId ?? null,
-      customerAddress: receipt.customerAddress ? { ...receipt.customerAddress } : undefined,
-      customerCondition: receipt.customerCondition ?? null,
-      caeRequest: receipt.caeRequest ?? null,
-      caeResponse: receipt.caeResponse ?? null,
-      pdfUrl: receipt.pdfUrl ?? null,
-      qrCode: receipt.qrCode ?? null,
-      notes: receipt.notes ?? null,
-      issuedAt: receipt.issuedAt ?? null,
-      cancelledAt: receipt.cancelledAt ?? null,
-      cancelledReason: receipt.cancelledReason ?? null,
-    };
-    await this.prisma.$transaction([
-      this.prisma.receipt.upsert({
-        where: { id: receipt.id },
-        create: { id: receipt.id, ...data, createdAt: receipt.createdAt },
-        update: data,
-      }),
-      this.prisma.receiptItem.deleteMany({ where: { receiptId: receipt.id } }),
-      this.prisma.receiptItem.createMany({
-        data: receipt.items.map((i) => ({
-          id: i.id,
-          receiptId: receipt.id,
-          productId: i.productId,
-          productName: i.productName,
-          productSku: i.productSku ?? null,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice.toCents(),
-          totalPrice: i.totalPrice.toCents(),
-          taxRate: i.taxRate,
-          taxAmount: i.taxAmount.toCents(),
-          modifiers: i.modifiers,
-          createdAt: i.createdAt,
-        })),
-      }),
-    ]);
-  }
-
-  async findByIdAndBusinessId(id: string, businessId: string): Promise<Receipt | null> {
-    const record = await this.prisma.receipt.findFirst({ where: { id, businessId }, include: { items: true } });
-    return record ? this.toDomain(record) : null;
-  }
-
-  async findByOrderId(orderId: string): Promise<Receipt[]> {
-    const records = await this.prisma.receipt.findMany({ where: { orderId }, include: { items: true } });
-    return records.map((r) => this.toDomain(r));
-  }
-
-  async findByBusinessId(businessId: string): Promise<Receipt[]> {
-    const records = await this.prisma.receipt.findMany({
-      where: { businessId },
-      include: { items: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    return records.map((r) => this.toDomain(r));
-  }
-
-  // Stored type and status were written from the domain values, so they are valid members.
-  private toDomain(r: ReceiptRecord): Receipt {
-    return Receipt.reconstitute({
-      id: r.id,
-      businessId: r.businessId,
-      sucursalId: r.sucursalId,
-      receiptNumber: r.receiptNumber,
-      type: r.type as Receipt['type'],
-      status: r.status as Receipt['status'],
-      orderId: r.orderId ?? undefined,
-      orderNumber: r.orderNumber ?? undefined,
-      cae: r.cae ?? undefined,
-      caeExpiration: r.caeExpiration ?? undefined,
-      pointOfSale: r.pointOfSale,
-      receiptType: r.receiptType,
-      subtotal: money(r.subtotal),
-      taxAmount: money(r.taxAmount),
-      discountAmount: money(r.discountAmount),
-      totalAmount: money(r.totalAmount),
-      paymentMethod: r.paymentMethod,
-      paymentReference: r.paymentReference ?? undefined,
-      customerName: r.customerName ?? undefined,
-      customerTaxId: r.customerTaxId ?? undefined,
-      customerAddress: toAddress(r.customerAddress),
-      customerCondition: r.customerCondition ?? undefined,
-      caeRequest: r.caeRequest ?? undefined,
-      caeResponse: r.caeResponse ?? undefined,
-      pdfUrl: r.pdfUrl ?? undefined,
-      qrCode: r.qrCode ?? undefined,
-      items: (r.items ?? []).map((i) =>
-        ReceiptItem.reconstitute({
-          id: i.id,
-          receiptId: i.receiptId,
-          productId: i.productId,
-          productName: i.productName,
-          productSku: i.productSku ?? undefined,
-          quantity: i.quantity,
-          unitPrice: money(i.unitPrice),
-          totalPrice: money(i.totalPrice),
-          taxRate: i.taxRate,
-          taxAmount: money(i.taxAmount),
-          modifiers: (i.modifiers as LineModifiers | null) ?? [],
-          createdAt: i.createdAt,
-          updatedAt: i.updatedAt,
-        }),
-      ),
-      notes: r.notes ?? undefined,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-      issuedAt: r.issuedAt ?? undefined,
-      cancelledAt: r.cancelledAt ?? undefined,
-      cancelledReason: r.cancelledReason ?? undefined,
     });
   }
 }

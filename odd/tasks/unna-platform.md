@@ -151,9 +151,9 @@ unna/
 | T29c | S10 | worker | UI de POS (/dashboard/pos) | 3341df9 |
 | T29d | S10 | worker | Lock del pedido en addItem/removeItem/applyDiscount/changeStatus (la ruta DELETE de ítem ya existía) | 831fcf5 |
 | T30a | S12 | inline | Contratos: modelos Prisma (CashSession, CashMovement, Payment.cashSessionId, campos fiscales del Receipt, secuencias) y puertos de dominio | see commit |
-| T30b | S12 | worker | Caja backend: agregado CashSession, adapter, casos de uso, endpoints; pedidos y pagos exigen caja abierta | pending |
-| T30c | S12 | worker | Facturación backend: reglas A/B/C, IVA por alícuota, numeración secuencial, QR, ARCA simulado, emisión | pending |
-| T30d | S12 | inline | Integración: módulo, smoke real (caja, facturas, carreras de numeración y cierre) | pending |
+| T30b | S12 | worker | Caja backend: agregado CashSession, adapter, casos de uso, endpoints; pedidos y pagos exigen caja abierta | b8732d5 |
+| T30c | S12 | worker | Facturación backend: reglas A/B/C, IVA por alícuota, numeración secuencial, QR, ARCA simulado, emisión | see L33 |
+| T30d | S12 | inline | Integración: módulo, smoke real (caja, facturas, carreras de numeración y cierre) | see L33 |
 | T30e | S12 | worker | Web: caja (abrir, movimientos, cerrar) y POS con comprobante fiscal (CAE, QR) | pending |
 | T30f | S12 | worker | Adaptador ARCA real (WSAA + WSFEv1) con tests de XML; prueba en homologación bloqueada por credenciales | pending |
 
@@ -190,3 +190,4 @@ unna/
 **L30**: Usuario: "Si modifica take away. y decime q feuture faltan". Lema decidido: "El sistema para cafés take away." / "Vendé rápido en el mostrador, cobrá fácil y controlá tu caja y tu stock." Cambiados: metadatos del layout, footer, dashboard, crear-cuenta, ejemplos de formularios ("Ej: Café del Centro"), esencia del manual de marca; nueva `public/og-image.jpg`. Hallazgo: la landing (copia de fu.do) afirmaba "35.000+ restaurantes", "#1", "350M+ transacciones", testimonios y "Terminal UNNA" que no son de UNNA, y referenciaba imágenes inexistentes → reescritura (worker) que separa "Disponible hoy" de "Próximamente".
 **L31**: Lema ajustado: "controlá tu caja y tu stock" → "controlá tus cobros y tu stock", porque caja y turnos todavía es "Próximamente" y la frase prometía algo inexistente (señalado por el worker de la landing). S1 reescrito al alcance vigente. Landing nueva: 12 tests; web 129/129.
 **L32**: Usuario aprobó ARCA + caja y turnos (S12). Rama feat/arca-cash desde develop (76f7ac8).
+**L33**: T30b/T30c integrados. Módulo: InvoicingUseCase, ReceiptIssueUnitOfWorkPort, ReceiptRepositoryPort → adaptador fiscal, FiscalAuthorizerPort por fábrica que impide el simulador con NODE_ENV=production (4 tests). Borrado el camino viejo (SalesUseCase.issueReceipt/getReceipt/listReceipts, Receipt.issue(), PrismaReceiptRepositoryAdapter). Smoke contra Postgres 70/70: venta sin caja 400, 5 aperturas simultáneas → 1, cierre esperado=apertura+efectivo+ingresos−retiros con diferencia 0, factura B (CAE, IVA = total, QR verificado), factura A (docType 80), C desde RI → 400 sin escribir, 8 facturas B concurrentes → números consecutivos sin huecos, ticket secuencial. Salvedad: en la carrera cierre vs pagos ganó siempre el cierre (0 aceptados/5 rechazados): invariante cumplido pero sin intercalación demostrada; se ajusta la prueba. Usuario: "dale" a node-forge para el adaptador ARCA real.

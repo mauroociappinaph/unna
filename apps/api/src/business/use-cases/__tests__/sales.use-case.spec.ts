@@ -77,7 +77,6 @@ const paymentSales = (state: PaymentState) => {
   const sales = new SalesUseCase(
     outsideLock(),
     outsideLock(),
-    fake({}),
     fake({ findByIdAndBusinessId: async () => product }),
     fake({ findByIdAndBusinessId: async () => null }),
     fake({}),
@@ -98,7 +97,6 @@ describe('SalesUseCase', () => {
     };
     const sales = new SalesUseCase(
       fake(orders),
-      fake({}),
       fake({}),
       fake({ findByIdAndBusinessId: async () => product }),
       fake({ findByIdAndBusinessId: async () => null }),
@@ -122,7 +120,6 @@ describe('SalesUseCase', () => {
       const group = { id: 'grp', name: 'Guarnición', isActive: true, isRequired: false, minSelection: 0, maxSelection: 1, options: [option(priceDelta)] };
       return new SalesUseCase(
         fake({ save: async () => undefined }),
-        fake({}),
         fake({}),
         fake({ findByIdAndBusinessId: async () => withGroup }),
         fake({ findByIdAndBusinessId: async () => group }),
@@ -322,7 +319,6 @@ describe('SalesUseCase', () => {
     const salesForOrders = (orders: { save: jest.Mock }, cashSessions: CashSessionRepositoryPort) =>
       new SalesUseCase(
         fake(orders),
-        fake({}),
         fake({}),
         fake({ findByIdAndBusinessId: async () => product }),
         fake({ findByIdAndBusinessId: async () => null }),

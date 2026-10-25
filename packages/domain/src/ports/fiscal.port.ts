@@ -10,6 +10,12 @@ export const FISCAL_RECEIPT_CODES: Record<FiscalReceiptType, number> = { A: 1, B
 /** ARCA "DocTipo": 80 CUIT, 96 DNI, 99 consumidor final sin identificar (number "0"). */
 export type FiscalDocType = 80 | 96 | 99;
 
+/**
+ * ARCA "CondicionIVAReceptorId" (RG 5616): 1 responsable inscripto, 4 exento, 5 consumidor final,
+ * 6 monotributo. Required on every receipt.
+ */
+export type FiscalVatCondition = 1 | 4 | 5 | 6;
+
 export interface FiscalIvaLine {
   /** IVA rate as a percentage, e.g. 21 or 10.5. */
   rate: number;
@@ -31,6 +37,8 @@ export interface FiscalAuthorizationRequest {
   docType: FiscalDocType;
   /** "0" when docType is 99. */
   docNumber: string;
+  /** Customer IVA condition as an ARCA code (RG 5616). */
+  receiverVatCondition: FiscalVatCondition;
   /** Net taxed amount (A/B). For C receipts the whole total goes here and IVA is 0. */
   netAmount: number;
   exemptAmount: number;

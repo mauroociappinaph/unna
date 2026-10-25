@@ -12,12 +12,16 @@ import { InvoicingUseCase } from './use-cases/invoicing.use-case';
 import { PrismaFiscalReceiptRepositoryAdapter } from './adapters/receipt.repository.adapter';
 import { PrismaReceiptIssueUnitOfWorkAdapter } from './adapters/receipt-sequence.adapter';
 import { ArcaSimulatedAdapter } from './adapters/arca-simulated.adapter';
+import { isArcaConfigured } from './adapters/arca/arca.config';
+import { createArcaFiscalAuthorizer } from './adapters/arca/arca-fiscal-authorizer.adapter';
+import type { FiscalAuthorizerPort } from '@unna/domain';
 
 /**
- * The simulator returns made-up CAEs: receipts it "authorizes" have no fiscal validity. It must never
- * run in production; until the real ARCA adapter exists (T30f) the API refuses to start there.
+ * Real ARCA when ARCA_ENV, ARCA_CERT_PATH and ARCA_KEY_PATH are set. Otherwise the simulator, which
+ * returns made-up CAEs: receipts it "authorizes" have no fiscal validity, so it never runs in production.
  */
-export function fiscalAuthorizerFactory(env: NodeJS.ProcessEnv = process.env): ArcaSimulatedAdapter {
+export function fiscalAuthorizerFactory(env: NodeJS.ProcessEnv = process.env): FiscalAuthorizerPort {
+  if (isArcaConfigured(env)) return createArcaFiscalAuthorizer(env);
   if (env.NODE_ENV === 'production') {
     throw new Error('ARCA real no configurado: el simulador de ARCA no puede usarse en producción');
   }

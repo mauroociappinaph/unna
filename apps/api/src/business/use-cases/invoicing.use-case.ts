@@ -13,6 +13,7 @@ import {
   ReceiptIssueUnitOfWorkPort,
   ReceiptRepositoryPort,
   buildArcaQrUrl,
+  receiverVatCondition,
   resolveFiscalDocument,
 } from '@unna/domain';
 
@@ -155,6 +156,7 @@ export class InvoicingUseCase {
       concept: 1,
       docType: draft.docType!,
       docNumber: draft.docNumber!,
+      receiverVatCondition: receiverVatCondition(type, draft.customerCondition),
       netAmount: draft.netAmount.toCents(),
       exemptAmount: 0,
       ivaAmount: draft.ivaAmount.toCents(),

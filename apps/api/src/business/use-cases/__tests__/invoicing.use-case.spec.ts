@@ -192,6 +192,7 @@ describe('InvoicingUseCase.issueReceipt', () => {
         concept: 1,
         docType: 99,
         docNumber: '0',
+        receiverVatCondition: 5,
         netAmount: 1000,
         exemptAmount: 0,
         ivaAmount: 210,
@@ -224,6 +225,7 @@ describe('InvoicingUseCase.issueReceipt', () => {
         receiptType: 'A',
         docType: 80,
         docNumber: CUSTOMER_CUIT,
+        receiverVatCondition: 1,
         netAmount: 1914,
         ivaAmount: 301,
         totalAmount: order.totalAmount.toCents(),
@@ -360,10 +362,21 @@ describe('InvoicingUseCase.issueReceipt', () => {
       await invoicing.issueReceipt('biz-A', orders[0].id, { type: 'B' });
       const draftId = store.receipts[0].id;
 
-      const retry = await invoicing.issueReceipt('biz-A', orders[0].id, { type: 'A', customerTaxId: CUSTOMER_CUIT });
+      const retry = await invoicing.issueReceipt('biz-A', orders[0].id, { type: 'A', customerTaxId: CUSTOMER_CUIT, customerCondition: 'monotributo' });
 
       expect(retry.value).toMatchObject({ id: draftId, type: 'A', receiptNumber: 'A-0003-00000001', docType: 80 });
       expect(store.receipts).toHaveLength(1);
+    });
+
+    it('rejects a factura A without the customer IVA condition before writing anything (RG 5616)', async () => {
+      const { invoicing, store, arca, orders } = setup();
+
+      const result = await invoicing.issueReceipt('biz-A', orders[0].id, { type: 'A', customerTaxId: CUSTOMER_CUIT });
+
+      expect(result.ok).toBe(false);
+      expect(result.error?.message).toBe('La factura A requiere la condición frente al IVA del cliente');
+      expect(store.receipts).toHaveLength(0);
+      expect(arca.requests).toHaveLength(0);
     });
 
     it('keeps a retriable draft and reports ARCA unavailable when the call fails', async () => {

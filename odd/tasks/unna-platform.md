@@ -150,12 +150,12 @@ unna/
 | T29b | S10 | worker | UI de catálogo (/dashboard/catalogo) | 5a8e7c3 |
 | T29c | S10 | worker | UI de POS (/dashboard/pos) | 3341df9 |
 | T29d | S10 | worker | Lock del pedido en addItem/removeItem/applyDiscount/changeStatus (la ruta DELETE de ítem ya existía) | 831fcf5 |
-| T30a | S12 | inline | Contratos: modelos Prisma (CashSession, CashMovement, Payment.cashSessionId, campos fiscales del Receipt, secuencias) y puertos de dominio | see commit |
+| T30a | S12 | inline | Contratos: modelos Prisma (CashSession, CashMovement, Payment.cashSessionId, campos fiscales del Receipt, secuencias) y puertos de dominio | 1d47ff0 |
 | T30b | S12 | worker | Caja backend: agregado CashSession, adapter, casos de uso, endpoints; pedidos y pagos exigen caja abierta | b8732d5 |
-| T30c | S12 | worker | Facturación backend: reglas A/B/C, IVA por alícuota, numeración secuencial, QR, ARCA simulado, emisión | see L33 |
-| T30d | S12 | inline | Integración: módulo, smoke real (caja, facturas, carreras de numeración y cierre) | see L33 |
-| T30e | S12 | worker | Web: caja (abrir, movimientos, cerrar) y POS con comprobante fiscal (CAE, QR) | pending |
-| T30f | S12 | worker | Adaptador ARCA real (WSAA + WSFEv1) con tests de XML; prueba en homologación bloqueada por credenciales | pending |
+| T30c | S12 | worker | Facturación backend: reglas A/B/C, IVA por alícuota, numeración secuencial, QR, ARCA simulado, emisión | df544d5 |
+| T30d | S12 | inline | Integración: módulo, smoke real (caja, facturas, carreras de numeración y cierre) | df544d5, 8fde4ef |
+| T30e | S12 | worker | Web: caja (abrir, movimientos, cerrar) y POS con comprobante fiscal (CAE, QR) | 481962e |
+| T30f | S12 | worker | Adaptador ARCA real (WSAA + WSFEv1) con tests de XML; prueba en homologación bloqueada por credenciales | 8fde4ef |
 
 ## Log
 
@@ -191,3 +191,4 @@ unna/
 **L31**: Lema ajustado: "controlá tu caja y tu stock" → "controlá tus cobros y tu stock", porque caja y turnos todavía es "Próximamente" y la frase prometía algo inexistente (señalado por el worker de la landing). S1 reescrito al alcance vigente. Landing nueva: 12 tests; web 129/129.
 **L32**: Usuario aprobó ARCA + caja y turnos (S12). Rama feat/arca-cash desde develop (76f7ac8).
 **L33**: T30b/T30c integrados. Módulo: InvoicingUseCase, ReceiptIssueUnitOfWorkPort, ReceiptRepositoryPort → adaptador fiscal, FiscalAuthorizerPort por fábrica que impide el simulador con NODE_ENV=production (4 tests). Borrado el camino viejo (SalesUseCase.issueReceipt/getReceipt/listReceipts, Receipt.issue(), PrismaReceiptRepositoryAdapter). Smoke contra Postgres 70/70: venta sin caja 400, 5 aperturas simultáneas → 1, cierre esperado=apertura+efectivo+ingresos−retiros con diferencia 0, factura B (CAE, IVA = total, QR verificado), factura A (docType 80), C desde RI → 400 sin escribir, 8 facturas B concurrentes → números consecutivos sin huecos, ticket secuencial. Salvedad: en la carrera cierre vs pagos ganó siempre el cierre (0 aceptados/5 rechazados): invariante cumplido pero sin intercalación demostrada; se ajusta la prueba. Usuario: "dale" a node-forge para el adaptador ARCA real.
+**L34**: T30 completo (falta prueba real en homologación: bloqueada por certificado del usuario; el certificado de ARCA es gratis). node-forge 1.4.0 fijo, solo para firmar (GHSA-86w9-cpqp-85rv afecta la verificación, sin fix). Agregado RG 5616 (CondicionIVAReceptorId): factura A exige condición del cliente; B/C sin condición = consumidor final. Carrera cierre vs pagos con intercalación demostrada (pagos escalonados: 1/4, 2/3, 3/2 aceptados/rechazados, invariante OK). Integración final: lint 4/4, build 4/4, tsc ×4, tests domain 140, shared 9, api 214, web 151, smoke 70/70. Pendientes: ticket de WSAA en memoria (se pierde al reiniciar / varias instancias), invalidar ticket ante token rechazado (Err 600–602), identificación obligatoria en B sobre el umbral, imagen QR en el comprobante (requiere dependencia).

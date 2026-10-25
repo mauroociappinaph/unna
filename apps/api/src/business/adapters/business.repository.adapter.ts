@@ -7,13 +7,26 @@ import { Business, BusinessName, CUIT, Address, Schedule, BusinessSettings, Sucu
 export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Sucursales are upserted one by one and only removed ones are deleted: recreating them
+  // would cascade or block on orders and receipts that reference a sucursal.
   async save(business: Business): Promise<void> {
-    const props = this.toPrisma(business);
-    await this.prisma.business.upsert({
-      where: { id: business.id },
-      create: props,
-      update: props,
-    });
+    const { sucursales, ...props } = this.toPrisma(business);
+    const keepIds = business.sucursales.map((s) => s.id);
+    await this.prisma.$transaction([
+      this.prisma.business.upsert({
+        where: { id: business.id },
+        create: props,
+        update: props,
+      }),
+      this.prisma.sucursal.deleteMany({ where: { businessId: business.id, id: { notIn: keepIds } } }),
+      ...sucursales.map((s: any) =>
+        this.prisma.sucursal.upsert({
+          where: { id: s.id },
+          create: { ...s, businessId: business.id },
+          update: s,
+        }),
+      ),
+    ]);
   }
 
   async findById(id: string): Promise<Business | null> {
@@ -57,9 +70,7 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
       settings: business.settings,
       ownerId: business.ownerId,
       isActive: business.isActive,
-      sucursales: {
-        deleteMany: {},
-        create: business.sucursales.map(s => ({
+      sucursales: business.sucursales.map(s => ({
           id: s.id,
           name: s.name,
           address: s.address,
@@ -71,10 +82,14 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
           createdAt: s.createdAt,
           updatedAt: s.updatedAt,
         })),
-      },
       createdAt: business.createdAt,
       updatedAt: business.updatedAt,
     };
+  }
+
+  // Schedule is stored through its toJSON (week shape); older rows may hold the raw instance.
+  private toSchedule(json: any): Schedule {
+    return Schedule.create(json?.weekSchedule ?? json, json?.timezone);
   }
 
   private toDomain(record: any): Business {
@@ -82,10 +97,10 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
       Sucursal.reconstitute({
         id: s.id,
         name: s.name,
-        address: s.address,
+        address: Address.create(s.address),
         phone: s.phone,
         email: s.email,
-        schedule: s.schedule,
+        schedule: this.toSchedule(s.schedule),
         isMain: s.isMain,
         isActive: s.isActive,
         createdAt: new Date(s.createdAt),
@@ -96,9 +111,9 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
     return Business.reconstitute(record.id, {
       name: BusinessName.create(record.name),
       cuit: CUIT.create(record.cuit),
-      address: record.address,
-      schedule: record.schedule,
-      settings: record.settings,
+      address: Address.create(record.address),
+      schedule: this.toSchedule(record.schedule),
+      settings: BusinessSettings.create(record.settings),
       ownerId: record.ownerId,
       slug: record.slug,
       isActive: record.isActive,

@@ -98,6 +98,18 @@ export default function DashboardPage() {
                   action: 'Configurar',
                   href: '/dashboard/horarios',
                 },
+                {
+                  title: 'Armar mi carta',
+                  desc: 'Cargá categorías, productos, modificadores y stock.',
+                  action: 'Ir al catálogo',
+                  href: '/dashboard/catalogo',
+                },
+                {
+                  title: 'Vender',
+                  desc: 'Tomá pedidos, cobrá con varios medios de pago y emití tickets.',
+                  action: 'Abrir POS',
+                  href: '/dashboard/pos',
+                },
               ].map((step, i) => (
                 <Link key={i} href={step.href} className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-unna-green/30 transition-colors hover:shadow-lg">
                   <div className="w-12 h-12 bg-unna-green/10 rounded-xl flex items-center justify-center mb-4">

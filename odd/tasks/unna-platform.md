@@ -56,6 +56,15 @@ Flow completo tras registro para configurar el negocio:
 ### S9: Deuda técnica pendiente
 Opción elegida por el usuario: "Deuda técnica pendiente: Pagos concurrentes en transacción, tipo de movimiento de stock por defecto, tipos de Order.create, warnings del dashboard." (respuesta a "¿Con qué seguimos en la app?").
 
+### S10: Frontend de catálogo y POS + bloqueo completo de pedidos
+Usuario: "1. Frontend de catálogo y POS: es la que recomiendo. El catálogo y las ventas ya funcionan en
+    la API, pero nadie los puede usar desde la web. y Completar el bloqueo de pedidos: sumar al bloqueo agregar o quitar ítems, el descuento y la
+    cancelación."
+Defaults de producto (decididos por el orquestador, no pedidos explícitamente):
+- Catálogo en `/dashboard/catalogo` con pestañas Productos, Categorías, Modificadores, Stock. Precios se ingresan en pesos y viajan en centavos.
+- POS en `/dashboard/pos`: grilla de productos activos por categoría; el primer producto crea el pedido y los siguientes se agregan; los totales siempre vienen del servidor; diálogo de modificadores respeta mínimo/máximo/obligatorio; cobro con pagos divididos y saldo restante; al quedar pagado se emite ticket; lista de pedidos abiertos para retomar; acciones de estado (confirmar, preparar, listo, entregar, cancelar con motivo).
+- Negocio actual = primero de `GET /businesses` (como sucursales/horarios).
+
 ## Architecture Constraints (MANDATORIOS)
 
 - **Hexagonal Architecture**: Domain core aislado, ports/adapters para infraestructura (DB, HTTP, external APIs)
@@ -125,6 +134,10 @@ unna/
 | T28e | S9 | inline | DELETE sucursal inexistente → 404 | de72f1a |
 | T28f | S9 | inline | Warnings exhaustive-deps del dashboard | 3e7f444 |
 | T28g | S9 | inline | uploads/ en .gitignore | see L23 |
+| T29a | S10 | inline | GET /businesses y /businesses/:id reales (presenter), tipos + métodos de catálogo/ventas en lib/api | 17c11fb, 31203d5 |
+| T29b | S10 | worker | UI de catálogo (/dashboard/catalogo) | 5a8e7c3 |
+| T29c | S10 | worker | UI de POS (/dashboard/pos) | 3341df9 |
+| T29d | S10 | worker | Lock del pedido en addItem/removeItem/applyDiscount/changeStatus (la ruta DELETE de ítem ya existía) | 831fcf5 |
 
 ## Log
 
@@ -150,3 +163,5 @@ unna/
 **L21**: Lint corregido con 3 workers en paralelo (superficies disjuntas), sin bajar reglas ni `eslint-disable`: business 197, auth/common/email+packages 75, web 25 → 0 errores (quedan 2 warnings `exhaustive-deps`). Hallazgos: `HorarioEditor` nunca llamaba `onSubmit` ("Guardar horarios" no guardaba, T18) → fix TDD 22788a6; `findByOwnerId` con `toDomain` sin bind → corregido en a5f65e7. Integración: lint 4/4, build 4/4, tsc ×4, tests domain 74, shared 9, web 44, api 33, smoke HTTP 46/46 (schema aislado, eliminado). Pendiente: `removeStock` sin `type` por defecto, tipo de `Order.create` exige `status`/`orderId` que completa el propio método (obliga a un cast).
 **L22**: Usuario: "deja todo en develop y sigamos con la app". PR #10 (develop→main) cerrado: main exige 1 aprobación con enforce_admins y no hay otro colaborador. A "¿Con qué seguimos en la app?" eligió "Deuda técnica pendiente". Rama chore/tech-debt; numeración secuencial de comprobantes queda para T26.
 **L23**: T28 completo. Pagos serializados por pedido (transacción + `SELECT … FOR UPDATE`) verificado contra Postgres: 10 pagos concurrentes que superan la mitad del saldo → 1 aceptado, 9 rechazados ("saldo pendiente"), 1 guardado; 5 concurrentes que suman el saldo → todos aceptados y pedido pagado. DTOs del catálogo (body malformado → 400 de validación; `priceDelta` negativo permitido, corregido sobre la versión del worker). T28f destapó un bug real: horarios ignoraba `?sucursal=` (closure viejo) → fix TDD. T28g `.gitignore` en el commit de cierre. Verificación: lint 4/4, build 4/4, tsc ×4, tests domain 74, shared 9, web 47, api 108, smoke 52/52. Pendiente conocido: addItem/removeItem/applyDiscount/cancel siguen sin el lock del pedido; timeout de transacción de Prisma (5 s) bajo mucha contención.
+**L24**: Usuario eligió frontend de catálogo y POS + completar el bloqueo de pedidos (S10). Hallazgos previos: `GET /businesses` devolvía siempre `[]` y `GET /businesses/:id` era un stub (las páginas de sucursales/horarios no podían cargar el negocio en uso real); el negocio se serializaba como `{ props }`. (Corrección: la ruta `DELETE …/orders/:orderId/items/:itemId` ya existía; el grep inicial no incluía `@Delete`.) Respuestas reales capturadas en `apps/web/src/__tests__/fixtures/api-shapes.json` como contrato.
+**L25**: T29 completo. Revisión de integración: dos parsers de pesos con reglas distintas (catálogo rechazaba "1.500", POS lo aceptaba) → unificados en `lib/money.ts`. Prueba en navegador (Playwright) contra API real en schema aislado: catálogo (categoría, grupo con opción negativa, producto "1.500" → $1.500,00, stock), POS (modificador obligatorio, totales del servidor, descuento, pago dividido, ticket, cancelación con pagos rechazada, retomar pedido), sucursales/horarios ahora cargan el negocio. Encontró bug: opción con `priceDelta` negativo rompía la venta ("Monto no puede ser negativo") → fix TDD en ventas (831fcf5) y dominio (fa2d791). Verificación: lint 4/4, build 4/4, tsc ×4, tests domain 77, shared 9, web 115, api 126, smoke 57/57 (carreras pago vs addItem: 1 ítem primero / 9 pago primero; pago vs cancel x10 sin inconsistencias). Pendiente: numeración del ticket (T26), manifest.json/favicon 404 (previo), saldo de un pedido retomado se calcula en el cliente.

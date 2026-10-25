@@ -84,19 +84,22 @@ export default function DashboardPage() {
                   title: 'Configurar mi negocio',
                   desc: 'Agregá el nombre, dirección, logo y datos fiscales de tu restaurante.',
                   action: 'Configurar',
+                  href: '/dashboard/sucursales',
                 },
                 {
-                  title: 'Crear mi carta',
-                  desc: 'Agregá categorías, productos, precios y modificadores.',
-                  action: 'Crear carta',
+                  title: 'Gestionar sucursales',
+                  desc: 'Creá, editá y eliminá ubicaciones de tu negocio.',
+                  action: 'Gestionar',
+                  href: '/dashboard/sucursales',
                 },
                 {
-                  title: 'Activar delivery',
-                  desc: 'Configurá tu tienda online, WhatsApp y repartidores.',
-                  action: 'Activar',
+                  title: 'Configurar horarios',
+                  desc: 'Definí horarios de atención por sucursal.',
+                  action: 'Configurar',
+                  href: '/dashboard/horarios',
                 },
               ].map((step, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-unna-green/30 transition-colors">
+                <Link key={i} href={step.href} className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-unna-green/30 transition-colors hover:shadow-lg">
                   <div className="w-12 h-12 bg-unna-green/10 rounded-xl flex items-center justify-center mb-4">
                     <svg className="w-6 h-6 text-unna-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -105,7 +108,7 @@ export default function DashboardPage() {
                   <h3 className="text-lg font-semibold text-gray-900">{step.title}</h3>
                   <p className="mt-2 text-gray-600">{step.desc}</p>
                   <Button className="mt-4 w-full" variant="secondary" size="sm">{step.action}</Button>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

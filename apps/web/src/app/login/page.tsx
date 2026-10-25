@@ -67,11 +67,11 @@ export default function LoginPage() {
         <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="text-center mb-10">
-            <Link href="/" className="inline-flex items-center gap-2 mb-8" aria-label="FUDO - Inicio">
-              <svg className="w-10 h-10 text-fudo-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
+            <Link href="/" className="inline-flex items-center gap-2 mb-8" aria-label="UNNA - Inicio">
+              <svg className="w-10 h-10 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
                 <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
               </svg>
-              <span className="text-2xl font-bold text-gray-900">FUDO</span>
+              <span className="text-2xl font-bold text-gray-900">UNNA</span>
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">Bienvenido de nuevo</h1>
             <p className="mt-3 text-gray-600">Ingresá a tu cuenta para continuar</p>
@@ -112,7 +112,7 @@ export default function LoginPage() {
                   <label htmlFor="password" className="label-field mb-0">
                     Contraseña <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
-                  <Link href="/recuperar-contrasena" className="text-sm text-fudo-green hover:underline">
+                  <Link href="/recuperar-contrasena" className="text-sm text-unna-green hover:underline">
                     ¿Olvidaste tu contraseña?
                   </Link>
                 </div>
@@ -140,7 +140,7 @@ export default function LoginPage() {
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-600">
                 ¿No tenés cuenta?{' '}
-                <Link href="/crear-cuenta" className="text-fudo-green font-medium hover:underline">
+                <Link href="/crear-cuenta" className="text-unna-green font-medium hover:underline">
                   Crear una gratis
                 </Link>
               </p>

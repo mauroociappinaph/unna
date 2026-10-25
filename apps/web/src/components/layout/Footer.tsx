@@ -34,11 +34,11 @@ export function Footer() {
   };
 
   const socialLinks = [
-    { label: 'Facebook', href: 'https://facebook.com/fudo', icon: 'facebook' },
-    { label: 'Instagram', href: 'https://instagram.com/fudo', icon: 'instagram' },
-    { label: 'Twitter', href: 'https://twitter.com/fudo', icon: 'twitter' },
-    { label: 'LinkedIn', href: 'https://linkedin.com/company/fudo', icon: 'linkedin' },
-    { label: 'YouTube', href: 'https://youtube.com/fudo', icon: 'youtube' },
+    { label: 'Facebook', href: 'https://facebook.com/UNNA', icon: 'facebook' },
+    { label: 'Instagram', href: 'https://instagram.com/UNNA', icon: 'instagram' },
+    { label: 'Twitter', href: 'https://twitter.com/UNNA', icon: 'twitter' },
+    { label: 'LinkedIn', href: 'https://linkedin.com/company/UNNA', icon: 'linkedin' },
+    { label: 'YouTube', href: 'https://youtube.com/UNNA', icon: 'youtube' },
   ];
 
   return (
@@ -46,15 +46,16 @@ export function Footer() {
       <div className="container-custom py-12 lg:py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
           <div className="col-span-2 lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4" aria-label="FUDO - Inicio">
-              <svg className="w-8 h-8 text-fudo-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
+            <Link href="/" className="flex items-center gap-2 mb-4" aria-label="UNNA - Inicio">
+              <svg className="w-8 h-8 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
                 <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
               </svg>
-              <span className="text-xl font-bold text-gray-900">FUDO</span>
+              <span className="text-xl font-bold text-gray-900">UNNA</span>
             </Link>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 mb-2">
               Todo tu restaurante. Una sola plataforma.
             </p>
+            <p className="text-xs text-gray-500 font-medium mb-4">A Community of Sharing</p>
             <div className="flex gap-4">
               {socialLinks.map((social) => (
                 <a
@@ -62,7 +63,7 @@ export function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-fudo-green transition-colors"
+                  className="text-gray-400 hover:text-unna-green transition-colors"
                   aria-label={social.label}
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -92,7 +93,7 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.producto.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-gray-600 hover:text-fudo-green transition-colors">
+                  <Link href={link.href} className="text-sm text-gray-600 hover:text-unna-green transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -105,7 +106,7 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.empresa.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-gray-600 hover:text-fudo-green transition-colors">
+                  <Link href={link.href} className="text-sm text-gray-600 hover:text-unna-green transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -118,7 +119,7 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.recursos.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-gray-600 hover:text-fudo-green transition-colors">
+                  <Link href={link.href} className="text-sm text-gray-600 hover:text-unna-green transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -131,7 +132,7 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-gray-600 hover:text-fudo-green transition-colors">
+                  <Link href={link.href} className="text-sm text-gray-600 hover:text-unna-green transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -142,8 +143,9 @@ export function Footer() {
 
         <div className="pt-8 border-t border-gray-200">
           <p className="text-sm text-gray-500 text-center">
-            © {currentYear} FUDO. Todos los derechos reservados.
+            © {currentYear} UNNA. Todos los derechos reservados.
           </p>
+          <p className="text-xs text-gray-400 text-center mt-1">A Community of Sharing</p>
         </div>
       </div>
     </footer>

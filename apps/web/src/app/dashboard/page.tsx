@@ -27,10 +27,10 @@ export default function DashboardPage() {
         <div className="container-custom">
           <div className="flex items-center justify-between h-16">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <svg className="w-8 h-8 text-fudo-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
+              <svg className="w-8 h-8 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
                 <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
               </svg>
-              <span className="text-xl font-bold text-gray-900">FUDO</span>
+              <span className="text-xl font-bold text-gray-900">UNNA</span>
             </Link>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Dashboard</span>
@@ -45,12 +45,12 @@ export default function DashboardPage() {
       <main className="container-custom py-12">
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-16">
-            <div className="w-20 h-20 mx-auto mb-6 bg-fudo-green/10 rounded-2xl flex items-center justify-center">
-              <svg className="w-10 h-10 text-fudo-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <div className="w-20 h-20 mx-auto mb-6 bg-unna-green/10 rounded-2xl flex items-center justify-center">
+              <svg className="w-10 h-10 text-unna-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">¡Bienvenido a FUDO!</h1>
+            <h1 className="text-3xl font-bold text-gray-900">¡Bienvenido a UNNA!</h1>
             <p className="mt-4 text-lg text-gray-600">
               Tu cuenta ha sido creada exitosamente. Aquí podrás gestionar tu restaurante.
             </p>
@@ -96,9 +96,9 @@ export default function DashboardPage() {
                   action: 'Activar',
                 },
               ].map((step, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-fudo-green/30 transition-colors">
-                  <div className="w-12 h-12 bg-fudo-green/10 rounded-xl flex items-center justify-center mb-4">
-                    <svg className="w-6 h-6 text-fudo-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-unna-green/30 transition-colors">
+                  <div className="w-12 h-12 bg-unna-green/10 rounded-xl flex items-center justify-center mb-4">
+                    <svg className="w-6 h-6 text-unna-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
                   </div>

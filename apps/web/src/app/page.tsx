@@ -90,7 +90,7 @@ const businessTypes = [
   { id: 3, name: 'Cafeterías de Especialidad', desc: 'Pedidos rápidos desde mostrador, control de insumos por receta, ticket promedio al instante.', image: '/images/cafeterias.webp' },
   { id: 4, name: 'Bares y Cervecerías', desc: 'Cuentas abiertas por mesa, control de stock por porción, comandas que llegan directo a barra.', image: '/images/bares.webp' },
   { id: 5, name: 'Pizzerías y Delivery', desc: 'Tu tienda online, pedidos por WhatsApp, repartidores a demanda.', image: '/images/pizzerias.webp' },
-  { id: 6, name: 'Food Trucks y Ferias', desc: 'Funciona desde tu celular, sin instalaciones fijas. Cobrá con la Terminal Fudo.', image: '/images/foodtrucks.webp' },
+  { id: 6, name: 'Food Trucks y Ferias', desc: 'Funciona desde tu celular, sin instalaciones fijas. Cobrá con la Terminal UNNA.', image: '/images/foodtrucks.webp' },
   { id: 7, name: 'Cadenas y Multi-sucursal', desc: 'Reportes consolidados, roles de usuario por ubicación, recetas estandarizadas.', image: '/images/cadenas.webp' },
   { id: 8, name: 'Dark Kitchens', desc: 'Múltiples marcas desde una sola cocina. Pedidos online integrados, menú digital por marca.', image: '/images/darkkitchens.webp' },
 ];
@@ -112,10 +112,13 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
               Todo tu restaurante.<br />
-              <span className="text-fudo-green">Una sola plataforma.</span>
+              <span className="text-unna-green">Una sola plataforma.</span>
+              <br />
+              <span className="text-gray-600 text-lg md:text-xl mt-4 block font-normal">A Community of Sharing</span>
             </h1>
             <p className="mt-6 text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
-              Gestión, cobros y delivery en un solo lugar. Una plataforma que funciona desde el día uno, sin complicaciones.
+              Gestión, cobros y delivery en un solo lugar. Una comunidad donde compartir conocimiento,
+              recursos y crecimiento hace que todos ganemos.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/crear-cuenta">
@@ -131,19 +134,19 @@ export default function HomePage() {
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600">
               <span className="flex items-center gap-1.5">
-                <svg className="w-5 h-5 text-fudo-green" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <svg className="w-5 h-5 text-unna-green" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
                 Sin tarjeta de crédito
               </span>
               <span className="flex items-center gap-1.5">
-                <svg className="w-5 h-5 text-fudo-green" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <svg className="w-5 h-5 text-unna-green" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
                 Listo en 15 minutos
               </span>
               <span className="flex items-center gap-1.5">
-                <svg className="w-5 h-5 text-fudo-green" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <svg className="w-5 h-5 text-unna-green" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
                 Asesoría personalizada
@@ -160,15 +163,15 @@ export default function HomePage() {
       <section id="pilares" className="py-20 lg:py-28 bg-white">
         <div className="container-custom">
           <div className="text-center mb-16">
-            <h2 className="section-title">Los 3 pilares de FUDO</h2>
-            <p className="section-subtitle">Todo lo que necesitás para gestionar, cobrar y entregar en una sola plataforma integrada.</p>
+            <h2 className="section-title">Los 3 pilares de UNNA</h2>
+            <p className="section-subtitle">Tu Gestión, Tus Cobros, Tu Delivery — unidos por una comunidad que comparte y crece junta.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Tu Gestión */}
-            <article className="relative p-8 bg-gray-50 rounded-2xl border border-gray-100 hover:border-fudo-green/30 transition-all">
+            <article className="relative p-8 bg-gray-50 rounded-2xl border border-gray-100 hover:border-unna-green/30 transition-all">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="bg-fudo-green text-white text-xs font-semibold px-3 py-1 rounded-full">01</span>
+                <span className="bg-unna-green text-white text-xs font-semibold px-3 py-1 rounded-full">01</span>
               </div>
               <div className="mt-6">
                 <h3 className="text-2xl font-bold text-gray-900">Tu Gestión</h3>
@@ -182,7 +185,7 @@ export default function HomePage() {
                     'Caja y cierre en minutos',
                   ].map((item, i) => (
                     <li key={i} className="flex items-center gap-3 text-gray-700">
-                      <svg className="w-5 h-5 text-fudo-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <svg className="w-5 h-5 text-unna-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       {item}
@@ -196,9 +199,9 @@ export default function HomePage() {
             </article>
 
             {/* Tus Cobros */}
-            <article className="relative p-8 bg-gray-50 rounded-2xl border border-gray-100 hover:border-fudo-green/30 transition-all">
+            <article className="relative p-8 bg-gray-50 rounded-2xl border border-gray-100 hover:border-unna-green/30 transition-all">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="bg-fudo-green text-white text-xs font-semibold px-3 py-1 rounded-full">02</span>
+                <span className="bg-unna-green text-white text-xs font-semibold px-3 py-1 rounded-full">02</span>
               </div>
               <div className="mt-6">
                 <h3 className="text-2xl font-bold text-gray-900">Tus Cobros</h3>
@@ -211,7 +214,7 @@ export default function HomePage() {
                     'Conciliación automática',
                   ].map((item, i) => (
                     <li key={i} className="flex items-center gap-3 text-gray-700">
-                      <svg className="w-5 h-5 text-fudo-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <svg className="w-5 h-5 text-unna-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       {item}
@@ -219,15 +222,15 @@ export default function HomePage() {
                   ))}
                 </ul>
               </div>
-              <Link href="/crear-cuenta?promotional_code=TERMINALFUDO" className="mt-8 block">
+              <Link href="/crear-cuenta?promotional_code=TERMINALUNNA" className="mt-8 block">
                 <Button className="w-full" variant="primary">Probar Gratis</Button>
               </Link>
             </article>
 
             {/* Tu Delivery */}
-            <article className="relative p-8 bg-gray-50 rounded-2xl border border-gray-100 hover:border-fudo-green/30 transition-all">
+            <article className="relative p-8 bg-gray-50 rounded-2xl border border-gray-100 hover:border-unna-green/30 transition-all">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="bg-fudo-green text-white text-xs font-semibold px-3 py-1 rounded-full">03</span>
+                <span className="bg-unna-green text-white text-xs font-semibold px-3 py-1 rounded-full">03</span>
               </div>
               <div className="mt-6">
                 <h3 className="text-2xl font-bold text-gray-900">Tu Delivery</h3>
@@ -241,7 +244,7 @@ export default function HomePage() {
                     'Sin comisiones del 30%',
                   ].map((item, i) => (
                     <li key={i} className="flex items-center gap-3 text-gray-700">
-                      <svg className="w-5 h-5 text-fudo-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <svg className="w-5 h-5 text-unna-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       {item}
@@ -262,7 +265,7 @@ export default function HomePage() {
         <div className="container-custom">
           <div className="text-center mb-16">
             <h2 className="section-title">Con la confianza de miles</h2>
-            <p className="section-subtitle">Restaurantes de toda Latinoamérica eligen FUDO cada día.</p>
+            <p className="section-subtitle">Restaurantes de toda Latinoamérica forman parte de una comunidad que comparte y crece.</p>
           </div>
 
           {/* Stats */}
@@ -273,7 +276,7 @@ export default function HomePage() {
               { number: '350M+', label: 'Transacciones procesadas al año' },
             ].map((stat, i) => (
               <div key={i} className="text-center p-6 bg-white rounded-2xl border border-gray-100">
-                <div className="text-4xl md:text-5xl font-bold text-fudo-green">{stat.number}</div>
+                <div className="text-4xl md:text-5xl font-bold text-unna-green">{stat.number}</div>
                 <p className="mt-2 text-gray-600">{stat.label}</p>
               </div>
             ))}
@@ -308,15 +311,15 @@ export default function HomePage() {
         <div className="container-custom">
           <div className="text-center mb-16">
             <h2 className="section-title">Funcionalidades</h2>
-            <p className="section-subtitle">Un software simple pero potente. Conocé todo lo que tenemos para ofrecerte.</p>
+            <p className="section-subtitle">Herramientas poderosas diseñadas para una comunidad que comparte mejores prácticas.</p>
           </div>
 
           <div className="space-y-16">
             {features.map((category, catIndex) => (
               <section key={catIndex} className="border-t border-gray-100 pt-12 first:border-0 first:pt-0" aria-labelledby={`feature-${catIndex}`}>
                 <header className="flex items-center gap-4 mb-8">
-                  <div className="w-12 h-12 bg-fudo-green/10 rounded-xl flex items-center justify-center">
-                    <svg className="w-6 h-6 text-fudo-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <div className="w-12 h-12 bg-unna-green/10 rounded-xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-unna-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
@@ -324,8 +327,8 @@ export default function HomePage() {
                 </header>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {category.items.map((item, i) => (
-                    <div key={i} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-fudo-green/5 transition-colors">
-                      <svg className="w-5 h-5 text-fudo-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <div key={i} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-unna-green/5 transition-colors">
+                      <svg className="w-5 h-5 text-unna-green flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       <span className="text-gray-700">{item}</span>
@@ -343,14 +346,14 @@ export default function HomePage() {
         <div className="container-custom">
           <div className="text-center mb-16">
             <h2 className="section-title">¿Para qué tipo de negocio?</h2>
-            <p className="section-subtitle">FUDO se adapta a cualquier modelo gastronómico.</p>
+            <p className="section-subtitle">Cada modelo gastronómico encuentra su lugar en una comunidad que comparte y aprende.</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {businessTypes.map((business) => (
-              <article key={business.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:border-fudo-green/30 transition-all">
-                <div className="aspect-video bg-gradient-to-br from-fudo-green/10 to-fudo-green/20 flex items-center justify-center">
-                  <svg className="w-16 h-16 text-fudo-green/50" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <article key={business.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:border-unna-green/30 transition-all">
+                <div className="aspect-video bg-gradient-to-br from-unna-green/10 to-unna-green/20 flex items-center justify-center">
+                  <svg className="w-16 h-16 text-unna-green/50" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                 </div>
@@ -369,7 +372,7 @@ export default function HomePage() {
 
           <div className="text-center">
             <p className="text-gray-600 mb-4">¿Tu tipo de negocio no está aquí?</p>
-            <p className="text-gray-600 mb-6">FUDO se adapta a cualquier modelo gastronómico.</p>
+            <p className="text-gray-600 mb-6">Cada modelo gastronómico encuentra su lugar en una comunidad que comparte y aprende.</p>
             <Link href="/funcionalidades">
               <Button variant="secondary">Ver Funcionalidades</Button>
             </Link>
@@ -379,19 +382,21 @@ export default function HomePage() {
 
       {/* Final CTA */}
       <section className="relative py-20 lg:py-28 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-fudo-green via-fudo-green-dark to-fudo-green" aria-hidden="true" />
+        <div className="absolute inset-0 bg-gradient-to-r from-unna-green via-unna-green-dark to-unna-green" aria-hidden="true" />
         <div className="absolute inset-0 bg-[url('/assets/patterns/dots.svg')] opacity-10" aria-hidden="true" />
         <div className="container-custom relative">
           <div className="max-w-3xl mx-auto text-center text-white">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold">
-              Probá todo lo que FUDO puede hacer por tu negocio
+              Probá todo lo que UNNA puede hacer por tu negocio
             </h2>
             <p className="mt-6 text-lg md:text-xl text-green-100">
               Activá tu cuenta gratis y en 15 minutos ya estás operando.
+              <br />
+              <span className="text-green-200 font-medium">A Community of Sharing</span>
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/crear-cuenta">
-                <Button size="lg" className="w-full sm:w-auto bg-white text-fudo-green hover:bg-green-50">
+                <Button size="lg" className="w-full sm:w-auto bg-white text-unna-green hover:bg-green-50">
                   Empezá gratis
                 </Button>
               </Link>
@@ -416,6 +421,9 @@ export default function HomePage() {
                 Te acompañamos paso a paso en la implementación
               </li>
             </ul>
+            <p className="mt-8 text-green-200 text-sm italic">
+              "Una comunidad donde compartir conocimiento, recursos y crecimiento hace que todos ganemos."
+            </p>
           </div>
         </div>
       </section>

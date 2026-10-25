@@ -96,7 +96,7 @@ unna/
 | T15 | S3 | backend | Auth avanzado: Tests unit + E2E para forgot/reset/verify/roles | 5482859 |
 | T16 | S5 | backend | Domain: Business Aggregate + Value Objects (CUIT, Address, Schedule, BusinessSettings) | 74d0fb7 |
 | T17 | S5 | backend | UseCase: OnboardBusiness (datos fiscales + sucursales + horarios) | 74d0fb7 |
-| T18 | S5 | backend | UseCase: UpdateBusinessSettings + ManageSucursales + ManageHorarios | (current HEAD)
+| T18 | S5 | backend | UseCase: UpdateBusinessSettings + ManageSucursales + ManageHorarios | c50febe
 | T19 | S5 | backend | Controller: POST /business/onboard, GET/PATCH /business/me, sucursales CRUD | 74d0fb7 |
 | T20 | S5 | backend | Prisma: Business, Sucursal, Horario models + migrations | 74d0fb7 |
 | T21 | S5 | frontend | Onboarding Wizard (4 steps: fiscal → sucursales → horarios → confirmación) |

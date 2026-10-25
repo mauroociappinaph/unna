@@ -3,7 +3,7 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
 import { CreateCategoryDto, UpdateCategoryDto } from '../category.dto';
-import { CreateProductDto, UpdateProductDto } from '../product.dto';
+import { CreateProductDto, TopSellersQueryDto, UpdateProductDto } from '../product.dto';
 import { CreateModifierGroupDto, ModifierOptionDto, UpdateModifierGroupDto, UpdateModifierOptionDto } from '../modifier-group.dto';
 import { CreatePriceListDto, PriceListEntryDto, UpdatePriceListDto, UpdatePriceListEntryDto } from '../price-list.dto';
 import { AddStockDto, AdjustThresholdsDto, InitializeStockDto, RecordCountDto, RemoveStockDto } from '../stock.dto';
@@ -37,10 +37,15 @@ describe('catalog DTOs', () => {
         categoryId: UUID, name: 'Muzza', description: 'Clásica', type: 'combo', status: 'active', basePrice: 150000,
         currency: 'ARS', costPrice: 50000, taxRate: 10.5, sku: 'MUZ-1', barcode: '779', displayOrder: 0, isActive: true,
         images: ['/uploads/products/a.png'], modifierGroupIds: [UUID], components: [{ productId: UUID, quantity: 2 }],
-        preparationTimeMinutes: 15, calories: 800, allergens: ['gluten'], tags: ['veggie'],
+        preparationTimeMinutes: 15, calories: 800, allergens: ['gluten'], tags: ['veggie'], isFavorite: true,
       }],
       ['create product (required only)', CreateProductDto, { categoryId: UUID, name: 'Muzza', type: 'simple', basePrice: 0 }],
       ['update product', UpdateProductDto, { basePrice: 1000, tags: [] }],
+      ['pin product as favorite', UpdateProductDto, { isFavorite: true }],
+      ['unpin favorite product', UpdateProductDto, { isFavorite: false }],
+      ['top sellers (defaults)', TopSellersQueryDto, {}],
+      ['top sellers (query strings at the bounds)', TopSellersQueryDto, { days: '1', limit: '20' }],
+      ['top sellers (upper days bound)', TopSellersQueryDto, { days: '30', limit: '1' }],
       ['create modifier group', CreateModifierGroupDto, {
         name: 'Extras', description: 'x', minSelection: 0, maxSelection: 2, isRequired: false, displayOrder: 1, isActive: true,
         options: [{ name: 'Queso', priceDelta: 500, isDefault: false, displayOrder: 0, isActive: true }, { name: 'Sin sal' }],
@@ -121,6 +126,12 @@ describe('catalog DTOs', () => {
     ['day out of range', UpdatePriceListDto, { validDays: [7] }, 'validDays: each value in validDays must not be greater than 6'],
     ['malformed time', UpdatePriceListDto, { validFromTime: '25:00' }, 'validFromTime: validFromTime must be a time in HH:mm format'],
     ['non-uuid category id', CreateProductDto, { categoryId: 'abc', name: 'M', type: 'simple', basePrice: 1 }, 'categoryId: categoryId must be a UUID'],
+    ['top sellers period of 0 days', TopSellersQueryDto, { days: '0' }, 'days: days must not be less than 1'],
+    ['top sellers period over 30 days', TopSellersQueryDto, { days: '31' }, 'days: days must not be greater than 30'],
+    ['fractional top sellers period', TopSellersQueryDto, { days: '1.5' }, 'days: days must be an integer number'],
+    ['top sellers limit of 0', TopSellersQueryDto, { limit: '0' }, 'limit: limit must not be less than 1'],
+    ['top sellers limit over 20', TopSellersQueryDto, { limit: '21' }, 'limit: limit must not be greater than 20'],
+    ['unknown top sellers filter', TopSellersQueryDto, { businessId: UUID }, 'businessId: property businessId should not exist'],
   ])('rejects a %s', async (_name, cls, body, expected) => {
     expect(messages(await validateBody(cls, body))).toContain(expected);
   });
@@ -151,6 +162,7 @@ describe('catalog DTOs', () => {
     ['category update', CategoryController.prototype, 'update', UpdateCategoryDto],
     ['product create', ProductController.prototype, 'create', CreateProductDto],
     ['product update', ProductController.prototype, 'update', UpdateProductDto],
+    ['top sellers query', ProductController.prototype, 'topSellers', TopSellersQueryDto],
     ['modifier group create', ModifierGroupController.prototype, 'create', CreateModifierGroupDto],
     ['modifier group update', ModifierGroupController.prototype, 'update', UpdateModifierGroupDto],
     ['option add', ModifierGroupController.prototype, 'addOption', ModifierOptionDto],

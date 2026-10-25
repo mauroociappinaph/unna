@@ -1,0 +1,21 @@
+import { Controller, Get, Header, Param } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { unwrap } from '../common/use-case-result';
+import { OrderBoardUseCase, PublicOrderBoard } from './use-cases/order-board.use-case';
+
+/**
+ * Public order board (S13): no session, the secret token in the URL is the only credential.
+ * Unknown, disabled and malformed tokens all answer the same 404.
+ */
+@ApiTags('Pantalla pública')
+@Controller('public/order-board')
+export class PublicOrderBoardController {
+  constructor(private readonly orderBoard: OrderBoardUseCase) {}
+
+  @Get(':token')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({ summary: 'Pedidos en preparación y listos de hoy (solo número corto, nombre y estado)' })
+  show(@Param('token') token: string): Promise<PublicOrderBoard> {
+    return unwrap(this.orderBoard.publicBoard(token));
+  }
+}

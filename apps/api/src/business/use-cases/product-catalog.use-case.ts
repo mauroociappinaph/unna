@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CategoryRepositoryPort, ProductRepositoryPort, ModifierGroupRepositoryPort, PriceListRepositoryPort, StockLevelRepositoryPort, StockMovementRepositoryPort } from '@unna/domain';
+import { CategoryRepositoryPort, ProductRepositoryPort, ModifierGroupRepositoryPort, PriceListRepositoryPort, StockLevelRepositoryPort, StockMovementRepositoryPort, TopSeller } from '@unna/domain';
 import { Category, Product, ModifierGroup, ModifierOption, PriceList, PriceListEntry, StockLevel, StockMovement, Money, StockMovementType } from '@unna/domain';
 import { UseCaseResult } from '../../common/use-case-result';
 
@@ -34,7 +34,10 @@ export interface ProductInput {
   calories?: number;
   allergens?: string[];
   tags?: string[];
+  isFavorite?: boolean;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface ModifierOptionInput {
   name: string;
@@ -218,6 +221,7 @@ export class ProductUseCase {
       calories: command.calories,
       allergens: command.allergens,
       tags: command.tags,
+      isFavorite: command.isFavorite ?? false,
     });
 
     await this.productRepository.save(product);
@@ -277,6 +281,7 @@ export class ProductUseCase {
     if (command.isActive !== undefined) {
       product = command.isActive ? product.activate() : product.deactivate();
     }
+    if (command.isFavorite !== undefined) product = product.setFavorite(command.isFavorite);
 
     await this.productRepository.save(product);
     return { ok: true, value: product };
@@ -292,6 +297,16 @@ export class ProductUseCase {
   async getById(id: string, businessId: string): Promise<UseCaseResult<Product>> {
     const product = await this.productRepository.findByIdAndBusinessId(id, businessId);
     return product ? { ok: true, value: product } : { ok: false, error: new Error('Producto no encontrado') };
+  }
+
+  /** Most sold active products of the business in the last `days` days (default 7), up to `limit` (default 8). */
+  async topSellers(businessId: string, query: { days?: number; limit?: number }, now = new Date()): Promise<UseCaseResult<TopSeller[]>> {
+    const days = query.days ?? 7;
+    const limit = query.limit ?? 8;
+    if (!Number.isInteger(days) || days < 1 || days > 30) return { ok: false, error: new Error('El período debe ser de 1 a 30 días') };
+    if (!Number.isInteger(limit) || limit < 1 || limit > 20) return { ok: false, error: new Error('La cantidad debe ser de 1 a 20 productos') };
+    const since = new Date(now.getTime() - days * DAY_MS);
+    return { ok: true, value: await this.productRepository.findTopSellers(businessId, since, limit) };
   }
 
   async list(businessId: string, filters?: { status?: string; categoryId?: string; activeOnly?: boolean }): Promise<UseCaseResult<Product[]>> {

@@ -21,7 +21,7 @@ const config: Config = {
           800: '#166534',
           900: '#14532d',
         },
-        fudo: {
+        unna: {
           green: '#16a34a',
           'green-dark': '#15803d',
           'green-light': '#22c55e',

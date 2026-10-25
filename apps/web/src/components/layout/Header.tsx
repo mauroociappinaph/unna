@@ -9,31 +9,34 @@ export function Header() {
       <nav className="container-custom" aria-label="Navegación principal">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2" aria-label="FUDO - Inicio">
-              <svg className="w-8 h-8 text-fudo-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
+            <Link href="/" className="flex items-center gap-2" aria-label="UNNA - Inicio">
+              <svg className="w-8 h-8 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
                 <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
               </svg>
-              <span className="text-xl font-bold text-gray-900 hidden sm:block">FUDO</span>
+              <div className="hidden sm:block flex flex-col">
+                <span className="text-xl font-bold text-gray-900">UNNA</span>
+                <span className="text-xs text-gray-500 font-normal">A Community of Sharing</span>
+              </div>
             </Link>
 
             <div className="hidden md:flex items-center gap-6">
-              <Link href="/#funcionalidades" className="text-sm font-medium text-gray-700 hover:text-fudo-green transition-colors">
+              <Link href="/#funcionalidades" className="text-sm font-medium text-gray-700 hover:text-unna-green transition-colors">
                 Funcionalidades
               </Link>
-              <Link href="/#negocios" className="text-sm font-medium text-gray-700 hover:text-fudo-green transition-colors">
+              <Link href="/#negocios" className="text-sm font-medium text-gray-700 hover:text-unna-green transition-colors">
                 Tipos de negocio
               </Link>
-              <Link href="/#precios" className="text-sm font-medium text-gray-700 hover:text-fudo-green transition-colors">
+              <Link href="/#precios" className="text-sm font-medium text-gray-700 hover:text-unna-green transition-colors">
                 Precios
               </Link>
-              <Link href="/#soporte" className="text-sm font-medium text-gray-700 hover:text-fudo-green transition-colors">
+              <Link href="/#soporte" className="text-sm font-medium text-gray-700 hover:text-unna-green transition-colors">
                 Soporte
               </Link>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <Link href="/login" className="hidden sm:block text-sm font-medium text-gray-700 hover:text-fudo-green transition-colors">
+            <Link href="/login" className="hidden sm:block text-sm font-medium text-gray-700 hover:text-unna-green transition-colors">
               Ingresar
             </Link>
             <Link href="/crear-cuenta" className="btn-primary hidden sm:block">

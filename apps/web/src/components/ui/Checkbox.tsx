@@ -20,7 +20,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
               ref={ref}
               type="checkbox"
               id={checkboxId}
-              className={`h-4 w-4 rounded border-gray-300 text-fudo-green focus:ring-2 focus:ring-fudo-green focus:ring-offset-2 transition-colors ${error ? 'border-red-500' : ''} ${className}`}
+              className={`h-4 w-4 rounded border-gray-300 text-unna-green focus:ring-2 focus:ring-unna-green focus:ring-offset-2 transition-colors ${error ? 'border-red-500' : ''} ${className}`}
               aria-invalid={error ? 'true' : 'false'}
               aria-describedby={error ? `${checkboxId}-error` : undefined}
               {...props}

@@ -101,11 +101,11 @@ export default function RegisterPage() {
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="text-center mb-10">
-            <Link href="/" className="inline-flex items-center gap-2 mb-8" aria-label="FUDO - Inicio">
-              <svg className="w-10 h-10 text-fudo-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
+            <Link href="/" className="inline-flex items-center gap-2 mb-8" aria-label="UNNA - Inicio">
+              <svg className="w-10 h-10 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
                 <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
               </svg>
-              <span className="text-2xl font-bold text-gray-900">FUDO</span>
+              <span className="text-2xl font-bold text-gray-900">UNNA</span>
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">¡Crea tu cuenta gratis!</h1>
             <p className="mt-3 text-gray-600">Comenzá a gestionar tu restaurante en 15 minutos.</p>
@@ -241,9 +241,9 @@ export default function RegisterPage() {
                 <Checkbox
                   {...register('acceptTerms')}
                   id="acceptTerms"
-                  label="Acepto las Condiciones y Políticas de FUDO"
+                  label="Acepto las Condiciones y Políticas de UNNA"
                   description={
-                    <span className="text-fudo-green hover:underline cursor-pointer">
+                    <span className="text-unna-green hover:underline cursor-pointer">
                       Leer términos
                     </span>
                   }
@@ -263,7 +263,7 @@ export default function RegisterPage() {
               </Button>
 
               <p className="text-center text-sm text-gray-600">
-                <svg className="w-4 h-4 inline-block mr-1 text-fudo-green" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <svg className="w-4 h-4 inline-block mr-1 text-unna-green" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
                 Sin tarjeta de crédito. Cancelá cuando quieras.
@@ -273,7 +273,7 @@ export default function RegisterPage() {
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-600">
                 ¿Ya tenés cuenta?{' '}
-                <Link href="/login" className="text-fudo-green font-medium hover:underline">
+                <Link href="/login" className="text-unna-green font-medium hover:underline">
                   Ingresar
                 </Link>
               </p>
@@ -288,8 +288,8 @@ export default function RegisterPage() {
               { icon: 'shield', text: 'Cancelá cuando quieras' },
             ].map((benefit, i) => (
               <div key={i} className="p-4 bg-white rounded-xl border border-gray-100">
-                <div className="w-12 h-12 mx-auto mb-3 bg-fudo-green/10 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-fudo-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <div className="w-12 h-12 mx-auto mb-3 bg-unna-green/10 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-unna-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     {benefit.icon === 'credit-card' && (
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                     )}

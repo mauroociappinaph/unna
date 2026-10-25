@@ -1,4 +1,4 @@
-import { resolveFiscalDocument } from '../receipt-rules';
+import { receiverVatCondition, resolveFiscalDocument } from '../receipt-rules';
 
 // 20-12345678-6 and 30-71234567-1 have valid check digits.
 const CUIT_RI = '20123456786';
@@ -10,6 +10,7 @@ describe('resolveFiscalDocument', () => {
       expect(resolveFiscalDocument('responsable_inscripto', 'A', { taxId: CUIT_COMPANY, condition: 'responsable_inscripto' })).toEqual({
         docType: 80,
         docNumber: '30712345671',
+        receiverVatCondition: 1,
       });
     });
 
@@ -40,13 +41,13 @@ describe('resolveFiscalDocument', () => {
     });
 
     it('issues B to an unidentified consumidor final as doc 99 number "0"', () => {
-      expect(resolveFiscalDocument('responsable_inscripto', 'B', {})).toEqual({ docType: 99, docNumber: '0' });
+      expect(resolveFiscalDocument('responsable_inscripto', 'B', {})).toEqual({ docType: 99, docNumber: '0', receiverVatCondition: 5 });
     });
 
     it('issues B with a CUIT as doc 80 and with a 7-8 digit DNI as doc 96', () => {
-      expect(resolveFiscalDocument('responsable_inscripto', 'B', { taxId: CUIT_RI, condition: 'exento' })).toEqual({ docType: 80, docNumber: CUIT_RI });
-      expect(resolveFiscalDocument('responsable_inscripto', 'B', { taxId: '12.345.678' })).toEqual({ docType: 96, docNumber: '12345678' });
-      expect(resolveFiscalDocument('responsable_inscripto', 'B', { taxId: '1234567' })).toEqual({ docType: 96, docNumber: '1234567' });
+      expect(resolveFiscalDocument('responsable_inscripto', 'B', { taxId: CUIT_RI, condition: 'exento' })).toEqual({ docType: 80, docNumber: CUIT_RI, receiverVatCondition: 4 });
+      expect(resolveFiscalDocument('responsable_inscripto', 'B', { taxId: '12.345.678' })).toEqual({ docType: 96, docNumber: '12345678', receiverVatCondition: 5 });
+      expect(resolveFiscalDocument('responsable_inscripto', 'B', { taxId: '1234567' })).toEqual({ docType: 96, docNumber: '1234567', receiverVatCondition: 5 });
     });
 
     it('rejects B to a responsable inscripto or monotributista customer', () => {
@@ -64,8 +65,8 @@ describe('resolveFiscalDocument', () => {
 
   describe('monotributo and exento', () => {
     it('issue C only', () => {
-      expect(resolveFiscalDocument('monotributo', 'C', {})).toEqual({ docType: 99, docNumber: '0' });
-      expect(resolveFiscalDocument('exento', 'C', { taxId: CUIT_RI })).toEqual({ docType: 80, docNumber: CUIT_RI });
+      expect(resolveFiscalDocument('monotributo', 'C', {})).toEqual({ docType: 99, docNumber: '0', receiverVatCondition: 5 });
+      expect(resolveFiscalDocument('exento', 'C', { taxId: CUIT_RI })).toEqual({ docType: 80, docNumber: CUIT_RI, receiverVatCondition: 5 });
     });
 
     it('reject A and B with a clear message', () => {
@@ -94,5 +95,28 @@ describe('resolveFiscalDocument', () => {
 
   it('validates the check digit of a CUIT given on B or C', () => {
     expect(() => resolveFiscalDocument('monotributo', 'C', { taxId: '20123456780' })).toThrow('CUIT inválido (dígito verificador incorrecto)');
+  });
+});
+
+describe('receiverVatCondition (RG 5616)', () => {
+  it.each([
+    ['responsable_inscripto', 1],
+    ['exento', 4],
+    ['consumidor_final', 5],
+    ['monotributo', 6],
+  ] as const)('maps %s to ARCA code %i', (condition, code) => {
+    expect(receiverVatCondition('C', condition)).toBe(code);
+  });
+
+  it.each(['B', 'C'] as const)('treats a factura %s without customer condition as consumidor final', (type) => {
+    expect(receiverVatCondition(type, undefined)).toBe(5);
+  });
+
+  it('requires the customer condition for a factura A', () => {
+    expect(() => receiverVatCondition('A', undefined)).toThrow('La factura A requiere la condición frente al IVA del cliente');
+  });
+
+  it('rejects an unknown condition', () => {
+    expect(() => receiverVatCondition('B', 'jubilado')).toThrow('Condición de IVA del cliente inválida');
   });
 });

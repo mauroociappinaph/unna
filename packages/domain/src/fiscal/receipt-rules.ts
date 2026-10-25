@@ -1,6 +1,6 @@
 import { CUIT } from '../value-objects/cuit';
 import type { IVACondition } from '../value-objects/business-settings';
-import type { FiscalDocType, FiscalReceiptType } from '../ports/fiscal.port';
+import type { FiscalDocType, FiscalReceiptType, FiscalVatCondition } from '../ports/fiscal.port';
 
 export interface FiscalCustomer {
   /** CUIT (11 digits) or DNI (7-8 digits); dots, dashes and spaces are ignored. */
@@ -12,6 +12,8 @@ export interface FiscalCustomer {
 export interface FiscalDocument {
   docType: FiscalDocType;
   docNumber: string;
+  /** ARCA code of the customer IVA condition (RG 5616). */
+  receiverVatCondition: FiscalVatCondition;
 }
 
 const IVA_CONDITIONS: readonly string[] = ['responsable_inscripto', 'monotributo', 'exento', 'consumidor_final'];
@@ -47,7 +49,7 @@ function assertCustomerCondition(type: FiscalReceiptType, condition: string | un
 }
 
 /** ARCA document for the customer: CUIT (80), DNI (96) or consumidor final sin identificar (99, "0"). */
-function customerDocument(type: FiscalReceiptType, taxId: string | undefined): FiscalDocument {
+function customerDocument(type: FiscalReceiptType, taxId: string | undefined): Omit<FiscalDocument, 'receiverVatCondition'> {
   const digits = taxId?.replace(/[-.\s]/g, '') ?? '';
   if (type === 'A') {
     if (!digits) throw new Error('La factura A requiere el CUIT del cliente');
@@ -66,5 +68,26 @@ function customerDocument(type: FiscalReceiptType, taxId: string | undefined): F
 export function resolveFiscalDocument(issuer: IVACondition, type: FiscalReceiptType, customer: FiscalCustomer): FiscalDocument {
   assertTypeAllowed(issuer, type);
   assertCustomerCondition(type, customer.condition);
-  return customerDocument(type, customer.taxId);
+  return { ...customerDocument(type, customer.taxId), receiverVatCondition: receiverVatCondition(type, customer.condition) };
+}
+
+const RECEIVER_VAT_CONDITION_CODES: Record<string, FiscalVatCondition> = {
+  responsable_inscripto: 1,
+  exento: 4,
+  consumidor_final: 5,
+  monotributo: 6,
+};
+
+/**
+ * Customer IVA condition as the ARCA code required by RG 5616. Without a stated condition a B or C
+ * goes to a consumidor final; a factura A cannot be inferred, so it must be given.
+ */
+export function receiverVatCondition(type: FiscalReceiptType, condition: string | undefined): FiscalVatCondition {
+  if (condition === undefined) {
+    if (type === 'A') throw new Error('La factura A requiere la condición frente al IVA del cliente');
+    return RECEIVER_VAT_CONDITION_CODES.consumidor_final;
+  }
+  const code = RECEIVER_VAT_CONDITION_CODES[condition];
+  if (code === undefined) throw new Error('Condición de IVA del cliente inválida');
+  return code;
 }

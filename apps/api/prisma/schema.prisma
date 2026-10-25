@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  phone         String
+  businessName  String
+  isActive      Boolean  @default(true)
+  emailVerified Boolean  @default(false)
+  roles         String[] @default(["owner"])
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  businesses    Business[]
+
+  @@map("users")
+}
+
+model Business {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  cuit      String   @unique
+  address   Json
+  schedule  Json
+  settings  Json
+  ownerId   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner      User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sucursales Sucursal[]
+
+  @@map("businesses")
+}
+
+model Sucursal {
+  id        String   @id @default(uuid())
+  name      String
+  address   Json
+  phone     String
+  email     String
+  schedule  Json
+  isMain    Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  businessId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("sucursales")
+}

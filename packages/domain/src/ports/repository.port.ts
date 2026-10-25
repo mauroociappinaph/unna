@@ -15,4 +15,5 @@ export interface UserRepositoryPort extends RepositoryPort<User> {
 export interface BusinessRepositoryPort extends RepositoryPort<Business> {
   findByOwnerId(ownerId: string): Promise<Business[]>;
   existsByName(name: string): Promise<boolean>;
+  existsByCuit(cuit: string): Promise<boolean>;
 }

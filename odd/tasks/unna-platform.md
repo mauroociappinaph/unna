@@ -35,6 +35,15 @@ Replicar https://fu.do/es-ar/crear-cuenta/ con formulario validado:
 - Integración con API backend
 - Tailwind CSS para styling
 
+### S5: Business Onboarding (Post-registro)
+Flow completo tras registro para configurar el negocio:
+- **Datos fiscales AR**: CUIT (validado algoritmo 11), Condición IVA (RI/Monotributo/Exento/CF), IIBB, Punto de venta (4 dígitos), Domicilio fiscal
+- **Sucursales**: Nombre, dirección, teléfono, email, horarios, esPrincipal
+- **Horarios de atención**: Por día (lunes-domingo), abierto/cierra, cerrado todo el día
+- **Configuración inicial**: Nombre comercial, logo, moneda, zona horaria, idioma
+- **Validaciones**: CUIT único por business, al menos 1 sucursal principal, horarios consistentes
+- **Endpoints**: POST /business/onboard, GET /business/me, PATCH /business/me, POST /business/me/sucursales, PATCH /business/me/sucursales/:id
+
 ## Architecture Constraints (MANDATORIOS)
 
 - **Hexagonal Architecture**: Domain core aislado, ports/adapters para infraestructura (DB, HTTP, external APIs)
@@ -85,6 +94,13 @@ unna/
 | T13 | S3 | backend | Auth avanzado: VerifyEmail UseCase + endpoint + emailVerified en User | 470c4fb |
 | T14 | S3 | backend | Auth avanzado: Roles/Permisos (UserRole VO, hierarchy, hasRole, canManage) | 61a87a3 |
 | T15 | S3 | backend | Auth avanzado: Tests unit + E2E para forgot/reset/verify/roles | 5482859 |
+| T16 | S5 | backend | Domain: Business Aggregate + Value Objects (CUIT, Address, Schedule, BusinessSettings) |
+| T17 | S5 | backend | UseCase: OnboardBusiness (datos fiscales + sucursales + horarios) |
+| T18 | S5 | backend | UseCase: UpdateBusinessSettings + ManageSucursales + ManageHorarios |
+| T19 | S5 | backend | Controller: POST /business/onboard, GET/PATCH /business/me, sucursales CRUD |
+| T20 | S5 | backend | Prisma: Business, Sucursal, Horario models + migrations |
+| T21 | S5 | frontend | Onboarding Wizard (4 steps: fiscal → sucursales → horarios → confirmación) |
+| T22 | S5 | integration | Tests unit + E2E onboarding completo |
 
 ## Log
 
@@ -96,3 +112,4 @@ unna/
 **L6**: Auth avanzado Phase 1: VerifyEmail UseCase + endpoint + emailVerified migration (Commit 3/5).
 **L7**: Auth avanzado Phase 1: Roles/Permisos (UserRole VO, hierarchy, hasRole, canManage) (Commit 4/5).
 **L8**: Auth avanzado Phase 1: Tests unit + E2E para forgot/reset/verify/roles (Commit 5/5).
+**L9**: Inicio Fase 2 - Business Onboarding (S5): Domain VOs, OnboardBusiness UseCase, endpoints, wizard frontend.

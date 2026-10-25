@@ -49,3 +49,22 @@ export class BusinessCreatedEvent extends DomainEvent {
     return 'BusinessCreated';
   }
 }
+
+export class BusinessOnboardedEvent extends DomainEvent {
+  public readonly businessId: string;
+  public readonly ownerId: string;
+  public readonly businessName: string;
+  public readonly sucursalesCount: number;
+
+  constructor(businessId: string, ownerId: string, businessName: string, sucursalesCount: number) {
+    super();
+    this.businessId = businessId;
+    this.ownerId = ownerId;
+    this.businessName = businessName;
+    this.sucursalesCount = sucursalesCount;
+  }
+
+  public get eventName(): string {
+    return 'BusinessOnboarded';
+  }
+}

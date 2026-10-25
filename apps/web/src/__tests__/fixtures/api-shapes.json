@@ -2,36 +2,36 @@
   "POST categories": {
     "status": 201,
     "body": {
-      "id": "dc780adf-7d10-462f-9c8e-452a7ba2700a",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+      "id": "34c8d555-8c29-4b30-813c-6e7ae449152a",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
       "name": "Platos",
       "type": "plato",
       "displayOrder": 0,
       "isActive": true,
-      "createdAt": "2026-10-25T21:47:39.458Z",
-      "updatedAt": "2026-10-25T21:47:39.458Z"
+      "createdAt": "2026-10-25T22:37:32.837Z",
+      "updatedAt": "2026-10-25T22:37:32.837Z"
     }
   },
   "GET categories": {
     "status": 200,
     "body": [
       {
-        "id": "dc780adf-7d10-462f-9c8e-452a7ba2700a",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "id": "34c8d555-8c29-4b30-813c-6e7ae449152a",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "name": "Platos",
         "type": "plato",
         "displayOrder": 0,
         "isActive": true,
-        "createdAt": "2026-10-25T21:47:39.458Z",
-        "updatedAt": "2026-10-25T21:47:39.459Z"
+        "createdAt": "2026-10-25T22:37:32.837Z",
+        "updatedAt": "2026-10-25T22:37:32.838Z"
       }
     ]
   },
   "POST modifier-groups": {
     "status": 201,
     "body": {
-      "id": "4542cef0-f515-4b88-b7dd-aafe27cffdc9",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+      "id": "f9115b96-5a70-4b29-8eae-c0492ab79f8a",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
       "name": "Guarnición",
       "minSelection": 1,
       "maxSelection": 1,
@@ -40,7 +40,7 @@
       "isActive": true,
       "options": [
         {
-          "id": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+          "id": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
           "name": "Papas",
           "priceDelta": 20000,
           "isDefault": false,
@@ -48,7 +48,7 @@
           "isActive": true
         },
         {
-          "id": "95831d31-cd8f-417a-90c4-2cde69f5eb81",
+          "id": "931267fc-398a-40c8-a6c8-afe84f275cf3",
           "name": "Ensalada",
           "priceDelta": 0,
           "isDefault": false,
@@ -56,16 +56,16 @@
           "isActive": true
         }
       ],
-      "createdAt": "2026-10-25T21:47:39.475Z",
-      "updatedAt": "2026-10-25T21:47:39.475Z"
+      "createdAt": "2026-10-25T22:37:32.852Z",
+      "updatedAt": "2026-10-25T22:37:32.852Z"
     }
   },
   "GET modifier-groups": {
     "status": 200,
     "body": [
       {
-        "id": "4542cef0-f515-4b88-b7dd-aafe27cffdc9",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "id": "f9115b96-5a70-4b29-8eae-c0492ab79f8a",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "name": "Guarnición",
         "minSelection": 1,
         "maxSelection": 1,
@@ -74,7 +74,7 @@
         "isActive": true,
         "options": [
           {
-            "id": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+            "id": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
             "name": "Papas",
             "priceDelta": 20000,
             "isDefault": false,
@@ -82,7 +82,7 @@
             "isActive": true
           },
           {
-            "id": "95831d31-cd8f-417a-90c4-2cde69f5eb81",
+            "id": "931267fc-398a-40c8-a6c8-afe84f275cf3",
             "name": "Ensalada",
             "priceDelta": 0,
             "isDefault": false,
@@ -90,17 +90,17 @@
             "isActive": true
           }
         ],
-        "createdAt": "2026-10-25T21:47:39.475Z",
-        "updatedAt": "2026-10-25T21:47:39.477Z"
+        "createdAt": "2026-10-25T22:37:32.852Z",
+        "updatedAt": "2026-10-25T22:37:32.853Z"
       }
     ]
   },
   "POST products": {
     "status": 201,
     "body": {
-      "id": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "categoryId": "dc780adf-7d10-462f-9c8e-452a7ba2700a",
+      "id": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "categoryId": "34c8d555-8c29-4b30-813c-6e7ae449152a",
       "name": "Milanesa",
       "type": "simple",
       "status": "active",
@@ -111,24 +111,25 @@
       "taxRate": 21,
       "displayOrder": 0,
       "isActive": true,
+      "isFavorite": false,
       "images": [],
       "modifierGroupIds": [
-        "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+        "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
       ],
       "components": [],
       "allergens": [],
       "tags": [],
-      "createdAt": "2026-10-25T21:47:39.495Z",
-      "updatedAt": "2026-10-25T21:47:39.495Z"
+      "createdAt": "2026-10-25T22:37:32.878Z",
+      "updatedAt": "2026-10-25T22:37:32.878Z"
     }
   },
   "GET products": {
     "status": 200,
     "body": [
       {
-        "id": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "categoryId": "dc780adf-7d10-462f-9c8e-452a7ba2700a",
+        "id": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "categoryId": "34c8d555-8c29-4b30-813c-6e7ae449152a",
         "name": "Milanesa",
         "type": "simple",
         "status": "active",
@@ -139,24 +140,25 @@
         "taxRate": 21,
         "displayOrder": 0,
         "isActive": true,
+        "isFavorite": false,
         "images": [],
         "modifierGroupIds": [
-          "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+          "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
         ],
         "components": [],
         "allergens": [],
         "tags": [],
-        "createdAt": "2026-10-25T21:47:39.495Z",
-        "updatedAt": "2026-10-25T21:47:39.495Z"
+        "createdAt": "2026-10-25T22:37:32.878Z",
+        "updatedAt": "2026-10-25T22:37:32.879Z"
       }
     ]
   },
   "GET products/:id": {
     "status": 200,
     "body": {
-      "id": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "categoryId": "dc780adf-7d10-462f-9c8e-452a7ba2700a",
+      "id": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "categoryId": "34c8d555-8c29-4b30-813c-6e7ae449152a",
       "name": "Milanesa",
       "type": "simple",
       "status": "active",
@@ -167,29 +169,30 @@
       "taxRate": 21,
       "displayOrder": 0,
       "isActive": true,
+      "isFavorite": false,
       "images": [],
       "modifierGroupIds": [
-        "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+        "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
       ],
       "components": [],
       "allergens": [],
       "tags": [],
-      "createdAt": "2026-10-25T21:47:39.495Z",
-      "updatedAt": "2026-10-25T21:47:39.495Z"
+      "createdAt": "2026-10-25T22:37:32.878Z",
+      "updatedAt": "2026-10-25T22:37:32.879Z"
     }
   },
   "POST price-lists": {
     "status": 201,
     "body": {
-      "id": "d98b3672-b2c2-4a0b-9c94-b4d227cfe18d",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+      "id": "92de29af-3cad-42e3-b440-56b5502aa17b",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
       "name": "Delivery",
       "type": "delivery",
       "isDefault": false,
       "isActive": true,
       "entries": [
         {
-          "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+          "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
           "price": {
             "amount": 170000,
             "currency": "ARS"
@@ -197,23 +200,23 @@
           "isActive": true
         }
       ],
-      "createdAt": "2026-10-25T21:47:39.515Z",
-      "updatedAt": "2026-10-25T21:47:39.515Z"
+      "createdAt": "2026-10-25T22:37:32.902Z",
+      "updatedAt": "2026-10-25T22:37:32.902Z"
     }
   },
   "GET price-lists": {
     "status": 200,
     "body": [
       {
-        "id": "d98b3672-b2c2-4a0b-9c94-b4d227cfe18d",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "id": "92de29af-3cad-42e3-b440-56b5502aa17b",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "name": "Delivery",
         "type": "delivery",
         "isDefault": false,
         "isActive": true,
         "entries": [
           {
-            "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
             "price": {
               "amount": 170000,
               "currency": "ARS"
@@ -221,47 +224,47 @@
             "isActive": true
           }
         ],
-        "createdAt": "2026-10-25T21:47:39.515Z",
-        "updatedAt": "2026-10-25T21:47:39.516Z"
+        "createdAt": "2026-10-25T22:37:32.902Z",
+        "updatedAt": "2026-10-25T22:37:32.904Z"
       }
     ]
   },
   "POST stock/initialize": {
     "status": 201,
     "body": {
-      "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+      "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
       "currentQuantity": 50,
       "reservedQuantity": 0,
       "minThreshold": 10,
       "reorderPoint": 5,
       "reorderQuantity": 20,
-      "updatedAt": "2026-10-25T21:47:39.534Z"
+      "updatedAt": "2026-10-25T22:37:32.927Z"
     }
   },
   "POST stock/in": {
     "status": 201,
     "body": {
       "level": {
-        "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "currentQuantity": 55,
         "reservedQuantity": 0,
         "minThreshold": 10,
         "reorderPoint": 5,
         "reorderQuantity": 20,
-        "lastMovementAt": "2026-10-25T21:47:39.542Z",
-        "updatedAt": "2026-10-25T21:47:39.542Z"
+        "lastMovementAt": "2026-10-25T22:37:32.937Z",
+        "updatedAt": "2026-10-25T22:37:32.937Z"
       },
       "movement": {
-        "id": "bb2486cc-fbbe-4afb-b7fa-a0b946b7f504",
-        "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "id": "3b4b5fdf-b8f0-4981-a127-8987b01fe689",
+        "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "type": "in",
         "quantity": 5,
         "reason": "Compra",
-        "performedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-        "createdAt": "2026-10-25T21:47:39.542Z"
+        "performedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+        "createdAt": "2026-10-25T22:37:32.937Z"
       }
     }
   },
@@ -269,15 +272,15 @@
     "status": 200,
     "body": [
       {
-        "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "currentQuantity": 55,
         "reservedQuantity": 0,
         "minThreshold": 10,
         "reorderPoint": 5,
         "reorderQuantity": 20,
-        "lastMovementAt": "2026-10-25T21:47:39.542Z",
-        "updatedAt": "2026-10-25T21:47:39.543Z"
+        "lastMovementAt": "2026-10-25T22:37:32.937Z",
+        "updatedAt": "2026-10-25T22:37:32.938Z"
       }
     ]
   },
@@ -285,36 +288,36 @@
     "status": 200,
     "body": [
       {
-        "id": "bb2486cc-fbbe-4afb-b7fa-a0b946b7f504",
-        "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "id": "3b4b5fdf-b8f0-4981-a127-8987b01fe689",
+        "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "type": "in",
         "quantity": 5,
         "reason": "Compra",
-        "performedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-        "createdAt": "2026-10-25T21:47:39.542Z"
+        "performedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+        "createdAt": "2026-10-25T22:37:32.937Z"
       },
       {
-        "id": "3f6eefb2-5939-4373-aed1-b4bb07722cb7",
-        "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "id": "1e202aa5-a1a0-40d4-9a83-05d2b5b2ddf4",
+        "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "type": "in",
         "quantity": 50,
         "reason": "Stock inicial",
-        "performedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-        "createdAt": "2026-10-25T21:47:39.536Z"
+        "performedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+        "createdAt": "2026-10-25T22:37:32.929Z"
       }
     ]
   },
   "POST cash-sessions": {
     "status": 201,
     "body": {
-      "id": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+      "id": "971fa47c-a3ba-465d-8987-71ce922fe574",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
       "status": "open",
-      "openedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-      "openedAt": "2026-10-25T21:47:39.555Z",
+      "openedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+      "openedAt": "2026-10-25T22:37:32.951Z",
       "openingAmount": 500000,
       "movements": []
     }
@@ -323,12 +326,12 @@
     "status": 200,
     "body": {
       "session": {
-        "id": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+        "id": "971fa47c-a3ba-465d-8987-71ce922fe574",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
         "status": "open",
-        "openedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-        "openedAt": "2026-10-25T21:47:39.555Z",
+        "openedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+        "openedAt": "2026-10-25T22:37:32.951Z",
         "openingAmount": 500000,
         "movements": []
       }
@@ -337,22 +340,22 @@
   "POST cash-sessions/:id/movements": {
     "status": 201,
     "body": {
-      "id": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+      "id": "971fa47c-a3ba-465d-8987-71ce922fe574",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
       "status": "open",
-      "openedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-      "openedAt": "2026-10-25T21:47:39.555Z",
+      "openedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+      "openedAt": "2026-10-25T22:37:32.951Z",
       "openingAmount": 500000,
       "movements": [
         {
-          "id": "7bd44480-bee3-4a5e-bd8e-a25ba51b30ed",
-          "sessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
+          "id": "907aed9e-f783-4bc9-93a7-89cd9c943c56",
+          "sessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
           "type": "out",
           "amount": 20000,
           "reason": "Proveedor de leche",
-          "createdBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-          "createdAt": "2026-10-25T21:47:39.569Z"
+          "createdBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+          "createdAt": "2026-10-25T22:37:32.967Z"
         }
       ]
     }
@@ -360,18 +363,18 @@
   "POST orders": {
     "status": 201,
     "body": {
-      "id": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
-      "orderNumber": "261025-12964",
+      "id": "de978796-6e98-42df-b3dc-b15a86b383d2",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
+      "orderNumber": "261025-94358",
       "type": "dine_in",
       "status": "pending",
       "tableNumber": "4",
       "items": [
         {
-          "id": "1279bb6d-d11b-4e89-aa11-bd0c9a439f21",
-          "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-          "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+          "id": "a1f2f062-105d-4dcc-9642-b764b3dcd10b",
+          "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+          "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
           "productName": "Milanesa",
           "quantity": 2,
           "unitPrice": {
@@ -389,14 +392,14 @@
           },
           "modifiers": [
             {
-              "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9",
-              "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+              "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a",
+              "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
               "name": "Papas",
               "priceDelta": 20000
             }
           ],
-          "createdAt": "2026-10-25T21:47:39.577Z",
-          "updatedAt": "2026-10-25T21:47:39.577Z"
+          "createdAt": "2026-10-25T22:37:32.978Z",
+          "updatedAt": "2026-10-25T22:37:32.978Z"
         }
       ],
       "subtotal": {
@@ -417,26 +420,26 @@
       },
       "paymentStatus": "pending",
       "sucursalName": "Central",
-      "createdAt": "2026-10-25T21:47:39.577Z",
-      "updatedAt": "2026-10-25T21:47:39.577Z"
+      "createdAt": "2026-10-25T22:37:32.978Z",
+      "updatedAt": "2026-10-25T22:37:32.978Z"
     }
   },
   "GET orders": {
     "status": 200,
     "body": [
       {
-        "id": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
-        "orderNumber": "261025-12964",
+        "id": "de978796-6e98-42df-b3dc-b15a86b383d2",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
+        "orderNumber": "261025-94358",
         "type": "dine_in",
         "status": "pending",
         "tableNumber": "4",
         "items": [
           {
-            "id": "1279bb6d-d11b-4e89-aa11-bd0c9a439f21",
-            "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-            "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+            "id": "a1f2f062-105d-4dcc-9642-b764b3dcd10b",
+            "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
             "productName": "Milanesa",
             "quantity": 2,
             "unitPrice": {
@@ -455,13 +458,13 @@
             "modifiers": [
               {
                 "name": "Papas",
-                "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
                 "priceDelta": 20000,
-                "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
               }
             ],
-            "createdAt": "2026-10-25T21:47:39.577Z",
-            "updatedAt": "2026-10-25T21:47:39.578Z"
+            "createdAt": "2026-10-25T22:37:32.978Z",
+            "updatedAt": "2026-10-25T22:37:32.979Z"
           }
         ],
         "subtotal": {
@@ -482,26 +485,26 @@
         },
         "paymentStatus": "pending",
         "sucursalName": "Central",
-        "createdAt": "2026-10-25T21:47:39.577Z",
-        "updatedAt": "2026-10-25T21:47:39.578Z"
+        "createdAt": "2026-10-25T22:37:32.978Z",
+        "updatedAt": "2026-10-25T22:37:32.979Z"
       }
     ]
   },
   "POST orders/:id/discount": {
     "status": 201,
     "body": {
-      "id": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
-      "orderNumber": "261025-12964",
+      "id": "de978796-6e98-42df-b3dc-b15a86b383d2",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
+      "orderNumber": "261025-94358",
       "type": "dine_in",
       "status": "pending",
       "tableNumber": "4",
       "items": [
         {
-          "id": "1279bb6d-d11b-4e89-aa11-bd0c9a439f21",
-          "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-          "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+          "id": "a1f2f062-105d-4dcc-9642-b764b3dcd10b",
+          "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+          "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
           "productName": "Milanesa",
           "quantity": 2,
           "unitPrice": {
@@ -520,13 +523,13 @@
           "modifiers": [
             {
               "name": "Papas",
-              "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+              "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
               "priceDelta": 20000,
-              "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+              "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
             }
           ],
-          "createdAt": "2026-10-25T21:47:39.577Z",
-          "updatedAt": "2026-10-25T21:47:39.578Z"
+          "createdAt": "2026-10-25T22:37:32.978Z",
+          "updatedAt": "2026-10-25T22:37:32.979Z"
         }
       ],
       "subtotal": {
@@ -547,26 +550,26 @@
       },
       "paymentStatus": "pending",
       "sucursalName": "Central",
-      "createdAt": "2026-10-25T21:47:39.577Z",
-      "updatedAt": "2026-10-25T21:47:39.596Z"
+      "createdAt": "2026-10-25T22:37:32.978Z",
+      "updatedAt": "2026-10-25T22:37:33.003Z"
     }
   },
   "POST orders/:id/payments (partial)": {
     "status": 201,
     "body": {
       "order": {
-        "id": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
-        "orderNumber": "261025-12964",
+        "id": "de978796-6e98-42df-b3dc-b15a86b383d2",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
+        "orderNumber": "261025-94358",
         "type": "dine_in",
         "status": "pending",
         "tableNumber": "4",
         "items": [
           {
-            "id": "1279bb6d-d11b-4e89-aa11-bd0c9a439f21",
-            "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-            "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+            "id": "a1f2f062-105d-4dcc-9642-b764b3dcd10b",
+            "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
             "productName": "Milanesa",
             "quantity": 2,
             "unitPrice": {
@@ -585,13 +588,13 @@
             "modifiers": [
               {
                 "name": "Papas",
-                "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
                 "priceDelta": 20000,
-                "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
               }
             ],
-            "createdAt": "2026-10-25T21:47:39.577Z",
-            "updatedAt": "2026-10-25T21:47:39.600Z"
+            "createdAt": "2026-10-25T22:37:32.978Z",
+            "updatedAt": "2026-10-25T22:37:33.006Z"
           }
         ],
         "subtotal": {
@@ -612,20 +615,20 @@
         },
         "paymentStatus": "pending",
         "sucursalName": "Central",
-        "createdAt": "2026-10-25T21:47:39.577Z",
-        "updatedAt": "2026-10-25T21:47:39.597Z"
+        "createdAt": "2026-10-25T22:37:32.978Z",
+        "updatedAt": "2026-10-25T22:37:33.004Z"
       },
       "payments": [
         {
-          "id": "8fb0a2c1-d6ee-4fdc-b61a-5bc9cffdc3ed",
-          "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-          "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+          "id": "82bb207b-7127-44ce-8962-7faedded94d4",
+          "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+          "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
           "amount": 100000,
           "method": "cash",
           "status": "completed",
-          "processedAt": "2026-10-25T21:47:39.609Z",
-          "cashSessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-          "createdAt": "2026-10-25T21:47:39.609Z"
+          "processedAt": "2026-10-25T22:37:33.016Z",
+          "cashSessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
+          "createdAt": "2026-10-25T22:37:33.016Z"
         }
       ],
       "remaining": 310400
@@ -635,18 +638,18 @@
     "status": 201,
     "body": {
       "order": {
-        "id": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
-        "orderNumber": "261025-12964",
+        "id": "de978796-6e98-42df-b3dc-b15a86b383d2",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
+        "orderNumber": "261025-94358",
         "type": "dine_in",
         "status": "pending",
         "tableNumber": "4",
         "items": [
           {
-            "id": "1279bb6d-d11b-4e89-aa11-bd0c9a439f21",
-            "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-            "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+            "id": "a1f2f062-105d-4dcc-9642-b764b3dcd10b",
+            "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
             "productName": "Milanesa",
             "quantity": 2,
             "unitPrice": {
@@ -665,13 +668,13 @@
             "modifiers": [
               {
                 "name": "Papas",
-                "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
                 "priceDelta": 20000,
-                "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
               }
             ],
-            "createdAt": "2026-10-25T21:47:39.577Z",
-            "updatedAt": "2026-10-25T21:47:39.600Z"
+            "createdAt": "2026-10-25T22:37:32.978Z",
+            "updatedAt": "2026-10-25T22:37:33.006Z"
           }
         ],
         "subtotal": {
@@ -693,31 +696,31 @@
         "paymentStatus": "completed",
         "paymentMethod": "split",
         "sucursalName": "Central",
-        "createdAt": "2026-10-25T21:47:39.577Z",
-        "updatedAt": "2026-10-25T21:47:39.617Z"
+        "createdAt": "2026-10-25T22:37:32.978Z",
+        "updatedAt": "2026-10-25T22:37:33.024Z"
       },
       "payments": [
         {
-          "id": "8fb0a2c1-d6ee-4fdc-b61a-5bc9cffdc3ed",
-          "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-          "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+          "id": "82bb207b-7127-44ce-8962-7faedded94d4",
+          "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+          "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
           "amount": 100000,
           "method": "cash",
           "status": "completed",
-          "processedAt": "2026-10-25T21:47:39.609Z",
-          "cashSessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-          "createdAt": "2026-10-25T21:47:39.609Z"
+          "processedAt": "2026-10-25T22:37:33.016Z",
+          "cashSessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
+          "createdAt": "2026-10-25T22:37:33.016Z"
         },
         {
-          "id": "3f7459f0-8035-4239-961f-5558b90caa75",
-          "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-          "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+          "id": "65177fe1-b742-457f-84f3-d98f844f6bb6",
+          "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+          "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
           "amount": 310400,
           "method": "card",
           "status": "completed",
-          "processedAt": "2026-10-25T21:47:39.617Z",
-          "cashSessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-          "createdAt": "2026-10-25T21:47:39.617Z"
+          "processedAt": "2026-10-25T22:37:33.023Z",
+          "cashSessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
+          "createdAt": "2026-10-25T22:37:33.023Z"
         }
       ],
       "remaining": 0
@@ -727,44 +730,44 @@
     "status": 200,
     "body": [
       {
-        "id": "8fb0a2c1-d6ee-4fdc-b61a-5bc9cffdc3ed",
-        "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "id": "82bb207b-7127-44ce-8962-7faedded94d4",
+        "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "amount": 100000,
         "method": "cash",
         "status": "completed",
-        "processedAt": "2026-10-25T21:47:39.609Z",
-        "cashSessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-        "createdAt": "2026-10-25T21:47:39.609Z"
+        "processedAt": "2026-10-25T22:37:33.016Z",
+        "cashSessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
+        "createdAt": "2026-10-25T22:37:33.016Z"
       },
       {
-        "id": "3f7459f0-8035-4239-961f-5558b90caa75",
-        "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
+        "id": "65177fe1-b742-457f-84f3-d98f844f6bb6",
+        "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
         "amount": 310400,
         "method": "card",
         "status": "completed",
-        "processedAt": "2026-10-25T21:47:39.617Z",
-        "cashSessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-        "createdAt": "2026-10-25T21:47:39.617Z"
+        "processedAt": "2026-10-25T22:37:33.023Z",
+        "cashSessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
+        "createdAt": "2026-10-25T22:37:33.023Z"
       }
     ]
   },
   "POST orders/:id/status confirm": {
     "status": 201,
     "body": {
-      "id": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
-      "orderNumber": "261025-12964",
+      "id": "de978796-6e98-42df-b3dc-b15a86b383d2",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
+      "orderNumber": "261025-94358",
       "type": "dine_in",
       "status": "confirmed",
       "tableNumber": "4",
       "items": [
         {
-          "id": "1279bb6d-d11b-4e89-aa11-bd0c9a439f21",
-          "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-          "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+          "id": "a1f2f062-105d-4dcc-9642-b764b3dcd10b",
+          "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+          "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
           "productName": "Milanesa",
           "quantity": 2,
           "unitPrice": {
@@ -783,13 +786,13 @@
           "modifiers": [
             {
               "name": "Papas",
-              "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+              "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
               "priceDelta": 20000,
-              "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+              "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
             }
           ],
-          "createdAt": "2026-10-25T21:47:39.577Z",
-          "updatedAt": "2026-10-25T21:47:39.619Z"
+          "createdAt": "2026-10-25T22:37:32.978Z",
+          "updatedAt": "2026-10-25T22:37:33.026Z"
         }
       ],
       "subtotal": {
@@ -811,22 +814,22 @@
       "paymentStatus": "completed",
       "paymentMethod": "split",
       "sucursalName": "Central",
-      "createdAt": "2026-10-25T21:47:39.577Z",
-      "updatedAt": "2026-10-25T21:47:39.626Z"
+      "createdAt": "2026-10-25T22:37:32.978Z",
+      "updatedAt": "2026-10-25T22:37:33.034Z"
     }
   },
   "POST receipts": {
     "status": 201,
     "body": {
-      "id": "0a354305-895f-4708-a251-00bc2c7df1c9",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+      "id": "1ae71235-d97e-459a-bf53-3aacbfd57283",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
       "receiptNumber": "ticket-0003-00000001",
       "invoiceNumber": 1,
       "type": "ticket",
       "status": "issued",
-      "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-      "orderNumber": "261025-12964",
+      "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+      "orderNumber": "261025-94358",
       "pointOfSale": "0003",
       "receiptType": "ticket",
       "subtotal": {
@@ -857,9 +860,9 @@
       },
       "items": [
         {
-          "id": "c012ba88-e255-4123-a8e4-f152bad7de50",
-          "receiptId": "0a354305-895f-4708-a251-00bc2c7df1c9",
-          "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+          "id": "436ceecb-808b-44c2-ad49-dd215fe3e99c",
+          "receiptId": "1ae71235-d97e-459a-bf53-3aacbfd57283",
+          "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
           "productName": "Milanesa",
           "quantity": 2,
           "unitPrice": {
@@ -878,34 +881,34 @@
           "modifiers": [
             {
               "name": "Papas",
-              "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+              "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
               "priceDelta": 20000,
-              "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+              "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
             }
           ],
-          "createdAt": "2026-10-25T21:47:39.639Z",
-          "updatedAt": "2026-10-25T21:47:39.639Z"
+          "createdAt": "2026-10-25T22:37:33.045Z",
+          "updatedAt": "2026-10-25T22:37:33.045Z"
         }
       ],
-      "createdAt": "2026-10-25T21:47:39.639Z",
-      "updatedAt": "2026-10-25T21:47:39.640Z",
-      "issuedAt": "2026-10-25T21:47:39.640Z"
+      "createdAt": "2026-10-25T22:37:33.045Z",
+      "updatedAt": "2026-10-25T22:37:33.046Z",
+      "issuedAt": "2026-10-25T22:37:33.046Z"
     }
   },
   "POST receipts (factura B)": {
     "status": 201,
     "body": {
-      "id": "d0462fdd-515d-4669-b482-a93a5cffb80b",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+      "id": "44fd24ac-ac00-4c38-9484-c18438725ede",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
       "receiptNumber": "B-0003-00000001",
       "invoiceNumber": 1,
       "type": "B",
       "status": "issued",
-      "orderId": "ff054e94-7ce7-4402-93ec-971f7a86589d",
-      "orderNumber": "261025-36099",
+      "orderId": "8e9fc90b-45b2-490f-950b-179e646e0c57",
+      "orderNumber": "261025-85609",
       "cae": "70003060000001",
-      "caeExpiration": "2026-11-04T21:47:39.666Z",
+      "caeExpiration": "2026-11-04T22:37:33.086Z",
       "pointOfSale": "0003",
       "receiptType": "B",
       "subtotal": {
@@ -942,13 +945,13 @@
         "amount": 35700,
         "currency": "ARS"
       },
-      "caeRequest": "{\"issuerCuit\":\"20651426090\",\"pointOfSale\":3,\"receiptType\":\"B\",\"number\":1,\"issueDate\":\"2026-10-25T21:47:39.666Z\",\"concept\":1,\"docType\":99,\"docNumber\":\"0\",\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
-      "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwNjUxNDI2MDkwLCJwdG9WdGEiOjMsInRpcG9DbXAiOjYsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo5OSwibnJvRG9jUmVjIjowLCJ0aXBvQ29kQXV0IjoiRSIsImNvZEF1dCI6NzAwMDMwNjAwMDAwMDF9",
+      "caeRequest": "{\"issuerCuit\":\"20248818566\",\"pointOfSale\":3,\"receiptType\":\"B\",\"number\":1,\"issueDate\":\"2026-10-25T22:37:33.086Z\",\"concept\":1,\"docType\":99,\"docNumber\":\"0\",\"receiverVatCondition\":5,\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
+      "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwMjQ4ODE4NTY2LCJwdG9WdGEiOjMsInRpcG9DbXAiOjYsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo5OSwibnJvRG9jUmVjIjowLCJ0aXBvQ29kQXV0IjoiRSIsImNvZEF1dCI6NzAwMDMwNjAwMDAwMDF9",
       "items": [
         {
-          "id": "5c321389-56d6-4c70-8098-97dc0e17519d",
-          "receiptId": "d0462fdd-515d-4669-b482-a93a5cffb80b",
-          "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+          "id": "c90bf289-abd1-4bb7-b548-1d1a3d342dc9",
+          "receiptId": "44fd24ac-ac00-4c38-9484-c18438725ede",
+          "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
           "productName": "Milanesa",
           "quantity": 1,
           "unitPrice": {
@@ -967,34 +970,34 @@
           "modifiers": [
             {
               "name": "Papas",
-              "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+              "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
               "priceDelta": 20000,
-              "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+              "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
             }
           ],
-          "createdAt": "2026-10-25T21:47:39.666Z",
-          "updatedAt": "2026-10-25T21:47:39.666Z"
+          "createdAt": "2026-10-25T22:37:33.086Z",
+          "updatedAt": "2026-10-25T22:37:33.086Z"
         }
       ],
-      "createdAt": "2026-10-25T21:47:39.666Z",
-      "updatedAt": "2026-10-25T21:47:39.667Z",
-      "issuedAt": "2026-10-25T21:47:39.667Z"
+      "createdAt": "2026-10-25T22:37:33.086Z",
+      "updatedAt": "2026-10-25T22:37:33.088Z",
+      "issuedAt": "2026-10-25T22:37:33.088Z"
     }
   },
   "POST receipts (factura A)": {
     "status": 201,
     "body": {
-      "id": "992059cb-27fb-4a24-9350-7629e6737aaa",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+      "id": "5e76082f-e1e3-4e29-b9ca-91224d194929",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
       "receiptNumber": "A-0003-00000001",
       "invoiceNumber": 1,
       "type": "A",
       "status": "issued",
-      "orderId": "a53cd9d1-df23-4c54-88f7-9d6803928e39",
-      "orderNumber": "261025-63401",
+      "orderId": "ebfed660-b870-4b09-a209-8c561fb1216e",
+      "orderNumber": "261025-76239",
       "cae": "70003010000001",
-      "caeExpiration": "2026-11-04T21:47:39.700Z",
+      "caeExpiration": "2026-11-04T22:37:33.118Z",
       "pointOfSale": "0003",
       "receiptType": "A",
       "subtotal": {
@@ -1034,13 +1037,13 @@
         "amount": 35700,
         "currency": "ARS"
       },
-      "caeRequest": "{\"issuerCuit\":\"20651426090\",\"pointOfSale\":3,\"receiptType\":\"A\",\"number\":1,\"issueDate\":\"2026-10-25T21:47:39.700Z\",\"concept\":1,\"docType\":80,\"docNumber\":\"30712345671\",\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
-      "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwNjUxNDI2MDkwLCJwdG9WdGEiOjMsInRpcG9DbXAiOjEsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDcxMjM0NTY3MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAzMDEwMDAwMDAxfQ==",
+      "caeRequest": "{\"issuerCuit\":\"20248818566\",\"pointOfSale\":3,\"receiptType\":\"A\",\"number\":1,\"issueDate\":\"2026-10-25T22:37:33.118Z\",\"concept\":1,\"docType\":80,\"docNumber\":\"30712345671\",\"receiverVatCondition\":1,\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
+      "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwMjQ4ODE4NTY2LCJwdG9WdGEiOjMsInRpcG9DbXAiOjEsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDcxMjM0NTY3MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAzMDEwMDAwMDAxfQ==",
       "items": [
         {
-          "id": "9a42ecef-128c-48bb-aac6-8a33203f3452",
-          "receiptId": "992059cb-27fb-4a24-9350-7629e6737aaa",
-          "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+          "id": "902db6f4-fde4-4155-b1d8-81b7ccbf6371",
+          "receiptId": "5e76082f-e1e3-4e29-b9ca-91224d194929",
+          "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
           "productName": "Milanesa",
           "quantity": 1,
           "unitPrice": {
@@ -1059,18 +1062,18 @@
           "modifiers": [
             {
               "name": "Papas",
-              "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+              "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
               "priceDelta": 20000,
-              "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+              "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
             }
           ],
-          "createdAt": "2026-10-25T21:47:39.700Z",
-          "updatedAt": "2026-10-25T21:47:39.700Z"
+          "createdAt": "2026-10-25T22:37:33.118Z",
+          "updatedAt": "2026-10-25T22:37:33.118Z"
         }
       ],
-      "createdAt": "2026-10-25T21:47:39.700Z",
-      "updatedAt": "2026-10-25T21:47:39.700Z",
-      "issuedAt": "2026-10-25T21:47:39.700Z"
+      "createdAt": "2026-10-25T22:37:33.118Z",
+      "updatedAt": "2026-10-25T22:37:33.119Z",
+      "issuedAt": "2026-10-25T22:37:33.119Z"
     }
   },
   "POST receipts (factura C rejected for RI)": {
@@ -1084,26 +1087,26 @@
   "POST cash-sessions/:id/close": {
     "status": 201,
     "body": {
-      "id": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+      "id": "971fa47c-a3ba-465d-8987-71ce922fe574",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
       "status": "closed",
-      "openedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-      "openedAt": "2026-10-25T21:47:39.555Z",
+      "openedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+      "openedAt": "2026-10-25T22:37:32.951Z",
       "openingAmount": 500000,
       "movements": [
         {
-          "id": "7bd44480-bee3-4a5e-bd8e-a25ba51b30ed",
-          "sessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
+          "id": "907aed9e-f783-4bc9-93a7-89cd9c943c56",
+          "sessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
           "type": "out",
           "amount": 20000,
           "reason": "Proveedor de leche",
-          "createdBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-          "createdAt": "2026-10-25T21:47:39.569Z"
+          "createdBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+          "createdAt": "2026-10-25T22:37:32.967Z"
         }
       ],
-      "closedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-      "closedAt": "2026-10-25T21:47:39.729Z",
+      "closedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+      "closedAt": "2026-10-25T22:37:33.158Z",
       "expected": {
         "cash": 1197100,
         "card": 310400,
@@ -1130,26 +1133,26 @@
   "GET cash-sessions/:id (closed)": {
     "status": 200,
     "body": {
-      "id": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-      "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-      "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+      "id": "971fa47c-a3ba-465d-8987-71ce922fe574",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
       "status": "closed",
-      "openedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-      "openedAt": "2026-10-25T21:47:39.555Z",
+      "openedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+      "openedAt": "2026-10-25T22:37:32.951Z",
       "openingAmount": 500000,
       "movements": [
         {
-          "id": "7bd44480-bee3-4a5e-bd8e-a25ba51b30ed",
-          "sessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
+          "id": "907aed9e-f783-4bc9-93a7-89cd9c943c56",
+          "sessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
           "type": "out",
           "amount": 20000,
           "reason": "Proveedor de leche",
-          "createdBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-          "createdAt": "2026-10-25T21:47:39.569Z"
+          "createdBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+          "createdAt": "2026-10-25T22:37:32.967Z"
         }
       ],
-      "closedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-      "closedAt": "2026-10-25T21:47:39.729Z",
+      "closedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+      "closedAt": "2026-10-25T22:37:33.158Z",
       "expected": {
         "qr": 0,
         "card": 310400,
@@ -1177,26 +1180,26 @@
     "status": 200,
     "body": [
       {
-        "id": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+        "id": "971fa47c-a3ba-465d-8987-71ce922fe574",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
         "status": "closed",
-        "openedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-        "openedAt": "2026-10-25T21:47:39.555Z",
+        "openedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+        "openedAt": "2026-10-25T22:37:32.951Z",
         "openingAmount": 500000,
         "movements": [
           {
-            "id": "7bd44480-bee3-4a5e-bd8e-a25ba51b30ed",
-            "sessionId": "d19cfeb0-682b-48e9-9515-7de8468cb5d2",
+            "id": "907aed9e-f783-4bc9-93a7-89cd9c943c56",
+            "sessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
             "type": "out",
             "amount": 20000,
             "reason": "Proveedor de leche",
-            "createdBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-            "createdAt": "2026-10-25T21:47:39.569Z"
+            "createdBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+            "createdAt": "2026-10-25T22:37:32.967Z"
           }
         ],
-        "closedBy": "0f1f2944-2368-4fdc-b1da-bf327471d8fb",
-        "closedAt": "2026-10-25T21:47:39.729Z",
+        "closedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
+        "closedAt": "2026-10-25T22:37:33.158Z",
         "expected": {
           "qr": 0,
           "card": 310400,
@@ -1233,17 +1236,17 @@
     "status": 200,
     "body": [
       {
-        "id": "992059cb-27fb-4a24-9350-7629e6737aaa",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+        "id": "5e76082f-e1e3-4e29-b9ca-91224d194929",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
         "receiptNumber": "A-0003-00000001",
         "invoiceNumber": 1,
         "type": "A",
         "status": "issued",
-        "orderId": "a53cd9d1-df23-4c54-88f7-9d6803928e39",
-        "orderNumber": "261025-63401",
+        "orderId": "ebfed660-b870-4b09-a209-8c561fb1216e",
+        "orderNumber": "261025-76239",
         "cae": "70003010000001",
-        "caeExpiration": "2026-11-04T21:47:39.700Z",
+        "caeExpiration": "2026-11-04T22:37:33.118Z",
         "pointOfSale": "0003",
         "receiptType": "A",
         "subtotal": {
@@ -1283,13 +1286,13 @@
           "amount": 35700,
           "currency": "ARS"
         },
-        "caeRequest": "{\"issuerCuit\":\"20651426090\",\"pointOfSale\":3,\"receiptType\":\"A\",\"number\":1,\"issueDate\":\"2026-10-25T21:47:39.700Z\",\"concept\":1,\"docType\":80,\"docNumber\":\"30712345671\",\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
-        "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwNjUxNDI2MDkwLCJwdG9WdGEiOjMsInRpcG9DbXAiOjEsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDcxMjM0NTY3MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAzMDEwMDAwMDAxfQ==",
+        "caeRequest": "{\"issuerCuit\":\"20248818566\",\"pointOfSale\":3,\"receiptType\":\"A\",\"number\":1,\"issueDate\":\"2026-10-25T22:37:33.118Z\",\"concept\":1,\"docType\":80,\"docNumber\":\"30712345671\",\"receiverVatCondition\":1,\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
+        "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwMjQ4ODE4NTY2LCJwdG9WdGEiOjMsInRpcG9DbXAiOjEsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDcxMjM0NTY3MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAzMDEwMDAwMDAxfQ==",
         "items": [
           {
-            "id": "9a42ecef-128c-48bb-aac6-8a33203f3452",
-            "receiptId": "992059cb-27fb-4a24-9350-7629e6737aaa",
-            "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+            "id": "902db6f4-fde4-4155-b1d8-81b7ccbf6371",
+            "receiptId": "5e76082f-e1e3-4e29-b9ca-91224d194929",
+            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
             "productName": "Milanesa",
             "quantity": 1,
             "unitPrice": {
@@ -1308,31 +1311,31 @@
             "modifiers": [
               {
                 "name": "Papas",
-                "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
                 "priceDelta": 20000,
-                "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
               }
             ],
-            "createdAt": "2026-10-25T21:47:39.700Z",
-            "updatedAt": "2026-10-25T21:47:39.703Z"
+            "createdAt": "2026-10-25T22:37:33.118Z",
+            "updatedAt": "2026-10-25T22:37:33.122Z"
           }
         ],
-        "createdAt": "2026-10-25T21:47:39.700Z",
-        "updatedAt": "2026-10-25T21:47:39.701Z",
-        "issuedAt": "2026-10-25T21:47:39.700Z"
+        "createdAt": "2026-10-25T22:37:33.118Z",
+        "updatedAt": "2026-10-25T22:37:33.120Z",
+        "issuedAt": "2026-10-25T22:37:33.119Z"
       },
       {
-        "id": "d0462fdd-515d-4669-b482-a93a5cffb80b",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+        "id": "44fd24ac-ac00-4c38-9484-c18438725ede",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
         "receiptNumber": "B-0003-00000001",
         "invoiceNumber": 1,
         "type": "B",
         "status": "issued",
-        "orderId": "ff054e94-7ce7-4402-93ec-971f7a86589d",
-        "orderNumber": "261025-36099",
+        "orderId": "8e9fc90b-45b2-490f-950b-179e646e0c57",
+        "orderNumber": "261025-85609",
         "cae": "70003060000001",
-        "caeExpiration": "2026-11-04T21:47:39.666Z",
+        "caeExpiration": "2026-11-04T22:37:33.086Z",
         "pointOfSale": "0003",
         "receiptType": "B",
         "subtotal": {
@@ -1369,13 +1372,13 @@
           "amount": 35700,
           "currency": "ARS"
         },
-        "caeRequest": "{\"issuerCuit\":\"20651426090\",\"pointOfSale\":3,\"receiptType\":\"B\",\"number\":1,\"issueDate\":\"2026-10-25T21:47:39.666Z\",\"concept\":1,\"docType\":99,\"docNumber\":\"0\",\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
-        "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwNjUxNDI2MDkwLCJwdG9WdGEiOjMsInRpcG9DbXAiOjYsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo5OSwibnJvRG9jUmVjIjowLCJ0aXBvQ29kQXV0IjoiRSIsImNvZEF1dCI6NzAwMDMwNjAwMDAwMDF9",
+        "caeRequest": "{\"issuerCuit\":\"20248818566\",\"pointOfSale\":3,\"receiptType\":\"B\",\"number\":1,\"issueDate\":\"2026-10-25T22:37:33.086Z\",\"concept\":1,\"docType\":99,\"docNumber\":\"0\",\"receiverVatCondition\":5,\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
+        "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwMjQ4ODE4NTY2LCJwdG9WdGEiOjMsInRpcG9DbXAiOjYsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo5OSwibnJvRG9jUmVjIjowLCJ0aXBvQ29kQXV0IjoiRSIsImNvZEF1dCI6NzAwMDMwNjAwMDAwMDF9",
         "items": [
           {
-            "id": "5c321389-56d6-4c70-8098-97dc0e17519d",
-            "receiptId": "d0462fdd-515d-4669-b482-a93a5cffb80b",
-            "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+            "id": "c90bf289-abd1-4bb7-b548-1d1a3d342dc9",
+            "receiptId": "44fd24ac-ac00-4c38-9484-c18438725ede",
+            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
             "productName": "Milanesa",
             "quantity": 1,
             "unitPrice": {
@@ -1394,29 +1397,29 @@
             "modifiers": [
               {
                 "name": "Papas",
-                "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
                 "priceDelta": 20000,
-                "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
               }
             ],
-            "createdAt": "2026-10-25T21:47:39.666Z",
-            "updatedAt": "2026-10-25T21:47:39.671Z"
+            "createdAt": "2026-10-25T22:37:33.086Z",
+            "updatedAt": "2026-10-25T22:37:33.091Z"
           }
         ],
-        "createdAt": "2026-10-25T21:47:39.666Z",
-        "updatedAt": "2026-10-25T21:47:39.668Z",
-        "issuedAt": "2026-10-25T21:47:39.667Z"
+        "createdAt": "2026-10-25T22:37:33.086Z",
+        "updatedAt": "2026-10-25T22:37:33.088Z",
+        "issuedAt": "2026-10-25T22:37:33.088Z"
       },
       {
-        "id": "0a354305-895f-4708-a251-00bc2c7df1c9",
-        "businessId": "98e673bf-a91c-4264-844b-d4524c736288",
-        "sucursalId": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+        "id": "1ae71235-d97e-459a-bf53-3aacbfd57283",
+        "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "sucursalId": "da0161b4-12e7-4d58-9d47-f70c6b670654",
         "receiptNumber": "ticket-0003-00000001",
         "invoiceNumber": 1,
         "type": "ticket",
         "status": "issued",
-        "orderId": "5c29305c-f665-4b0f-ab78-487dc9b8f25a",
-        "orderNumber": "261025-12964",
+        "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
+        "orderNumber": "261025-94358",
         "pointOfSale": "0003",
         "receiptType": "ticket",
         "subtotal": {
@@ -1447,9 +1450,9 @@
         },
         "items": [
           {
-            "id": "c012ba88-e255-4123-a8e4-f152bad7de50",
-            "receiptId": "0a354305-895f-4708-a251-00bc2c7df1c9",
-            "productId": "40cf6098-ef1c-4eca-b4d0-03684d999f02",
+            "id": "436ceecb-808b-44c2-ad49-dd215fe3e99c",
+            "receiptId": "1ae71235-d97e-459a-bf53-3aacbfd57283",
+            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
             "productName": "Milanesa",
             "quantity": 2,
             "unitPrice": {
@@ -1468,28 +1471,370 @@
             "modifiers": [
               {
                 "name": "Papas",
-                "optionId": "8ef85942-84ab-40f6-a8e3-1b4ce7c01536",
+                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
                 "priceDelta": 20000,
-                "modifierGroupId": "4542cef0-f515-4b88-b7dd-aafe27cffdc9"
+                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
               }
             ],
-            "createdAt": "2026-10-25T21:47:39.639Z",
-            "updatedAt": "2026-10-25T21:47:39.645Z"
+            "createdAt": "2026-10-25T22:37:33.045Z",
+            "updatedAt": "2026-10-25T22:37:33.049Z"
           }
         ],
-        "createdAt": "2026-10-25T21:47:39.639Z",
-        "updatedAt": "2026-10-25T21:47:39.641Z",
-        "issuedAt": "2026-10-25T21:47:39.640Z"
+        "createdAt": "2026-10-25T22:37:33.045Z",
+        "updatedAt": "2026-10-25T22:37:33.047Z",
+        "issuedAt": "2026-10-25T22:37:33.046Z"
       }
     ]
+  },
+  "PUT products/:id (favorite)": {
+    "status": 200,
+    "body": {
+      "id": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+      "businessId": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+      "categoryId": "34c8d555-8c29-4b30-813c-6e7ae449152a",
+      "name": "Milanesa",
+      "type": "simple",
+      "status": "active",
+      "basePrice": {
+        "amount": 150000,
+        "currency": "ARS"
+      },
+      "taxRate": 21,
+      "displayOrder": 0,
+      "isActive": true,
+      "isFavorite": true,
+      "images": [],
+      "modifierGroupIds": [
+        "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
+      ],
+      "components": [],
+      "allergens": [],
+      "tags": [],
+      "createdAt": "2026-10-25T22:37:32.878Z",
+      "updatedAt": "2026-10-25T22:37:33.190Z"
+    }
+  },
+  "GET products/top-sellers": {
+    "status": 200,
+    "body": [
+      {
+        "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
+        "name": "Milanesa",
+        "quantity": 5
+      }
+    ]
+  },
+  "GET bar-queue (new)": {
+    "status": 200,
+    "body": {
+      "new": [
+        {
+          "id": "de978796-6e98-42df-b3dc-b15a86b383d2",
+          "orderNumber": "261025-94358",
+          "shortNumber": "358",
+          "status": "confirmed",
+          "customerName": null,
+          "type": "dine_in",
+          "tableNumber": "4",
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 2,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:32.978Z",
+          "updatedAt": "2026-10-25T22:37:33.034Z"
+        },
+        {
+          "id": "8e9fc90b-45b2-490f-950b-179e646e0c57",
+          "orderNumber": "261025-85609",
+          "shortNumber": "609",
+          "status": "pending",
+          "customerName": null,
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 1,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.059Z",
+          "updatedAt": "2026-10-25T22:37:33.073Z"
+        },
+        {
+          "id": "ebfed660-b870-4b09-a209-8c561fb1216e",
+          "orderNumber": "261025-76239",
+          "shortNumber": "239",
+          "status": "pending",
+          "customerName": null,
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 1,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.100Z",
+          "updatedAt": "2026-10-25T22:37:33.111Z"
+        },
+        {
+          "id": "faf08301-a6fe-42c0-aea8-ff51ec89a564",
+          "orderNumber": "261025-35164",
+          "shortNumber": "164",
+          "status": "pending",
+          "customerName": null,
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 1,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.128Z",
+          "updatedAt": "2026-10-25T22:37:33.139Z"
+        },
+        {
+          "id": "4b7ea5c7-92d0-4bcf-86ec-437665d7e2e7",
+          "orderNumber": "261025-51401",
+          "shortNumber": "401",
+          "status": "pending",
+          "customerName": "Martina Pérez",
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 2,
+              "modifiers": [
+                "Papas"
+              ],
+              "notes": "sin azúcar"
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.205Z",
+          "updatedAt": "2026-10-25T22:37:33.216Z"
+        }
+      ],
+      "preparing": [],
+      "ready": []
+    }
+  },
+  "GET bar-queue (preparing + ready)": {
+    "status": 200,
+    "body": {
+      "new": [
+        {
+          "id": "de978796-6e98-42df-b3dc-b15a86b383d2",
+          "orderNumber": "261025-94358",
+          "shortNumber": "358",
+          "status": "confirmed",
+          "customerName": null,
+          "type": "dine_in",
+          "tableNumber": "4",
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 2,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:32.978Z",
+          "updatedAt": "2026-10-25T22:37:33.034Z"
+        },
+        {
+          "id": "8e9fc90b-45b2-490f-950b-179e646e0c57",
+          "orderNumber": "261025-85609",
+          "shortNumber": "609",
+          "status": "pending",
+          "customerName": null,
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 1,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.059Z",
+          "updatedAt": "2026-10-25T22:37:33.073Z"
+        },
+        {
+          "id": "ebfed660-b870-4b09-a209-8c561fb1216e",
+          "orderNumber": "261025-76239",
+          "shortNumber": "239",
+          "status": "pending",
+          "customerName": null,
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 1,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.100Z",
+          "updatedAt": "2026-10-25T22:37:33.111Z"
+        },
+        {
+          "id": "faf08301-a6fe-42c0-aea8-ff51ec89a564",
+          "orderNumber": "261025-35164",
+          "shortNumber": "164",
+          "status": "pending",
+          "customerName": null,
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 1,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.128Z",
+          "updatedAt": "2026-10-25T22:37:33.139Z"
+        }
+      ],
+      "preparing": [
+        {
+          "id": "4b7ea5c7-92d0-4bcf-86ec-437665d7e2e7",
+          "orderNumber": "261025-51401",
+          "shortNumber": "401",
+          "status": "preparing",
+          "customerName": "Martina Pérez",
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 2,
+              "modifiers": [
+                "Papas"
+              ],
+              "notes": "sin azúcar"
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.205Z",
+          "updatedAt": "2026-10-25T22:37:33.244Z"
+        }
+      ],
+      "ready": [
+        {
+          "id": "51ab139c-0b20-41d0-becc-f7f9d55d49c7",
+          "orderNumber": "261025-36129",
+          "shortNumber": "129",
+          "status": "ready",
+          "customerName": "Juan",
+          "type": "takeaway",
+          "tableNumber": null,
+          "items": [
+            {
+              "productName": "Milanesa",
+              "quantity": 1,
+              "modifiers": [
+                "Papas"
+              ]
+            }
+          ],
+          "createdAt": "2026-10-25T22:37:33.256Z",
+          "updatedAt": "2026-10-25T22:37:33.287Z"
+        }
+      ]
+    }
+  },
+  "POST sucursales/:id/display-token": {
+    "status": 201,
+    "body": {
+      "token": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+      "path": "/pantalla/TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+    }
+  },
+  "GET public/order-board/:token": {
+    "status": 200,
+    "body": {
+      "sucursalName": "Central",
+      "preparing": [
+        {
+          "shortNumber": "358",
+          "name": null,
+          "status": "preparing"
+        },
+        {
+          "shortNumber": "609",
+          "name": null,
+          "status": "preparing"
+        },
+        {
+          "shortNumber": "239",
+          "name": null,
+          "status": "preparing"
+        },
+        {
+          "shortNumber": "164",
+          "name": null,
+          "status": "preparing"
+        },
+        {
+          "shortNumber": "401",
+          "name": "Martina",
+          "status": "preparing"
+        }
+      ],
+      "ready": [
+        {
+          "shortNumber": "129",
+          "name": "Juan",
+          "status": "ready"
+        }
+      ],
+      "updatedAt": "2026-10-25T22:37:33.300Z"
+    }
+  },
+  "GET public/order-board/:token (unknown)": {
+    "status": 404,
+    "body": {
+      "message": "Pantalla no encontrada",
+      "error": "Not Found",
+      "statusCode": 404
+    }
+  },
+  "DELETE sucursales/:id/display-token": {
+    "status": 200,
+    "body": {
+      "ok": true
+    }
   },
   "GET businesses": {
     "status": 200,
     "body": [
       {
-        "id": "98e673bf-a91c-4264-844b-d4524c736288",
-        "businessName": "Smoke shape Resto 1792964859431",
-        "cuit": "20651426090",
+        "id": "2d910f0f-7f4a-4fbb-a0e5-c13486e36310",
+        "businessName": "Smoke shape Resto 1792967852810",
+        "cuit": "20248818566",
         "address": {
           "street": "Av. Corrientes",
           "number": "1234",
@@ -1544,11 +1889,11 @@
           "timezone": "America/Argentina/Buenos_Aires",
           "language": "es-AR"
         },
-        "slug": "smoke-shape-resto-1792964859431",
+        "slug": "smoke-shape-resto-1792967852810",
         "isActive": true,
         "sucursales": [
           {
-            "id": "e796e8a3-a0e9-4314-bf3a-b56f370530be",
+            "id": "da0161b4-12e7-4d58-9d47-f70c6b670654",
             "name": "Central",
             "address": {
               "street": "Av. Corrientes",
@@ -1600,12 +1945,12 @@
             },
             "isMain": true,
             "isActive": true,
-            "createdAt": "2026-10-25T21:47:39.443Z",
-            "updatedAt": "2026-10-25T21:47:39.443Z"
+            "createdAt": "2026-10-25T22:37:32.821Z",
+            "updatedAt": "2026-10-25T22:37:33.310Z"
           }
         ],
-        "createdAt": "2026-10-25T21:47:39.443Z",
-        "updatedAt": "2026-10-25T21:47:39.443Z"
+        "createdAt": "2026-10-25T22:37:32.821Z",
+        "updatedAt": "2026-10-25T22:37:32.821Z"
       }
     ]
   }

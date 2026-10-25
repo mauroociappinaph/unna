@@ -39,8 +39,17 @@ model Business {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner      User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  sucursales Sucursal[]
+  owner         User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sucursales    Sucursal[]
+  categories    Category[]
+  products      Product[]
+  modifierGroups ModifierGroup[]
+  priceLists    PriceList[]
+  stockLevels   StockLevel[]
+  stockMovements StockMovement[]
+  orders        Order[]
+  payments      Payment[]
+  receipts      Receipt[]
 
   @@map("businesses")
 }
@@ -59,6 +68,346 @@ model Sucursal {
   updatedAt DateTime @updatedAt
 
   business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  receipts  Receipt[]
 
   @@map("sucursales")
 }
+
+// ============ T23: Productos / Carta ============
+
+model Category {
+  id          String   @id @default(uuid())
+  businessId  String
+  name        String
+  description String?
+  type        String   // plato, bebida, postre, extra, combo
+  displayOrder Int     @default(0)
+  isActive    Boolean  @default(true)
+  parentId    String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+
+  @@index([businessId, isActive])
+  @@map("categories")
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  businessId      String
+  categoryId      String
+  name            String
+  description     String?
+  type            String   // simple, composite, combo
+  status          String   @default("draft") // draft, active, archived
+  basePrice       Int      // stored in cents
+  currency        String   @default("ARS")
+  costPrice       Int?
+  taxRate         Float    @default(21)
+  sku             String?  @unique
+  barcode         String?  @unique
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+  images          String[] @default([])
+  modifierGroupIds String[] @default([])
+  components      Json     @default("[]") // [{ productId, quantity }]
+  preparationTimeMinutes Int?
+  calories        Int?
+  allergens       String[] @default([])
+  tags            String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category        Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  modifierGroups  ModifierGroup[] @relation("ProductModifierGroups")
+  priceListEntries PriceListEntry[]
+  stockLevel      StockLevel?
+  stockMovements  StockMovement[]
+  orderItems      OrderItem[] @relation("ProductOrderItems")
+
+  @@index([businessId, isActive])
+  @@index([businessId, categoryId])
+  @@index([businessId, status])
+  @@map("products")
+}
+
+model ModifierOption {
+  id           String   @id @default(uuid())
+  modifierGroupId String
+  name         String
+  priceDelta   Int      @default(0) // in cents
+  isDefault    Boolean  @default(false)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  modifierGroup ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@map("modifier_options")
+}
+
+model ModifierGroup {
+  id            String   @id @default(uuid())
+  businessId    String
+  name          String
+  description   String?
+  minSelection  Int      @default(0)
+  maxSelection  Int      @default(0) // 0 = unlimited
+  isRequired    Boolean  @default(false)
+  displayOrder  Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business      Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  options       ModifierOption[]
+  products      Product[] @relation("ProductModifierGroups")
+
+  @@index([businessId, isActive])
+  @@map("modifier_groups")
+}
+
+model PriceList {
+  id          String   @id @default(uuid())
+  businessId  String
+  name        String
+  description String?
+  type        String   // standard, delivery, takeaway, happy-hour, event, custom
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  validFrom   DateTime?
+  validTo     DateTime?
+  validDays   Int[]    // 0=Sun, 1=Mon, etc.
+  validFromTime String? // HH:mm
+  validToTime   String? // HH:mm
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  entries     PriceListEntry[]
+
+  @@index([businessId, isActive])
+  @@map("price_lists")
+}
+
+model PriceListEntry {
+  id          String   @id @default(uuid())
+  priceListId String
+  productId   String
+  price       Int      // in cents
+  costPrice   Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  priceList   PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([priceListId, productId])
+  @@map("price_list_entries")
+}
+
+// ============ Stock / Inventory ============
+
+model StockMovement {
+  id            String   @id @default(uuid())
+  productId     String
+  businessId    String
+  type          String   // in, out, adjustment, waste, transfer, sale, return
+  quantity      Int      // positive for in, negative for out
+  reason        String
+  referenceId   String?
+  referenceType String?
+  unitCost      Int?
+  totalCost     Int?
+  performedBy   String
+  createdAt     DateTime @default(now())
+
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, productId, createdAt])
+  @@map("stock_movements")
+}
+
+model StockLevel {
+  id               String   @id @default(uuid())
+  productId        String   @unique
+  businessId       String
+  currentQuantity  Int      @default(0)
+  reservedQuantity Int      @default(0)
+  minThreshold     Int      @default(10)
+  maxThreshold     Int?
+  reorderPoint     Int      @default(5)
+  reorderQuantity  Int      @default(20)
+  lastCountedAt    DateTime?
+  lastMovementAt   DateTime?
+  updatedAt        DateTime @updatedAt
+
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  business         Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("stock_levels")
+}
+
+// ============ T24: Ventas / POS ============
+
+model Order {
+  id              String   @id @default(uuid())
+  businessId      String
+  sucursalId      String
+  orderNumber     String
+  type            String   // dine_in, takeaway, delivery, pickup
+  status          String   @default("pending") // pending, confirmed, preparing, ready, delivered, cancelled, refunded
+  tableNumber     String?
+  customerName    String?
+  customerPhone   String?
+  customerEmail   String?
+  deliveryAddress Json?
+  items           OrderItem[]
+  subtotal        Int      // in cents
+  taxAmount       Int      // in cents
+  discountAmount  Int      @default(0) // in cents
+  totalAmount     Int      // in cents
+  paymentStatus   String   @default("pending") // pending, processing, completed, failed, refunded, cancelled
+  paymentMethod   String?  // cash, card, mercado_pago, transfer, qr, split
+  paymentReference String?
+  notes           String?
+  sucursalName    String
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelledReason String?
+  payments        Payment[]
+  receipts        Receipt[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sucursal        Sucursal   @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId, status])
+  @@index([businessId, sucursalId, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  productId       String
+  productName     String
+  productSku      String?
+  quantity        Int
+  unitPrice       Int      // in cents
+  totalPrice      Int      // in cents
+  taxRate         Float    @default(21)
+  taxAmount       Int      // in cents
+  notes           String?
+  modifiers       Json     @default("[]") // [{ modifierGroupId, optionId, name, priceDelta }]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict, name: "ProductOrderItems")
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  orderId         String
+  businessId      String
+  amount          Int      // in cents
+  method          String   // cash, card, mercado_pago, transfer, qr, split
+  status          String   @default("pending") // pending, processing, completed, failed, refunded, cancelled
+  reference       String?  // transaction ID, authorization code, etc.
+  metadata        Json?    // gateway response, etc.
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([businessId, status, createdAt])
+  @@map("payments")
+}
+
+model Receipt {
+  id              String   @id @default(uuid())
+  businessId      String
+  sucursalId      String
+  receiptNumber   String   @unique
+  type            String   // A, B, C, ticket, proforma, credit_note, debit_note
+  status          String   @default("draft") // draft, issued, cancelled, voided
+  orderId         String?
+  orderNumber     String?
+  cae             String?
+  caeExpiration   DateTime?
+  pointOfSale     String   // 4 digits
+  receiptType     String   // A, B, C, ticket, proforma, credit_note, debit_note
+  subtotal        Int      // in cents
+  taxAmount       Int      // in cents
+  discountAmount  Int      @default(0)
+  totalAmount     Int      // in cents
+  paymentMethod   String
+  paymentReference String?
+  customerName    String?
+  customerTaxId   String?
+  customerAddress Json?
+  customerCondition String? // IVA condition
+  caeRequest      String?
+  caeResponse     String?
+  pdfUrl          String?
+  qrCode          String?
+  items           ReceiptItem[]
+  notes           String?
+  cancelledAt     DateTime?
+  cancelledReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  issuedAt        DateTime?
+
+  business        Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sucursal        Sucursal   @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+  order           Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, status, createdAt])
+  @@index([businessId, orderId])
+  @@map("receipts")
+}
+
+model ReceiptItem {
+  id              String   @id @default(uuid())
+  receiptId       String
+  productId       String
+  productName     String
+  productSku      String?
+  quantity        Int
+  unitPrice       Int      // in cents
+  totalPrice      Int      // in cents
+  taxRate         Float    @default(21)
+  taxAmount       Int      // in cents
+  modifiers       Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  receipt         Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
+  @@map("receipt_items")
+}
+
+// ============ Stock / Inventory ============
+

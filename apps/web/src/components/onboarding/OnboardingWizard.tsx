@@ -143,10 +143,6 @@ export function OnboardingWizard() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const updateData = (partial: Partial<OnboardingData>) => {
-    setData(prev => ({ ...prev, ...partial }));
-  };
-
   const updateNested = (partial: Partial<OnboardingData>) => {
     setData(prev => ({ ...prev, ...partial }));
   };

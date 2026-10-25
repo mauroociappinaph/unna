@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Step2Sucursales } from '@/components/onboarding/steps/Step2Sucursales';
 
 const initialSucursales = [

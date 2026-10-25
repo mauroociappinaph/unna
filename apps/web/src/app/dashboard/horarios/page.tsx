@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
-import { HorarioEditor } from '@/components/business/HorarioEditor';
+import { HorarioEditor, type ScheduleFormData } from '@/components/business/HorarioEditor';
 
 interface Schedule {
   monday: { open: string; close: string; isClosed: boolean };
@@ -28,12 +28,7 @@ interface Business {
   id: string;
   businessName: string;
   schedule: Schedule;
-  sucursales: Array<{
-    id: string;
-    name: string;
-    isMain: boolean;
-    schedule: Schedule;
-  }>;
+  sucursales: Sucursal[];
 }
 
 function HorariosContent() {
@@ -70,7 +65,7 @@ function HorariosContent() {
         return;
       }
 
-      const businesses = await api.getBusinesses();
+      const businesses: Business[] = await api.getBusinesses();
       if (businesses.length === 0) {
         setError('No se encontró ningún negocio');
         return;
@@ -82,7 +77,7 @@ function HorariosContent() {
       if (selectedSucursal === 'main') {
         setSchedule(mainBusiness.schedule);
       } else {
-        const sucursal = mainBusiness.sucursales?.find((s: any) => s.id === selectedSucursal);
+        const sucursal = mainBusiness.sucursales?.find((s) => s.id === selectedSucursal);
         if (sucursal) {
           setSchedule(sucursal.schedule);
         } else {
@@ -97,7 +92,7 @@ function HorariosContent() {
     }
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: ScheduleFormData) => {
     if (!business) return;
 
     setSaving(true);

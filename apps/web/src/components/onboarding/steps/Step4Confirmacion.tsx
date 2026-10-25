@@ -111,12 +111,6 @@ export function Step4Confirmacion({ data, onSubmit, isSubmitting, submitError, s
     return parts.join(', ');
   };
 
-  const formatSchedule = (schedule: OnboardingData['schedule'], dayKey: string) => {
-    const day = schedule[dayKey as keyof typeof schedule];
-    if (day.isClosed) return 'Cerrado';
-    return `${day.open} - ${day.close}`;
-  };
-
   return (
     <div className="space-y-6" data-testid="confirmation-form">
       <div className="bg-unna-green/5 border border-unna-green/20 rounded-xl p-4">

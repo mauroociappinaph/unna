@@ -294,7 +294,7 @@ export default function HomePage() {
                       </svg>
                     ))}
                   </div>
-                  <p className="text-gray-700 mb-4">"{testimonial.text}"</p>
+                  <p className="text-gray-700 mb-4">&quot;{testimonial.text}&quot;</p>
                   <div>
                     <p className="font-semibold text-gray-900">{testimonial.name}</p>
                     <p className="text-sm text-gray-500">{testimonial.business}</p>
@@ -422,7 +422,7 @@ export default function HomePage() {
               </li>
             </ul>
             <p className="mt-8 text-green-200 text-sm italic">
-              "Una comunidad donde compartir conocimiento, recursos y crecimiento hace que todos ganemos."
+              &quot;Una comunidad donde compartir conocimiento, recursos y crecimiento hace que todos ganemos.&quot;
             </p>
           </div>
         </div>

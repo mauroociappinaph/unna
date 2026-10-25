@@ -91,7 +91,7 @@ export function Step2Sucursales({ data, onChange }: Step2SucursalesProps) {
     isMain: data.length === 0,
   });
 
-  const updateSucursal = (index: number, field: string, value: any) => {
+  const updateSucursal = (index: number, field: string, value: string | boolean) => {
     const newData = [...data];
     const sucursal = { ...data[index] };
 

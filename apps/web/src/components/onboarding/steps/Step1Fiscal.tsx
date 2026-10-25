@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { z } from 'zod';
 
 export interface FiscalData {
   businessName: string;
@@ -83,7 +82,7 @@ export function Step1Fiscal({ data, onChange }: Step1FiscalProps) {
       sum += parseInt(cleaned[i], 10) * weights[i];
     }
     const remainder = sum % 11;
-    let checkDigit = remainder === 0 ? 0 : remainder === 1 ? 9 : 11 - remainder;
+    const checkDigit = remainder === 0 ? 0 : remainder === 1 ? 9 : 11 - remainder;
     return checkDigit === parseInt(cleaned[10], 10);
   };
 

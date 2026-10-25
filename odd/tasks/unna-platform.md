@@ -70,21 +70,21 @@ unna/
 
 | ID | Spec | Route | Description | Commit |
 |----|------|-------|-------------|--------|
-| T1 | S1,S2 | setup | Inicializar monorepo Turborepo + estructura hexagonal base | |
-| T2 | S3 | backend | Domain kernel: Value Objects (Email, Phone, Password, BusinessName), Domain Events, Aggregate Roots | |
-| T3 | S3 | backend | Auth Context: User Aggregate, Register/Login Use Cases, JWT Port/Adapter, Repository Port/Adapter (Prisma/Supabase) | |
+| T1 | S1,S2 | setup | Inicializar monorepo Turborepo + estructura hexagonal base | f5aec59 |
+| T2 | S3 | backend | Domain kernel: Value Objects (Email, Phone, Password, BusinessName), Domain Events, Aggregate Roots | f5aec59 |
+| T3 | S3 | backend | Auth Context: User Aggregate, Register/Login Use Cases, JWT Port/Adapter, Repository Port/Adapter (Prisma/Supabase) | f5aec59 |
 | T4 | S3 | backend | Business Context: Business Aggregate, Onboarding Use Case | |
-| T5 | S3 | backend | API Controllers + Validation Pipes + Global Exception Filter | |
-| T6 | S3 | backend | Prisma Schema + Supabase Connection + Migrations | |
-| T7 | S4 | frontend | Next.js App + Tailwind + Shared UI Components (Button, Input, Checkbox, Form) | |
-| T8 | S1 | frontend | Landing Page: Hero, 3 Pilares, Funcionalidades, Testimonios, Stats, Business Types, CTA | |
-| T9 | S2 | frontend | Register Page: Formulario con Zod validation, React Hook Form, API integration | |
-| T10 | S1,S2 | integration | E2E: Registro completo frontend→backend→DB |
-| T11 | - | polish | README, .env.example, Docker compose, CI/CD básico |
-| T12 | S3 | backend | Auth avanzado: ForgotPassword + ResetPassword UseCases + endpoints |
-| T13 | S3 | backend | Auth avanzado: VerifyEmail UseCase + endpoint + emailVerified en User |
-| T14 | S3 | backend | Auth avanzado: Roles/Permisos (UserRole VO, hierarchy, hasRole, canManage) |
-| T15 | S3 | backend | Auth avanzado: Tests unit + E2E para forgot/reset/verify/roles |
+| T5 | S3 | backend | API Controllers + Validation Pipes + Global Exception Filter | f5aec59 |
+| T6 | S3 | backend | Prisma Schema + Supabase Connection + Migrations | f5aec59 |
+| T7 | S4 | frontend | Next.js App + Tailwind + Shared UI Components (Button, Input, Checkbox, Form) | f5aec59 |
+| T8 | S1 | frontend | Landing Page: Hero, 3 Pilares, Funcionalidades, Testimonios, Stats, Business Types, CTA | f5aec59 |
+| T9 | S2 | frontend | Register Page: Formulario con Zod validation, React Hook Form, API integration | f5aec59 |
+| T10 | S1,S2 | integration | E2E: Registro completo frontend→backend→DB | f5f4309, 0e0087d |
+| T11 | - | polish | README, .env.example, Docker compose, CI/CD básico | f5aec59 |
+| T12 | S3 | backend | Auth avanzado: ForgotPassword + ResetPassword UseCases + endpoints | 3a25849 |
+| T13 | S3 | backend | Auth avanzado: VerifyEmail UseCase + endpoint + emailVerified en User | 470c4fb |
+| T14 | S3 | backend | Auth avanzado: Roles/Permisos (UserRole VO, hierarchy, hasRole, canManage) | 61a87a3 |
+| T15 | S3 | backend | Auth avanzado: Tests unit + E2E para forgot/reset/verify/roles | 5482859 |
 
 ## Log
 
@@ -95,3 +95,4 @@ unna/
 **L5**: Auth avanzado Phase 1: ForgotPassword + ResetPassword UseCases + endpoints (Commit 2/5).
 **L6**: Auth avanzado Phase 1: VerifyEmail UseCase + endpoint + emailVerified migration (Commit 3/5).
 **L7**: Auth avanzado Phase 1: Roles/Permisos (UserRole VO, hierarchy, hasRole, canManage) (Commit 4/5).
+**L8**: Auth avanzado Phase 1: Tests unit + E2E para forgot/reset/verify/roles (Commit 5/5).

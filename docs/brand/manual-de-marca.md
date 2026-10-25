@@ -1,6 +1,6 @@
 # Manual de marca UNNA
 
-UNNA es la plataforma para gestionar un restaurante entero: ventas, cobros, carta, stock y delivery en un solo lugar. Este manual define cómo se ve y cómo habla la marca, para que la app, la web y cualquier pieza comunicacional se reconozcan como una sola cosa.
+UNNA es el sistema para cafés take away: venta rápida en el mostrador, cada café con sus opciones, cobros, carta y stock en un solo lugar. Este manual define cómo se ve y cómo habla la marca, para que la app, la web y cualquier pieza comunicacional se reconozcan como una sola cosa.
 
 ![Hoja de marca: símbolo, ícono de app, logos horizontal, con lema y negativo](assets/unna-brand-sheet.png)
 
@@ -21,14 +21,15 @@ UNNA es la plataforma para gestionar un restaurante entero: ventas, cobros, cart
 
 | | |
 |---|---|
-| **Qué somos** | Todo tu restaurante. Una sola plataforma. |
+| **Qué somos** | El sistema para cafés take away. |
+| **Bajada** | Vendé rápido en el mostrador, cobrá fácil y controlá tus cobros y tu stock. |
 | **Lema de comunidad** | A Community of Sharing — compartir conocimiento, recursos y crecimiento hace que todos ganemos. |
-| **Para quién** | Dueños y equipos de restaurantes, bares, cafés y locales gastronómicos de Latinoamérica. |
-| **Promesa** | Menos tiempo en el sistema, más tiempo en el salón. |
+| **Para quién** | Cafés take away, cafés de especialidad, cafeterías con pocas mesas, panaderías y pastelerías con café, carritos de café y cadenas de cafés. |
+| **Promesa** | Tu café, sin filas: vender en segundos en la hora pico. |
 
 **Personalidad**
 
-- **Cercana:** hablamos como alguien del rubro, no como un banco.
+- **Cercana:** hablamos como alguien detrás de la barra, no como un banco.
 - **Clara:** cada pantalla y cada mensaje dicen qué pasó y qué hacer.
 - **Confiable:** manejamos la plata del cliente; nada de ambigüedad con montos ni estados.
 - **Generosa:** la marca comparte; ayuda, explica y celebra los logros del negocio.

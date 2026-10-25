@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
+import { UnnaSymbol } from '@/components/brand/UnnaSymbol';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -27,9 +28,7 @@ export default function DashboardPage() {
         <div className="container-custom">
           <div className="flex items-center justify-between h-16">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <svg className="w-8 h-8 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
-                <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
-              </svg>
+              <UnnaSymbol className="w-8 h-8 text-unna-green" />
               <span className="text-xl font-bold text-gray-900">UNNA</span>
             </Link>
             <div className="flex items-center gap-4">
@@ -52,7 +51,7 @@ export default function DashboardPage() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900">¡Bienvenido a UNNA!</h1>
             <p className="mt-4 text-lg text-gray-600">
-              Tu cuenta ha sido creada exitosamente. Aquí podrás gestionar tu restaurante.
+              Tu cuenta ha sido creada exitosamente. Desde acá gestionás tu café.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg">Configurar mi negocio</Button>
@@ -82,7 +81,7 @@ export default function DashboardPage() {
               {[
                 {
                   title: 'Configurar mi negocio',
-                  desc: 'Agregá el nombre, dirección, logo y datos fiscales de tu restaurante.',
+                  desc: 'Agregá el nombre, dirección, logo y datos fiscales de tu café.',
                   action: 'Configurar',
                   href: '/dashboard/sucursales',
                 },

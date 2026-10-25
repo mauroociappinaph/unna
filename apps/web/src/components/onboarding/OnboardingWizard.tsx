@@ -7,6 +7,7 @@ import { Step1Fiscal } from './steps/Step1Fiscal';
 import { Step2Sucursales } from './steps/Step2Sucursales';
 import { Step3Horarios } from './steps/Step3Horarios';
 import { Step4Confirmacion } from './steps/Step4Confirmacion';
+import { UnnaSymbol } from '@/components/brand/UnnaSymbol';
 
 export type OnboardingStep = 1 | 2 | 3 | 4;
 
@@ -212,9 +213,7 @@ export function OnboardingWizard() {
         <div className="container-custom">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2" aria-label="UNNA - Inicio">
-              <svg className="w-8 h-8 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
-                <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
-              </svg>
+              <UnnaSymbol className="w-8 h-8 text-unna-green" />
               <span className="text-xl font-bold text-gray-900 hidden sm:block">UNNA</span>
             </Link>
 

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { HorarioEditor, type ScheduleFormData } from '@/components/business/HorarioEditor';
+import { UnnaSymbol } from '@/components/brand/UnnaSymbol';
 
 interface Schedule {
   monday: { open: string; close: string; isClosed: boolean };
@@ -132,9 +133,7 @@ function HorariosContent() {
         <div className="container-custom">
           <div className="flex items-center justify-between h-16">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <svg className="w-8 h-8 text-unna-green" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true">
-                <path d="M16 2L4 8v16l12 6 12-6V8L16 2zm0 2.5L25.5 9 16 13.5 6.5 9 16 4.5zM6 10.5l9 4.5 9-4.5v11L16 28.5 6 24v-13.5z" />
-              </svg>
+              <UnnaSymbol className="w-8 h-8 text-unna-green" />
               <span className="text-xl font-bold text-gray-900">UNNA</span>
             </Link>
             <div className="flex items-center gap-4">

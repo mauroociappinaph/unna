@@ -47,6 +47,18 @@ import { QrChargeSync } from './use-cases/qr-charge-sync';
 import { PrismaQrChargeRepositoryAdapter } from './adapters/qr-charge.repository.adapter';
 import { PrismaQrChargeUnitOfWorkAdapter } from './adapters/qr-charge-unit-of-work.adapter';
 import { simulatorsAllowed } from '../common/runtime-env';
+import { PreorderController } from './preorder.controller';
+import { PublicPreorderController } from './public-preorder.controller';
+import { onlineCheckoutSimulatorControllers } from './mercadopago-simulator-checkout.controller';
+import { PreorderSettingsUseCase } from './use-cases/preorder-settings.use-case';
+import { PreorderLocalLookup } from './use-cases/preorder-local-lookup';
+import { PublicMenuUseCase } from './use-cases/public-menu.use-case';
+import { OnlineCheckoutUseCase } from './use-cases/online-checkout.use-case';
+import { OnlineCheckoutSync } from './use-cases/online-checkout-sync';
+import { OrderTrackingUseCase } from './use-cases/order-tracking.use-case';
+import { PrismaPreorderRepositoryAdapter } from './adapters/preorder.repository.adapter';
+import { PrismaOnlineCheckoutRepositoryAdapter } from './adapters/online-checkout.repository.adapter';
+import { PrismaOnlineCheckoutUnitOfWorkAdapter } from './adapters/online-checkout-unit-of-work.adapter';
 
 /**
  * Real ARCA when ARCA_ENV, ARCA_CERT_PATH and ARCA_KEY_PATH are set. Otherwise the simulator, which
@@ -81,14 +93,14 @@ import { PublicOrderBoardController } from './public-order-board.controller';
 import { OrderBoardUseCase } from './use-cases/order-board.use-case';
 import { PrismaOrderBoardRepositoryAdapter } from './adapters/order-board.repository.adapter';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { publicBoardThrottlerOptions } from './public-board-throttle';
+import { publicBoardThrottlerOptions, publicOrderThrottlerOptions } from './public-board-throttle';
 import { CashUseCase } from './use-cases/cash.use-case';
 import { PrismaCashSessionRepositoryAdapter, PrismaCashUnitOfWorkAdapter } from './adapters/cash.repository.adapter';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 
 @Module({
-  imports: [PrismaModule, ThrottlerModule.forRoot(publicBoardThrottlerOptions())],
-  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController, OrderBoardController, PublicOrderBoardController, MercadoPagoController, MercadoPagoOAuthController, QrChargeController, MercadoPagoWebhookController, ...mercadoPagoSimulatorControllers()],
+  imports: [PrismaModule, ThrottlerModule.forRoot([...publicBoardThrottlerOptions(), ...publicOrderThrottlerOptions()])],
+  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController, OrderBoardController, PublicOrderBoardController, MercadoPagoController, MercadoPagoOAuthController, QrChargeController, MercadoPagoWebhookController, ...mercadoPagoSimulatorControllers(), PreorderController, PublicPreorderController, ...onlineCheckoutSimulatorControllers()],
   providers: [
     OnboardBusinessUseCase,
     BusinessManagementUseCase,
@@ -106,6 +118,15 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
     MercadoPagoPosUseCase,
     QrChargeUseCase,
     QrChargeSync,
+    PreorderSettingsUseCase,
+    PreorderLocalLookup,
+    PublicMenuUseCase,
+    OnlineCheckoutUseCase,
+    OnlineCheckoutSync,
+    OrderTrackingUseCase,
+    { provide: 'PreorderRepositoryPort', useClass: PrismaPreorderRepositoryAdapter },
+    { provide: 'OnlineCheckoutRepositoryPort', useClass: PrismaOnlineCheckoutRepositoryAdapter },
+    { provide: 'OnlineCheckoutUnitOfWorkPort', useClass: PrismaOnlineCheckoutUnitOfWorkAdapter },
     { provide: 'QrChargeRepositoryPort', useClass: PrismaQrChargeRepositoryAdapter },
     { provide: 'QrChargeUnitOfWorkPort', useClass: PrismaQrChargeUnitOfWorkAdapter },
     { provide: 'MercadoPagoConnectionRepositoryPort', useClass: PrismaMercadoPagoConnectionRepositoryAdapter },

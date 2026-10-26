@@ -1,8 +1,9 @@
 import { Controller, Get, Header, Param, UseGuards } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { unwrap } from '../common/use-case-result';
 import { OrderBoardUseCase, PublicOrderBoard } from './use-cases/order-board.use-case';
+import { PUBLIC_ORDER_CHECKOUT_THROTTLER, PUBLIC_ORDER_THROTTLER } from './public-board-throttle';
 
 /**
  * Public order board (S13): no session, the secret token in the URL is the only credential.
@@ -12,6 +13,7 @@ import { OrderBoardUseCase, PublicOrderBoard } from './use-cases/order-board.use
 @ApiTags('Pantalla pública')
 @Controller('public/order-board')
 @UseGuards(ThrottlerGuard)
+@SkipThrottle({ [PUBLIC_ORDER_THROTTLER]: true, [PUBLIC_ORDER_CHECKOUT_THROTTLER]: true })
 export class PublicOrderBoardController {
   constructor(private readonly orderBoard: OrderBoardUseCase) {}
 

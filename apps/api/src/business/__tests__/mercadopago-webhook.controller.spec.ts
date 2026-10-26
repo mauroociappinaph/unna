@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { MercadoPagoWebhookController } from '../mercadopago-webhook.controller';
 import { QrChargeSync } from '../use-cases/qr-charge-sync';
+import { OnlineCheckoutSync } from '../use-cases/online-checkout-sync';
 
 const SECRET = 'webhook-secret';
 const ORDER_ID = 'ORD01JQ4S4KY8HWQ6NA5PXB65B3D3';
@@ -25,7 +26,8 @@ describe('POST /public/mercadopago/webhook (S15)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [MercadoPagoWebhookController],
-      providers: [{ provide: QrChargeSync, useValue: { syncByMpOrderId } }],
+      // No online checkout has these orders (S20): every notification goes to the QR sync.
+      providers: [{ provide: QrChargeSync, useValue: { syncByMpOrderId } }, { provide: OnlineCheckoutSync, useValue: { syncByMpOrderId: async () => null } }],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();

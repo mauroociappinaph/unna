@@ -20,6 +20,7 @@ export const menu: PublicMenu = {
       name: 'Latte',
       description: 'Doble shot con leche',
       price: 300000,
+      taxRate: 0,
       categoryId: 'cat-1',
       imageUrl: null,
       modifierGroups: [
@@ -53,6 +54,7 @@ export const menu: PublicMenu = {
       name: 'Medialuna',
       description: null,
       price: 80000,
+      taxRate: 0,
       categoryId: 'cat-2',
       imageUrl: null,
       modifierGroups: [],

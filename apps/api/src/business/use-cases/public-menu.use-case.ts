@@ -23,8 +23,10 @@ export interface PublicMenuProduct {
   id: string;
   name: string;
   description: string | null;
-  /** Catalog base price in cents (before IVA, as in the POS). */
+  /** Catalog base price in cents, before IVA (as in the POS); the order adds `taxRate` per line. */
   price: number;
+  /** IVA percentage the order adds on top of `price` and the option deltas, rounded per line. */
+  taxRate: number;
   categoryId: string | null;
   imageUrl: string | null;
   modifierGroups: PublicMenuModifierGroup[];
@@ -90,6 +92,7 @@ function toMenuProduct(product: Product, groupsById: Map<string, ModifierGroup>)
     name: product.name,
     description: product.description ?? null,
     price: product.basePrice.toCents(),
+    taxRate: product.taxRate,
     categoryId: product.categoryId ?? null,
     imageUrl: product.images[0] ?? null,
     modifierGroups: groups.map((g) => ({

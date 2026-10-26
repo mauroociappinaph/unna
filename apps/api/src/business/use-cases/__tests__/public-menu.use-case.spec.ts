@@ -22,13 +22,13 @@ describe('PublicMenuUseCase: menu of the public link (S20)', () => {
       categories: [{ id: 'cat-1', name: 'Cafetería' }],
       products: [
         {
-          id: CAFE, name: 'Café con leche', description: 'Doble', price: 100000, categoryId: 'cat-1', imageUrl: 'https://img/cafe.png',
+          id: CAFE, name: 'Café con leche', description: 'Doble', price: 100000, taxRate: 21, categoryId: 'cat-1', imageUrl: 'https://img/cafe.png',
           modifierGroups: [{
             id: MILK, name: 'Leche', minSelection: 1, maxSelection: 1, isRequired: true,
             options: [{ id: OAT, name: 'Avena', priceDelta: 20000 }, { id: WHOLE, name: 'Entera', priceDelta: 0 }],
           }],
         },
-        { id: MEDIALUNA, name: 'Medialuna', description: null, price: 50000, categoryId: 'cat-1', imageUrl: null, modifierGroups: [] },
+        { id: MEDIALUNA, name: 'Medialuna', description: null, price: 50000, taxRate: 21, categoryId: 'cat-1', imageUrl: null, modifierGroups: [] },
       ],
     });
   });

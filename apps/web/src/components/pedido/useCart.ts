@@ -13,10 +13,17 @@ export interface CartLine {
   /** Names of the chosen options, e.g. "Avena, Shot extra". */
   optionsLabel: string;
   modifiers: SelectedModifier[];
-  /** Menu price plus the options, in cents; the server recomputes it at checkout. */
+  /** Menu price plus the options, before IVA, in cents; the server recomputes it at checkout. */
   unitPrice: number;
+  taxRate: number;
   quantity: number;
 }
+
+/** Amount with IVA added and rounded to the cent, as the server does (Money.percentage). */
+export const withTax = (cents: number, taxRate: number) => cents + Math.round((cents * taxRate) / 100);
+
+/** What the server charges for a line: unit × quantity plus IVA on the whole line. */
+export const lineTotal = (line: Pick<CartLine, 'unitPrice' | 'quantity' | 'taxRate'>) => withTax(line.unitPrice * line.quantity, line.taxRate);
 
 const lineKey = (productId: string, modifiers: SelectedModifier[]) =>
   [productId, ...modifiers.map((m) => `${m.modifierGroupId}:${m.optionId}`).sort()].join('|');
@@ -43,7 +50,7 @@ export function useCart() {
         return current.map((line) => (line.key === key ? { ...line, quantity: Math.min(MAX_LINE_QUANTITY, line.quantity + 1) } : line));
       }
       if (current.length >= MAX_LINES) return current;
-      return [...current, { key, productId: product.id, name: product.name, modifiers, quantity: 1, ...describeChoice(product, modifiers) }];
+      return [...current, { key, productId: product.id, name: product.name, modifiers, quantity: 1, taxRate: product.taxRate, ...describeChoice(product, modifiers) }];
     });
   };
 
@@ -55,7 +62,7 @@ export function useCart() {
     );
   };
 
-  const total = useMemo(() => lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0), [lines]);
+  const total = useMemo(() => lines.reduce((sum, line) => sum + lineTotal(line), 0), [lines]);
 
   /** Lines in the checkout body shape; modifiers go only when there are some. */
   const checkoutItems = (): CheckoutLineInput[] =>

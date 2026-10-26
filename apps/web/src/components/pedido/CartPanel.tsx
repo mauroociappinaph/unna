@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { formatMoney } from '@/lib/api-types';
-import { MAX_LINE_QUANTITY, type CartLine } from './useCart';
+import { MAX_LINE_QUANTITY, lineTotal, type CartLine } from './useCart';
 
 export const MAX_CUSTOMER_NAME = 40;
 
@@ -36,7 +36,7 @@ export function CartPanel(props: CartPanelProps) {
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-gray-900">{line.name}</p>
                 {line.optionsLabel && <p className="text-sm text-gray-600">{line.optionsLabel}</p>}
-                <p className="text-sm text-gray-900 tabular-nums">{formatMoney(line.unitPrice * line.quantity)}</p>
+                <p className="text-sm text-gray-900 tabular-nums">{formatMoney(lineTotal(line))}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" aria-label={`Quitar uno de ${line.name}`} className={stepperClass} onClick={() => onChangeQuantity(line.key, -1)}>

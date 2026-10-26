@@ -162,6 +162,19 @@ describe('Public order page: cart', () => {
     expect(within(cart()).getByTestId('cart-total')).toHaveTextContent(shown(350000));
   });
 
+  it('shows final prices with IVA and totals them like the server (IVA per line, rounded)', async () => {
+    const taxed = { ...menu, products: menu.products.map((p) => (p.id === 'p-2' ? { ...p, price: 80001, taxRate: 21 } : p)) };
+    const user = setup({ status: 200, body: taxed });
+
+    const bakery = await screen.findByRole('region', { name: 'Panadería' });
+    // 800,01 + 21 % (168,0021 → 168,00)
+    expect(within(bakery).getByText(shown(96801))).toBeInTheDocument();
+    for (let i = 0; i < 3; i += 1) await user.click(screen.getByRole('button', { name: 'Agregar Medialuna' }));
+
+    // 3 × 800,01 = 2400,03 + 21 % on the line (504,0063 → 504,01)
+    expect(within(cart()).getByTestId('cart-total')).toHaveTextContent(shown(240003 + 50401));
+  });
+
   it('keeps different options of the same product in separate lines', async () => {
     const user = setup();
     await addLatte(user, ['Entera']);

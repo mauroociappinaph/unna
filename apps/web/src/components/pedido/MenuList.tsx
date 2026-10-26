@@ -1,5 +1,6 @@
 import { formatMoney } from '@/lib/api-types';
 import type { PublicMenu, PublicProduct } from '@/lib/public-order-api';
+import { withTax } from './useCart';
 
 interface MenuListProps {
   menu: PublicMenu;
@@ -33,7 +34,7 @@ export function MenuList({ menu, onAdd }: MenuListProps) {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-gray-900">{product.name}</p>
                   {product.description && <p className="mt-0.5 text-sm text-gray-600">{product.description}</p>}
-                  <p className="mt-1 text-sm font-medium text-gray-900 tabular-nums">{formatMoney(product.price)}</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900 tabular-nums">{formatMoney(withTax(product.price, product.taxRate))}</p>
                 </div>
                 {onAdd && (
                   <button

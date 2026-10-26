@@ -25,7 +25,10 @@ export interface PublicProduct {
   id: string;
   name: string;
   description: string | null;
+  /** Base price in cents, before IVA. */
   price: number;
+  /** IVA percentage the server adds per line, rounded to the cent. */
+  taxRate: number;
   categoryId: string | null;
   imageUrl: string | null;
   modifierGroups: PublicModifierGroup[];

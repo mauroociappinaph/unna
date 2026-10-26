@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { formatMoney, type SelectedModifier } from '@/lib/api-types';
 import { isFull, isSatisfied, ruleText, toggleOption, type ModifierSelection } from '@/lib/modifier-rules';
 import type { PublicProduct } from '@/lib/public-order-api';
-import { describeChoice } from './useCart';
+import { describeChoice, withTax } from './useCart';
 
 interface ProductSheetProps {
   product: PublicProduct;
@@ -25,7 +25,7 @@ export function ProductSheet({ product, onConfirm, onCancel }: ProductSheetProps
   const modifiers = groups.flatMap((group) =>
     group.options.filter((option) => chosenOf(group.id).includes(option.id)).map((option) => ({ modifierGroupId: group.id, optionId: option.id })),
   );
-  const price = describeChoice(product, modifiers).unitPrice;
+  const price = withTax(describeChoice(product, modifiers).unitPrice, product.taxRate);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
@@ -53,7 +53,7 @@ export function ProductSheet({ product, onConfirm, onCancel }: ProductSheetProps
                     key={option.id}
                     id={`pedido-mod-${group.id}-${option.id}`}
                     label={option.name}
-                    description={option.priceDelta > 0 ? `+ ${formatMoney(option.priceDelta)}` : undefined}
+                    description={option.priceDelta > 0 ? `+ ${formatMoney(withTax(option.priceDelta, product.taxRate))}` : undefined}
                     checked={checked}
                     disabled={!checked && full}
                     onChange={() => setSelection((current) => ({ ...current, [group.id]: toggleOption(group, current[group.id] ?? [], option.id) }))}

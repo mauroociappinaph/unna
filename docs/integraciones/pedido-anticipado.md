@@ -34,11 +34,26 @@ Owner routes: JWT + `BusinessOwnerGuard`; amounts in cents.
 | `GET /businesses/:id/pedido-anticipado` | `{ sucursales: [{ sucursalId, name, enabled: boolean, url: string \| null }] }` |
 | `POST /businesses/:id/sucursales/:sucursalId/pedido-anticipado` | Enable (idempotent). `{ sucursalId, enabled: true, slug, url }` |
 | `DELETE /businesses/:id/sucursales/:sucursalId/pedido-anticipado` | Disable. 204 |
-| `GET /public/pedido/:slug` | `{ businessName, sucursalName, accepting: boolean, reason: string \| null, estimatedMinutes: number, categories: [{ id, name }], products: [{ id, name, description \| null, price, categoryId \| null, imageUrl \| null, modifierGroups: [{ id, name, minSelection, maxSelection, isRequired, options: [{ id, name, priceDelta }] }] }] }` |
+| `GET /public/pedido/:slug` | `{ businessName, sucursalName, accepting: boolean, reason: string \| null, estimatedMinutes: number, categories: [{ id, name }], products: [{ id, name, description \| null, price, taxRate, categoryId \| null, imageUrl \| null, modifierGroups: [{ id, name, minSelection, maxSelection, isRequired, options: [{ id, name, priceDelta }] }] }] }` |
 | `POST /public/pedido/:slug/checkouts` | Body `{ customerName (1..40 chars), items: [{ productId, quantity, modifiers?: [{ modifierGroupId, optionId }], notes? }] }`. 201 `{ trackingToken, checkoutUrl, total }` |
 | `GET /public/pedido/seguimiento/:trackingToken` | `{ status, orderNumber \| null, customerFirstName, businessName, sucursalName, total, items: [{ name, quantity }], estimatedMinutes \| null, updatedAt }` (syncs with Mercado Pago while `awaiting_payment`) |
 | `GET /mercadopago/simulator/checkout/:mpOrderId` | Simulator only: marks paid, syncs, 302 to the success URL |
 
 Back URLs given to Mercado Pago: `${FRONTEND_URL}/pedido/seguimiento/<trackingToken>` for success, pending and failure.
 
+Prices: `price` and `priceDelta` are catalog amounts before IVA, as in the POS. The order adds `taxRate` % on each line (unit × quantity), rounded to the cent; the public page shows prices with IVA and totals the cart with that same rule, so the cart total equals what Mercado Pago charges.
+
 Errors (Spanish): local not taking orders → 400 with the reason ("El local está cerrado en este momento", "El local no está recibiendo pedidos en este momento" for caja closed or Mercado Pago not connected); product unavailable → 400 "Algún producto ya no está disponible"; unknown slug → 404 "Este local no recibe pedidos anticipados"; unknown tracking token → 404 "Pedido no encontrado"; too many requests → 429.
+
+## As built (differences from the plan)
+
+- `PUBLIC_ORDER_RATE_LIMIT` counts checkout creations per minute per IP (default 30); menu and tracking reads allow 4× that (default 120).
+- The tracking token is 32 random bytes (base64url); only its SHA-256 is stored. The slug is 16 random bytes (22 chars) and is kept when the link is disabled.
+- Menu `estimatedMinutes` is always the default (10). `tracking.orderNumber` is the short number (last 3 characters), as on the public board. Enabling answers 201.
+- Mercado Pago items: one per cart line with IVA included; a line whose total does not split evenly per unit goes as "N × name" with quantity 1, so the items always add up to `total_amount`.
+- More Spanish messages: "Ingresá tu nombre (hasta 40 caracteres)", "El pedido debe tener de 1 a 30 productos", "La cantidad de cada producto debe ser de 1 a 20", "No se pudo iniciar el pago con Mercado Pago. Probá de nuevo" (the checkout is cancelled), "El monto cobrado en Mercado Pago no coincide con el pedido", and the simulator's 404 "Pago simulado no encontrado". A missing or extra option keeps the catalog message (for example 'Elegí al menos 1 opción(es) de "Leche"').
+- An inactive sucursal or business answers `accepting: false` with "El local no está recibiendo pedidos en este momento".
+- If the caja closed between the checkout and the payment, the order is created, no payment is registered and the checkout keeps the reason "Abrí la caja para cobrar"; the owner sees an unpaid pickup order in the POS and registers or refunds it by hand (as with the QR).
+- Webhook and simulator syncs also move an expired, failed or cancelled checkout to paid when Mercado Pago reports it processed; tracking reads sync only while awaiting payment.
+- Not checked against real Mercado Pago yet: `checkout_url` is read from `checkout_url` or `config.online.checkout_url`, and `processing_mode: "manual"` for online orders. Needs a test account.
+

@@ -91,6 +91,9 @@ function MovementsList({ businessId, productId }: { businessId: string; productI
 
   useEffect(() => {
     let active = true;
+    setMovements(null);
+    setNextCursor(null);
+    setError(null);
     api
       .listStockMovements(businessId, { productId, limit: RECENT_MOVEMENTS })
       .then((page) => {
@@ -107,6 +110,7 @@ function MovementsList({ businessId, productId }: { businessId: string; productI
   const loadMore = async () => {
     if (!nextCursor) return;
     setLoadingMore(true);
+    setError(null);
     try {
       const page = await api.listStockMovements(businessId, { productId, limit: RECENT_MOVEMENTS, cursor: nextCursor });
       setMovements((current) => [...(current ?? []), ...page.items]);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
@@ -78,11 +78,16 @@ export default function CajaPage() {
     [showHistory],
   );
 
+  // Sucursal the history belongs to: a "Ver más" page requested for another one is discarded (S18).
+  const historySucursal = useRef(sucursalId);
+
   useEffect(() => {
+    historySucursal.current = sucursalId;
     if (!businessId || !sucursalId) return;
     let cancelled = false;
     setSession(undefined);
     setClosing(null);
+    setHistory([]);
     setHistoryCursor(null);
     Promise.all([api.getCurrentCashSession(businessId, sucursalId), api.listCashSessions(businessId, { sucursalId })])
       .then(([current, page]) => {
@@ -138,8 +143,10 @@ export default function CajaPage() {
 
   const handleLoadMoreHistory = () => {
     if (!businessId || !historyCursor) return;
+    const requested = sucursalId;
     run(async () => {
-      const page = await api.listCashSessions(businessId, { sucursalId, cursor: historyCursor });
+      const page = await api.listCashSessions(businessId, { sucursalId: requested, cursor: historyCursor });
+      if (historySucursal.current !== requested) return;
       setHistory((current) => [...current, ...page.items]);
       setHistoryCursor(page.nextCursor);
     }, 'No se pudieron cargar más cajas');

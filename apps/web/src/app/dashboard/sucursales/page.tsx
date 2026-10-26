@@ -201,7 +201,7 @@ export default function SucursalesPage() {
                 <div key={sucursal.id} className="bg-white rounded-xl border border-gray-100 p-6 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <span className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${
-                      sucursal.isMain ? 'bg-unna-green text-white' : 'bg-gray-100 text-gray-600'
+                      sucursal.isMain ? 'bg-unna-green-dark text-white' : 'bg-gray-100 text-gray-600'
                     }`}>
                       {sucursal.isMain ? '🏠' : sucursal.name.charAt(0).toUpperCase()}
                     </span>

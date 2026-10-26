@@ -278,7 +278,7 @@ export function Step2Sucursales({ data, onChange }: Step2SucursalesProps) {
         <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              isMain ? 'bg-unna-green text-white' : 'bg-gray-100 text-gray-600'
+              isMain ? 'bg-unna-green-dark text-white' : 'bg-gray-100 text-gray-600'
             }`}>
               {isMain ? '🏠' : index + 1}
             </span>

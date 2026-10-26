@@ -88,6 +88,18 @@ Reglas de diseño (orquestador):
 - Barra: por sucursal, solo pedidos cobrados y no cerrados de hoy, en columnas Nuevos / En preparación / Listos, con acciones que usan los estados existentes; se actualiza sola.
 - Pantalla pública: sin sesión, con un token secreto por sucursal que el dueño genera y puede regenerar; muestra solo número corto del pedido, primer nombre del cliente y estado (en preparación / listo), de hoy y cobrados. Endpoint público: riesgo de seguridad.
 
+### S17: Mejoras rápidas de performance
+Usuario: "ANaliza toda la performance de la app y rendimiento" → informe; "ok hacelo" a la recomendación: "hacer 1, 2, 3 y 6, más los índices" (el 4, locks con Mercado Pago/ARCA, queda como tarea propia).
+Reglas (orquestador), con lo medido: GET orders 73 ms y 1 MB sin comprimir con ~750 pedidos; barra p95 253 ms con 10 pantallas.
+- Listados paginados: `GET orders`, `GET receipts`, `GET cash-sessions` y `GET stock/movements` aceptan `limit` (por defecto 50, máximo 200) y `cursor` (id del último elemento recibido); orden más reciente primero; la respuesta sigue siendo un array y el header `X-Next-Cursor` trae el cursor de la página siguiente cuando hay más. Los listados de pedidos y comprobantes no incluyen ítems (traen `itemCount`); el detalle sí.
+- `GET orders` acepta `open=true` (pedidos no cerrados); el POS pide los abiertos de hoy con `open=true` y `from` = inicio del día.
+- Respuestas HTTP comprimidas (gzip) cuando el cliente lo acepta.
+- El guard de dueño del negocio consulta solo `id` y `ownerId`, sin cargar el negocio completo; mismos códigos y mensajes (404 "Negocio no encontrado", 403 "No tenés permisos sobre este negocio").
+- Índices: pedidos por negocio + estado de pago + fecha; ítems por producto; comprobantes por pedido; movimientos de stock por producto + fecha. Con una migración nueva.
+- Health check liviano `GET /api/v1/health` (sin base de datos); Render apunta a él; Swagger apagado en producción salvo staging.
+- La barra, la pantalla pública y el cobro QR pausan el polling con la pestaña oculta y refrescan al volver.
+- Guía de deploy: `connection_limit` en `DATABASE_URL`.
+
 ### S16: Ambiente de prueba desplegable (gratis)
 Usuario: "Ya se puede hacer el deploy de db , bacj y front para pasarselo a alguien para que lo pruebe ? o  no ?". Respuestas: plataformas "Solo plataformas gratuitas"; cuándo: "Después del QR (Recomendado)"; "ok" a Supabase (base) + Render (API y web).
 Reglas de diseño (orquestador):
@@ -213,6 +225,9 @@ unna/
 | T34b | S16 | worker | Modo staging (simuladores permitidos solo con UNNA_ENV=staging) + aviso en la web | b12e0ac |
 | T34c | S16 | worker | Build de producción del monorepo (Dockerfiles, render.yaml) y guía de despliegue | f815abd, 273e627 |
 | T34d | S16 | inline | Integración, smoke contra base creada con migraciones, revisión, PR, despliegue con el usuario | see L42 |
+| T35a | S17 | worker | API: paginación, open=true, compresión, guard liviano, índices + migración, health, Swagger, guía | |
+| T35b | S17 | worker | Web: pausar polling con pestaña oculta; POS pide abiertos de hoy; caja y stock con "Ver más" | |
+| T35c | S17 | inline | Integración, medición antes/después, smoke, revisión, PR | |
 
 ## Log
 
@@ -257,3 +272,4 @@ unna/
 **L40**: S15 completo (con simulador). Investigación de la Orders API en docs/integraciones/mercadopago-qr.md (7eb105c, 1ff8142, 786bfd3). Conexión OAuth con PKCE, tokens AES-256-GCM, tienda y caja por sucursal (3826b3d); cobro QR híbrido, webhook firmado, pago único compartiendo registerOrderPayment con los pagos manuales, cobro "pagado sin registrar" visible si la caja se cerró, serialización de la activación (a628929); web: conectar, QR imprimible y "Cobrar con QR" en el POS (f812706); botón "Simular pago" solo con simulador (7ac4c8a). Bug del smoke: regex del id simulado demasiado amplia (no era bug de la app). Integración: lint/build/tsc 4/4, tests sin caché domain 189, shared 9, api 432, web 234; smoke 82/82 y smoke QR 25/25 (conexión, state de un solo uso, aislamiento entre negocios, webhook sin firma 401, dos pagos concurrentes = un pago). Revisión nativa en 4 cortes, todos aprobados; aplicada la observación del webhook (503 para que Mercado Pago reintente, ad7804e). Usuario: "Podes levantar el front y back para ver la app" → stack local con simulador. Pendiente para producción: migraciones Prisma, credenciales reales de Mercado Pago (aplicación, webhook, usuarios de prueba), validar campos de ubicación y MCC con cuenta de prueba, el API no arranca en producción sin MP_* ni ARCA.
 **L41**: #28 mergeado (develop 8d7e0e2, Actions OK en PR y push). Usuario: "ok" → S16 ambiente de prueba gratis (Supabase + Render).
 **L42**: S16 listo para desplegar. Los tres workers se colgaron (T34a y T34c tras un comando de shell; T34b generando argumentos): T34a dejó la migración, verificada inline en schema aislado (base vacía con migrate deploy = schema; baseline de base con db push = sin diferencias); T34b dejó el modo staging casi completo, completado inline (.env.example) y verificado (API 465, web 246, lint OK); T34c sin cambios → usuario: "Relanzá el worker" → relanzado con límites duros (perl alarm) → Dockerfiles multi-stage, render.yaml (validado contra el schema oficial), guía docs/deploy/README.md; imágenes construidas y API aplicando las 3 migraciones en Postgres descartable. Integración: lint/build/tsc OK; tests domain 189, shared 9, api 465, web 246; smoke 82/82 y QR 25/25 sobre una base creada solo con migrate deploy (s16_tmp, puerto 3098). Revisión nativa 2 cortes aprobados (9 observaciones). Hallazgos: docker compose up de desarrollo ya estaba roto antes (no resuelve @unna/domain); RESEND_API_KEY obligatoria para arrancar; uploads de imágenes se pierden en Render free (disco efímero); un fallo de migración al arrancar deja el servicio reiniciando. Pendiente: crear cuentas Supabase y Render (usuario).
+**L43**: Análisis de performance (medido: GET orders 5→73 ms y 1 MB sin gzip con ~750 pedidos; barra p95 253 ms con 10 pantallas; venta 26 ms; bundles 88–144 kB). Usuario: "ok hacelo" → S17.

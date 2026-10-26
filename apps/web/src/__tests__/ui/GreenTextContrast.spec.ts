@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join, relative } from 'path';
 
-// #16a34a (unna-green) with white text is 3.3:1, below WCAG AA 4.5:1 for normal text; the brand
-// manual reserves it for icons and borders. Text on green uses unna-green-dark (#15803d, 5.0:1) (S19).
+// #16a34a (unna-green) with white text is about 3.3 to 1, below the WCAG AA minimum of 4.5 to 1 for normal text; the brand
+// manual reserves it for icons and borders. Text on green uses unna-green-dark (#15803d, about 5 to 1) (S19).
 const SRC = join(__dirname, '../..');
 
 function sourceFiles(dir: string): string[] {

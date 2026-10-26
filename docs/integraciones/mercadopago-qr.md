@@ -65,7 +65,7 @@ Source: [notifications](https://www.mercadopago.com.ar/developers/en/docs/qr-cod
 - Cancel calls Mercado Pago only while the order is `created`. If the customer paid meanwhile, the payment is registered and the charge comes back `paid`.
 - Webhook: the signature is checked before reading any data; missing or invalid → 401. The body is never read; the order comes from the signed `data.id` of the query. Valid notifications always get 200, including unknown orders and failed syncs (logged; the POS polling settles them). There is no `ts` tolerance: a replay only re-reads the order, which is idempotent. It is not rate limited: rejecting costs one HMAC and no query.
 - Provisioning the store + POS of a sucursal takes a claim on the sucursal (`mpProvisioningAt`, a single conditional update). Only one request calls Mercado Pago, so only one store is created. A concurrent request gets the QR if it is ready, or the in-progress error. Claims older than 2 minutes count as abandoned.
-- The simulator route is registered only when the simulator is used outside production. It also answers 404 if it runs with the real gateway or with `NODE_ENV=production`.
+- The simulator routes are registered only when the simulator is used outside production. It also answers 404 if it runs with the real gateway or with `NODE_ENV=production`.
 
 ### Environment
 | Variable | Purpose |
@@ -91,7 +91,10 @@ Owner routes require the JWT and `BusinessOwnerGuard`; amounts in cents.
 | `GET /mercadopago/oauth/callback?code&state` | Public. 302 to `${FRONTEND_URL}/dashboard/mercadopago?status=connected` or `?status=error` |
 | `POST /public/mercadopago/webhook` | Public, signature validated, 200 (401 when missing or invalid) |
 | `POST /mercadopago/simulator/orders/:mpOrderId/pay` | Simulator only, never in production. Marks the simulated order paid, runs the webhook sync and returns the charge (404 if unknown or not pending) |
+| `POST /mercadopago/simulator/businesses/:id/qr-charges/:chargeId/pay` | Simulator only, owner route (JWT + BusinessOwnerGuard): the POS "Simular pago" button. Same sync by charge id, scoped to the business; returns the charge with `simulated: true` |
 
 Errors (Spanish messages): not connected → 400 "Conectá tu cuenta de Mercado Pago"; sucursal without POS → 400 "Activá el cobro QR en esta sucursal"; no open caja → 400 "Abrí la caja para cobrar"; order already paid → 400 "El pedido ya está pagado"; a pending charge already exists for the order → returns that charge.
 
 More errors: order of another business or missing → 404 "Pedido no encontrado"; charge of another business or missing → 404 "Cobro QR no encontrado"; cancelled order → 400 "No se puede cobrar un pedido cancelado o reembolsado"; cancel rejected while the customer is paying → 400 "No se pudo cancelar el cobro QR: hay un pago en curso. Probá de nuevo en unos segundos"; concurrent POS provisioning → 400 "Ya se está activando el cobro QR en esta sucursal. Probá de nuevo en unos segundos"; webhook signature → 401 "Firma de Mercado Pago inválida".
+
+While the simulator is wired, `POST /orders/:orderId/qr-charge` and `GET /qr-charges/:chargeId` add `simulated: true` (otherwise `false`), so the POS shows "Simular pago" only in that mode.

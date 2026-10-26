@@ -102,7 +102,7 @@ beforeEach(() => {
   mocked.listCategories.mockResolvedValue(shapes['GET categories'].body as never);
   mocked.listProducts.mockResolvedValue([agua]);
   mocked.listModifierGroups.mockResolvedValue([]);
-  mocked.listOrders.mockResolvedValue([]);
+  mocked.listOrders.mockResolvedValue({ items: [], nextCursor: null });
   mocked.listPayments.mockResolvedValue([]);
   mocked.createOrder.mockResolvedValue(order);
   mocked.getCurrentCashSession.mockResolvedValue(openSession);
@@ -155,6 +155,30 @@ describe('POS QR charge', () => {
 
     await advance(15000);
     expect(mocked.getQrCharge).toHaveBeenCalledTimes(2);
+  });
+
+  it('pauses polling while the tab is hidden and checks the charge as soon as it is visible again (S17)', async () => {
+    let visibility: DocumentVisibilityState = 'visible';
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibility });
+    const setVisibility = async (state: DocumentVisibilityState) => {
+      visibility = state;
+      await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    };
+    try {
+      await startQr();
+      await setVisibility('hidden');
+      await advance(9000);
+      expect(mocked.getQrCharge).not.toHaveBeenCalled();
+
+      await setVisibility('visible');
+      expect(mocked.getQrCharge).toHaveBeenCalledTimes(1);
+      expect(mocked.getQrCharge).toHaveBeenCalledWith('biz-1', 'qr-1');
+      await advance(3000);
+      expect(mocked.getQrCharge).toHaveBeenCalledTimes(2);
+    } finally {
+      // Back to the jsdom getter of Document.prototype.
+      delete (document as { visibilityState?: unknown }).visibilityState;
+    }
   });
 
   it('stops polling when the POS unmounts', async () => {

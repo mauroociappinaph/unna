@@ -1,5 +1,13 @@
 import type { AxiosInstance } from 'axios';
-import type { CashMovementInput, CashSession, CloseCashSessionInput } from '../api-types';
+import type { CashMovementInput, CashSession, CloseCashSessionInput, Page, PageQuery } from '../api-types';
+import { toPage } from './page';
+
+export interface CashSessionFilters extends PageQuery {
+  sucursalId?: string;
+  status?: 'open' | 'closed';
+  from?: string;
+  to?: string;
+}
 
 export function createCashApi(client: AxiosInstance) {
   return {
@@ -13,8 +21,8 @@ export function createCashApi(client: AxiosInstance) {
       return session ?? null;
     },
 
-    async listCashSessions(businessId: string, filters: { sucursalId?: string; status?: 'open' | 'closed'; from?: string; to?: string } = {}): Promise<CashSession[]> {
-      return (await client.get(`/businesses/${businessId}/cash-sessions`, { params: filters })).data;
+    async listCashSessions(businessId: string, filters: CashSessionFilters = {}): Promise<Page<CashSession>> {
+      return toPage(await client.get(`/businesses/${businessId}/cash-sessions`, { params: filters }));
     },
 
     async getCashSession(businessId: string, sessionId: string): Promise<CashSession> {

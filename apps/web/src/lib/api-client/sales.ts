@@ -1,7 +1,18 @@
 import type { AxiosInstance } from 'axios';
 import type {
-  CreateOrderInput, IssueReceiptInput, Order, OrderAction, OrderLineInput, Payment, PaymentMethod, PaymentResult, Receipt,
+  CreateOrderInput, IssueReceiptInput, Order, OrderAction, OrderLineInput, OrderSummary, Page, PageQuery, Payment, PaymentMethod,
+  PaymentResult, Receipt,
 } from '../api-types';
+import { toPage } from './page';
+
+export interface OrderFilters extends PageQuery {
+  status?: string;
+  sucursalId?: string;
+  /** Only orders that are not delivered, cancelled or refunded. */
+  open?: boolean;
+  from?: string;
+  to?: string;
+}
 
 export function createSalesApi(client: AxiosInstance) {
   return {
@@ -9,8 +20,8 @@ export function createSalesApi(client: AxiosInstance) {
       return (await client.post(`/businesses/${businessId}/orders`, data)).data;
     },
 
-    async listOrders(businessId: string, filters: { status?: string; sucursalId?: string } = {}): Promise<Order[]> {
-      return (await client.get(`/businesses/${businessId}/orders`, { params: filters })).data;
+    async listOrders(businessId: string, filters: OrderFilters = {}): Promise<Page<OrderSummary>> {
+      return toPage(await client.get(`/businesses/${businessId}/orders`, { params: filters }));
     },
 
     async getOrder(businessId: string, orderId: string): Promise<Order> {

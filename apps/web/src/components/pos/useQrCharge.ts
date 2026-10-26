@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import type { QrCharge } from '@/lib/api-types';
 import { apiErrorMessage } from '@/lib/api-errors';
+import { startVisiblePolling } from '@/lib/visible-polling';
 
 /** The POS asks the API (which syncs with Mercado Pago) for the charge status this often. */
 export const QR_POLL_INTERVAL_MS = 3000;
@@ -27,24 +28,24 @@ export function useQrCharge({ businessId, orderId, onPaid }: Options) {
   useEffect(() => {
     if (!businessId || !chargeId || !pending) return;
     let active = true;
-    let inFlight = false;
-    const timer = setInterval(async () => {
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        const next = await api.getQrCharge(businessId, chargeId);
-        if (!active) return;
-        setCharge(next);
-        if (next.status === 'paid') onPaidRef.current();
-      } catch (err) {
-        if (active) setError(apiErrorMessage(err, 'No se pudo consultar el cobro QR'));
-      } finally {
-        inFlight = false;
-      }
-    }, QR_POLL_INTERVAL_MS);
+    // Paused while the tab is hidden; checks the charge at once when it is visible again (S17).
+    const stop = startVisiblePolling(
+      async () => {
+        try {
+          const next = await api.getQrCharge(businessId, chargeId);
+          if (!active) return;
+          setCharge(next);
+          if (next.status === 'paid') onPaidRef.current();
+        } catch (err) {
+          if (active) setError(apiErrorMessage(err, 'No se pudo consultar el cobro QR'));
+        }
+      },
+      QR_POLL_INTERVAL_MS,
+      { immediate: false },
+    );
     return () => {
       active = false;
-      clearInterval(timer);
+      stop();
     };
   }, [businessId, chargeId, pending]);
 

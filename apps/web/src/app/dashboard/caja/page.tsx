@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { api } from '@/lib/api';
-import type { CashMovementInput, CashSession, CloseCashSessionInput } from '@/lib/api-types';
+import type { CashMovementInput, CashSession, CloseCashSessionInput, Page } from '@/lib/api-types';
 import { CashClosingResult } from '@/components/caja/CashClosingResult';
 import { CashHistory } from '@/components/caja/CashHistory';
 import { CashMovementForm } from '@/components/caja/CashMovementForm';
@@ -37,6 +37,8 @@ export default function CajaPage() {
   // undefined while the current session of the sucursal is loading.
   const [session, setSession] = useState<CashSession | null | undefined>(undefined);
   const [history, setHistory] = useState<CashSession[]>([]);
+  // Cursor of the next history page; null on the last one (S17).
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
   const [closing, setClosing] = useState<CashSession | null>(null);
 
   const loadBusiness = useCallback(async () => {
@@ -66,20 +68,27 @@ export default function CajaPage() {
     loadBusiness();
   }, [loadBusiness]);
 
-  const loadHistory = useCallback(async (id: string, sucursal: string) => {
-    setHistory(await api.listCashSessions(id, { sucursalId: sucursal }));
+  const showHistory = useCallback((page: Page<CashSession>) => {
+    setHistory(page.items);
+    setHistoryCursor(page.nextCursor);
   }, []);
+
+  const loadHistory = useCallback(
+    async (id: string, sucursal: string) => showHistory(await api.listCashSessions(id, { sucursalId: sucursal })),
+    [showHistory],
+  );
 
   useEffect(() => {
     if (!businessId || !sucursalId) return;
     let cancelled = false;
     setSession(undefined);
     setClosing(null);
+    setHistoryCursor(null);
     Promise.all([api.getCurrentCashSession(businessId, sucursalId), api.listCashSessions(businessId, { sucursalId })])
-      .then(([current, sessions]) => {
+      .then(([current, page]) => {
         if (cancelled) return;
         setSession(current);
-        setHistory(sessions);
+        showHistory(page);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -89,7 +98,7 @@ export default function CajaPage() {
     return () => {
       cancelled = true;
     };
-  }, [businessId, sucursalId]);
+  }, [businessId, sucursalId, showHistory]);
 
   const run = async (task: () => Promise<void>, fallback: string): Promise<boolean> => {
     setBusy(true);
@@ -125,6 +134,15 @@ export default function CajaPage() {
       setSession(null);
       await loadHistory(businessId, sucursalId);
     }, 'No se pudo cerrar la caja');
+  };
+
+  const handleLoadMoreHistory = () => {
+    if (!businessId || !historyCursor) return;
+    run(async () => {
+      const page = await api.listCashSessions(businessId, { sucursalId, cursor: historyCursor });
+      setHistory((current) => [...current, ...page.items]);
+      setHistoryCursor(page.nextCursor);
+    }, 'No se pudieron cargar más cajas');
   };
 
   const handleSelectPast = (past: CashSession) => {
@@ -212,7 +230,13 @@ export default function CajaPage() {
           )}
 
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <CashHistory sessions={history} busy={busy} onSelect={handleSelectPast} />
+            <CashHistory
+              sessions={history}
+              busy={busy}
+              hasMore={historyCursor !== null}
+              onSelect={handleSelectPast}
+              onLoadMore={handleLoadMoreHistory}
+            />
           </div>
         </div>
       </main>

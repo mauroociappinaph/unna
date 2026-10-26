@@ -2,7 +2,9 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PosPage from '@/app/dashboard/pos/page';
 import { api } from '@/lib/api';
-import { formatMoney, type CashSession, type Order, type PaymentResult, type Product, type Receipt } from '@/lib/api-types';
+import {
+  formatMoney, type CashSession, type Order, type OrderSummary, type PaymentResult, type Product, type Receipt,
+} from '@/lib/api-types';
 import shapes from '../fixtures/api-shapes.json';
 
 const router = { push: jest.fn() };
@@ -58,6 +60,9 @@ const papas = guarnicion.options[0];
 const shown = (cents: number) => formatMoney(cents).replace(/\s/g, ' ');
 const money = (amount: number) => ({ amount, currency: 'ARS' });
 const orderWith = (overrides: Partial<Order>): Order => ({ ...createdOrder, ...overrides });
+// GET orders lists come without items, with their count (S17).
+const summaryOf = ({ items, ...order }: Order): OrderSummary => ({ ...order, itemCount: items.length });
+const pageOf = (orders: Order[]) => ({ items: orders.map(summaryOf), nextCursor: null });
 const withAgua = orderWith({
   items: [
     ...createdOrder.items,
@@ -102,7 +107,7 @@ beforeEach(() => {
   mocked.listCategories.mockResolvedValue(categories as never);
   mocked.listProducts.mockResolvedValue([milanesa, agua]);
   mocked.listModifierGroups.mockResolvedValue(modifierGroups as never);
-  mocked.listOrders.mockResolvedValue([]);
+  mocked.listOrders.mockResolvedValue(pageOf([]));
   mocked.listPayments.mockResolvedValue([]);
   mocked.createOrder.mockResolvedValue(createdOrder);
   mocked.addOrderItem.mockResolvedValue(withAgua);
@@ -330,7 +335,7 @@ describe('POS page', () => {
     it('resumes an open order of today', async () => {
       const closed = orderWith({ id: 'order-closed', orderNumber: '261025-00002', status: 'delivered', createdAt: new Date().toISOString() });
       const old = orderWith({ id: 'order-old', orderNumber: '200101-00003', createdAt: '2020-01-01T12:00:00.000Z' });
-      mocked.listOrders.mockResolvedValue([openOrder, closed, old]);
+      mocked.listOrders.mockResolvedValue(pageOf([openOrder, closed, old]));
       mocked.getOrder.mockResolvedValue(openOrder);
       const user = await renderPos();
 
@@ -344,6 +349,22 @@ describe('POS page', () => {
       expect(mocked.listPayments).toHaveBeenCalledWith('biz-1', 'order-open');
       expect(await screen.findByText(/Pedido 261025-00001/)).toBeInTheDocument();
       expect(within(totalsRegion()).getByText(shown(411400))).toBeInTheDocument();
+    });
+
+    it('asks the API only for the open orders of the sucursal created since the start of today (S17)', async () => {
+      const user = await renderPos();
+
+      await user.click(screen.getByRole('button', { name: 'Pedidos abiertos' }));
+      await screen.findByText('No hay pedidos abiertos.');
+
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      expect(mocked.listOrders).toHaveBeenCalledWith('biz-1', {
+        sucursalId: 'suc-1',
+        open: true,
+        from: startOfToday.toISOString(),
+        limit: 200,
+      });
     });
 
     it('changes the status of the order', async () => {

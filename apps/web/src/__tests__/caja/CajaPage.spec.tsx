@@ -35,6 +35,8 @@ const withMovement = shapes['POST cash-sessions/:id/movements'].body as CashSess
 const closed = shapes['POST cash-sessions/:id/close'].body as CashSession;
 const closedDetail = shapes['GET cash-sessions/:id (closed)'].body as CashSession;
 const history = shapes['GET cash-sessions'].body as CashSession[];
+// GET cash-sessions is paginated (S17): one page plus the cursor of the next one.
+const pageOf = (items: CashSession[], nextCursor: string | null = null) => ({ items, nextCursor });
 
 // Testing Library collapses the non-breaking space formatMoney emits.
 const shown = (cents: number) => formatMoney(cents).replace(/\s/g, ' ');
@@ -52,7 +54,7 @@ beforeEach(() => {
   localStorage.setItem('auth_token', 'token');
   mocked.getBusinesses.mockResolvedValue([business]);
   mocked.getCurrentCashSession.mockResolvedValue(null);
-  mocked.listCashSessions.mockResolvedValue([]);
+  mocked.listCashSessions.mockResolvedValue(pageOf([]));
 });
 
 describe('Caja page', () => {
@@ -149,7 +151,7 @@ describe('Caja page', () => {
     it('closes with the declared amount per method and shows expected, declared and difference', async () => {
       const result = { ...closed, declared: { ...closed.declared, cash: 1197100 }, difference: { ...closed.difference, cash: 0 } };
       mocked.closeCashSession.mockResolvedValue(result);
-      mocked.listCashSessions.mockResolvedValueOnce([]).mockResolvedValueOnce([result]);
+      mocked.listCashSessions.mockResolvedValueOnce(pageOf([])).mockResolvedValueOnce(pageOf([result]));
       const user = await renderCaja();
 
       for (const label of ['Efectivo', 'Tarjeta', 'Mercado Pago', 'Transferencia', 'QR']) {
@@ -193,7 +195,7 @@ describe('Caja page', () => {
   });
 
   it('lists past sessions and shows the detail of one', async () => {
-    mocked.listCashSessions.mockResolvedValue(history);
+    mocked.listCashSessions.mockResolvedValue(pageOf(history));
     mocked.getCashSession.mockResolvedValue(closedDetail);
     const user = await renderCaja();
 
@@ -205,5 +207,33 @@ describe('Caja page', () => {
     const cashRow = within(closing).getByRole('row', { name: /Efectivo/ });
     expect(within(cashRow).getByText(shown(-1197100))).toBeInTheDocument();
     expect(within(cashRow).getByText('Faltante')).toBeInTheDocument();
+  });
+
+  it('appends the next page of the history with "Ver más" and hides it on the last page (S17)', async () => {
+    const closedCount = history.filter((s) => s.status === 'closed').length;
+    const older: CashSession = { ...history[0], id: 'session-older', openedAt: '2026-10-20T12:00:00.000Z', closedAt: '2026-10-20T20:00:00.000Z' };
+    mocked.listCashSessions
+      .mockResolvedValueOnce(pageOf(history, history[history.length - 1].id))
+      .mockResolvedValueOnce(pageOf([older]));
+    const user = await renderCaja();
+
+    const list = await screen.findByRole('region', { name: 'Historial de cajas' });
+    expect(await within(list).findAllByRole('button', { name: /Ver detalle/ })).toHaveLength(closedCount);
+    await user.click(within(list).getByRole('button', { name: 'Ver más' }));
+
+    await waitFor(() =>
+      expect(mocked.listCashSessions).toHaveBeenLastCalledWith('biz-1', { sucursalId: 'suc-1', cursor: history[history.length - 1].id }),
+    );
+    expect(await within(list).findAllByRole('button', { name: /Ver detalle/ })).toHaveLength(closedCount + 1);
+    expect(within(list).queryByRole('button', { name: 'Ver más' })).not.toBeInTheDocument();
+  });
+
+  it('shows no "Ver más" when the history fits in one page (S17)', async () => {
+    mocked.listCashSessions.mockResolvedValue(pageOf(history));
+    await renderCaja();
+
+    const list = await screen.findByRole('region', { name: 'Historial de cajas' });
+    await within(list).findAllByRole('button', { name: /Ver detalle/ });
+    expect(within(list).queryByRole('button', { name: 'Ver más' })).not.toBeInTheDocument();
   });
 });

@@ -1,16 +1,16 @@
-import { formatMoney, type Order } from '@/lib/api-types';
+import { formatMoney, type OrderSummary } from '@/lib/api-types';
 import { CLOSED_STATUSES, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from './pos-format';
 
 /** Orders created today that are not delivered, cancelled or refunded. */
-export function selectOpenOrders(orders: Order[], now = new Date()): Order[] {
+export function selectOpenOrders(orders: OrderSummary[], now = new Date()): OrderSummary[] {
   const today = now.toDateString();
   return orders.filter((o) => !CLOSED_STATUSES.includes(o.status) && new Date(o.createdAt).toDateString() === today);
 }
 
 interface OpenOrdersProps {
-  orders: Order[];
+  orders: OrderSummary[];
   loading: boolean;
-  onResume: (order: Order) => void;
+  onResume: (order: OrderSummary) => void;
 }
 
 export function OpenOrders({ orders, loading, onResume }: OpenOrdersProps) {

@@ -64,7 +64,8 @@ export function useOrderDraft({ businessId, setup, task, defaultSucursalId, clos
     run(async () => setOrder(await api.changeOrderStatus(businessId, order.id, action, reason)), 'No se pudo cambiar el estado');
   };
 
-  const resume = (selected: Order) => {
+  /** The listed order has no items: the detail is fetched again. */
+  const resume = (selected: Pick<Order, 'id'>) => {
     if (!businessId) return;
     run(async () => {
       const [fresh, orderPayments] = await Promise.all([

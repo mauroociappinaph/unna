@@ -51,6 +51,9 @@ model Business {
   payments      Payment[]
   receipts      Receipt[]
   cashSessions  CashSession[]
+  mercadoPagoConnection    MercadoPagoConnection?
+  mercadoPagoOAuthAttempts MercadoPagoOAuthAttempt[]
+  qrCharges     QrCharge[]
 
   @@map("businesses")
 }
@@ -67,6 +70,12 @@ model Sucursal {
   // Public order board (S13): only the SHA-256 of the display token is stored; null = disabled.
   displayTokenHash      String?   @unique
   displayTokenCreatedAt DateTime?
+  // Mercado Pago store and cash register (S15); the QR URLs are the POS's printed static QR.
+  mpStoreId       String?
+  mpPosId         String?
+  mpPosExternalId String?   @unique
+  qrImageUrl      String?
+  qrTemplateUrl   String?
   businessId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -75,6 +84,7 @@ model Sucursal {
   orders    Order[]
   receipts  Receipt[]
   cashSessions CashSession[]
+  qrCharges    QrCharge[]
 
   @@map("sucursales")
 }
@@ -294,6 +304,7 @@ model Order {
   cancelledReason String?
   payments        Payment[]
   receipts        Receipt[]
+  qrCharges       QrCharge[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -346,6 +357,7 @@ model Payment {
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   cashSession     CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
+  qrCharge        QrCharge?
 
   @@index([orderId])
   @@index([cashSessionId])
@@ -480,4 +492,70 @@ model ReceiptSequence {
 
   @@id([businessId, pointOfSale, receiptType])
   @@map("receipt_sequences")
+}
+
+// ============ S15: Mercado Pago QR ============
+
+/// The café's Mercado Pago account, connected with OAuth. Tokens are AES-256-GCM ciphertext
+/// (MP_TOKEN_ENCRYPTION_KEY) and are never returned by the API nor logged.
+model MercadoPagoConnection {
+  id                    String   @id @default(uuid())
+  businessId            String   @unique
+  mpUserId              String
+  liveMode              Boolean
+  scope                 String
+  encryptedAccessToken  String
+  encryptedRefreshToken String
+  accessTokenExpiresAt  DateTime
+  connectedAt           DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("mercadopago_connections")
+}
+
+/// A started "Conectar con Mercado Pago": single use, valid 10 minutes. Only the SHA-256 of the
+/// state is stored; the PKCE verifier is encrypted like the tokens.
+model MercadoPagoOAuthAttempt {
+  id                    String   @id @default(uuid())
+  stateHash             String   @unique
+  businessId            String
+  ownerId               String
+  encryptedCodeVerifier String
+  expiresAt             DateTime
+  createdAt             DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("mercadopago_oauth_attempts")
+}
+
+/// A Mercado Pago QR order (hybrid) for the pending balance of an order. The payment is registered
+/// once, from the order read from Mercado Pago (T33b).
+model QrCharge {
+  id          String    @id @default(uuid())
+  businessId  String
+  orderId     String
+  sucursalId  String
+  amount      Int // in cents
+  status      String    @default("pending") // pending, paid, expired, cancelled
+  mpOrderId   String    @unique
+  mpPaymentId String?
+  qrData      String
+  expiresAt   DateTime
+  paidAt      DateTime?
+  paymentId   String?   @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sucursal Sucursal @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, orderId, status])
+  @@map("qr_charges")
 }

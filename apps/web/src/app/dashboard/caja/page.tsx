@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { api } from '@/lib/api';
-import type { CashMovementInput, CashSession, CloseCashSessionInput, Page } from '@/lib/api-types';
+import type { CashMovementInput, CashSession, CashSessionListItem, CloseCashSessionInput, Page } from '@/lib/api-types';
 import { CashClosingResult } from '@/components/caja/CashClosingResult';
 import { CashHistory } from '@/components/caja/CashHistory';
 import { CashMovementForm } from '@/components/caja/CashMovementForm';
@@ -36,7 +36,7 @@ export default function CajaPage() {
 
   // undefined while the current session of the sucursal is loading.
   const [session, setSession] = useState<CashSession | null | undefined>(undefined);
-  const [history, setHistory] = useState<CashSession[]>([]);
+  const [history, setHistory] = useState<CashSessionListItem[]>([]);
   // Cursor of the next history page; null on the last one (S17).
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
   const [closing, setClosing] = useState<CashSession | null>(null);
@@ -68,7 +68,7 @@ export default function CajaPage() {
     loadBusiness();
   }, [loadBusiness]);
 
-  const showHistory = useCallback((page: Page<CashSession>) => {
+  const showHistory = useCallback((page: Page<CashSessionListItem>) => {
     setHistory(page.items);
     setHistoryCursor(page.nextCursor);
   }, []);
@@ -145,7 +145,7 @@ export default function CajaPage() {
     }, 'No se pudieron cargar más cajas');
   };
 
-  const handleSelectPast = (past: CashSession) => {
+  const handleSelectPast = (past: CashSessionListItem) => {
     if (!businessId) return;
     run(async () => setClosing(await api.getCashSession(businessId, past.id)), 'No se pudo cargar la caja');
   };

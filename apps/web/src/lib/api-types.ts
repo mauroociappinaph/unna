@@ -212,6 +212,9 @@ export interface CashSession {
   difference?: CashAmounts;
 }
 
+/** Cash session as the list returns it: no movements, only how many there are. */
+export type CashSessionListItem = Omit<CashSession, 'movements'> & { movementCount: number };
+
 export interface CashMovementInput {
   type: CashMovementType;
   amount: number;

@@ -1156,17 +1156,6 @@
         "openedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
         "openedAt": "2026-10-25T22:37:32.951Z",
         "openingAmount": 500000,
-        "movements": [
-          {
-            "id": "907aed9e-f783-4bc9-93a7-89cd9c943c56",
-            "sessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
-            "type": "out",
-            "amount": 20000,
-            "reason": "Proveedor de leche",
-            "createdBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
-            "createdAt": "2026-10-25T22:37:32.967Z"
-          }
-        ],
         "closedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
         "closedAt": "2026-10-25T22:37:33.158Z",
         "expected": {
@@ -1189,7 +1178,8 @@
           "cash": -1197100,
           "transfer": 0,
           "mercado_pago": 0
-        }
+        },
+        "movementCount": 1
       }
     ]
   },

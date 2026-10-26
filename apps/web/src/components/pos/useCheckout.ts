@@ -34,6 +34,22 @@ export function useCheckout({ businessId, order, setOrder, onReceiptIssued, task
     }, 'No se pudo registrar el pago');
   };
 
+  /** Reloads the order and its payments after a payment registered by the server, e.g. a paid QR charge. */
+  const syncPayments = () => {
+    if (!businessId || !order) return;
+    task.run(async () => {
+      const [fresh, orderPayments] = await Promise.all([
+        api.getOrder(businessId, order.id),
+        api.listPayments(businessId, order.id),
+      ]);
+      const completed = orderPayments.filter((p) => p.status === 'completed');
+      const paid = completed.reduce((sum, p) => sum + p.amount, 0);
+      setOrder(fresh);
+      setPayments(completed);
+      setPaidRemaining(Math.max(0, fresh.totalAmount.amount - paid));
+    }, 'No se pudieron actualizar los pagos');
+  };
+
   const issueReceipt = async (input: IssueReceiptInput) => {
     if (!businessId || !order) return;
     task.setBusy(true);
@@ -72,6 +88,6 @@ export function useCheckout({ businessId, order, setOrder, onReceiptIssued, task
   return {
     payments, remaining, receipt, retryReceipt, showPayment,
     openPayment: () => setShowPayment(true),
-    pay, issueReceipt, restore, reset,
+    pay, syncPayments, issueReceipt, restore, reset,
   };
 }

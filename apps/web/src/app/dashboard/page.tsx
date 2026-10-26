@@ -121,6 +121,12 @@ export default function DashboardPage() {
                   action: 'Abrir barra',
                   href: '/dashboard/barra',
                 },
+                {
+                  title: 'Mercado Pago',
+                  desc: 'Conectá tu cuenta, activá el cobro con QR en cada sucursal e imprimí el QR de la caja.',
+                  action: 'Configurar Mercado Pago',
+                  href: '/dashboard/mercadopago',
+                },
               ].map((step, i) => (
                 <Link key={i} href={step.href} className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-unna-green/30 transition-colors hover:shadow-lg">
                   <div className="w-12 h-12 bg-unna-green/10 rounded-xl flex items-center justify-center mb-4">

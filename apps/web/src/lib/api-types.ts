@@ -350,6 +350,35 @@ export interface CloseCashSessionInput {
   notes?: string;
 }
 
+/** Mercado Pago cash register of a sucursal; the QR URLs are its printed static QR. */
+export interface MercadoPagoPos {
+  sucursalId: string;
+  ready: boolean;
+  qrImageUrl: string | null;
+  qrTemplateUrl: string | null;
+}
+
+export interface MercadoPagoStatus {
+  connected: boolean;
+  mpUserId: string | null;
+  liveMode: boolean | null;
+  connectedAt: string | null;
+  sucursales: (MercadoPagoPos & { name: string })[];
+}
+
+export type QrChargeStatus = 'pending' | 'paid' | 'expired' | 'cancelled';
+
+/** Mercado Pago QR order for the pending balance of an order; amount in cents, qrData is the on-screen QR. */
+export interface QrCharge {
+  id: string;
+  orderId: string;
+  amount: number;
+  status: QrChargeStatus;
+  qrData: string;
+  expiresAt: string;
+  paidAt?: string | null;
+}
+
 /** Formats integer cents as Argentine pesos, e.g. 150000 -> "$ 1.500,00". */
 export function formatMoney(cents: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(cents / 100);

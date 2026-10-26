@@ -46,14 +46,16 @@ import { QrChargeUseCase } from './use-cases/qr-charge.use-case';
 import { QrChargeSync } from './use-cases/qr-charge-sync';
 import { PrismaQrChargeRepositoryAdapter } from './adapters/qr-charge.repository.adapter';
 import { PrismaQrChargeUnitOfWorkAdapter } from './adapters/qr-charge-unit-of-work.adapter';
+import { simulatorsAllowed } from '../common/runtime-env';
 
 /**
  * Real ARCA when ARCA_ENV, ARCA_CERT_PATH and ARCA_KEY_PATH are set. Otherwise the simulator, which
- * returns made-up CAEs: receipts it "authorizes" have no fiscal validity, so it never runs in production.
+ * returns made-up CAEs: receipts it "authorizes" have no fiscal validity, so it never runs in production
+ * (except the explicit staging mode, see simulatorsAllowed).
  */
 export function fiscalAuthorizerFactory(env: NodeJS.ProcessEnv = process.env): FiscalAuthorizerPort {
   if (isArcaConfigured(env)) return createArcaFiscalAuthorizer(env);
-  if (env.NODE_ENV === 'production') {
+  if (!simulatorsAllowed(env)) {
     throw new Error('ARCA real no configurado: el simulador de ARCA no puede usarse en producción');
   }
   return new ArcaSimulatedAdapter();
@@ -62,11 +64,11 @@ export function fiscalAuthorizerFactory(env: NodeJS.ProcessEnv = process.env): F
 /**
  * Real Mercado Pago when MP_CLIENT_ID and MP_CLIENT_SECRET are set (MP_REDIRECT_URI is then
  * required). Otherwise the simulator, which "authorizes" instantly and fakes payments, so it never
- * runs in production.
+ * runs in production (except the explicit staging mode, see simulatorsAllowed).
  */
 export function mercadoPagoGatewayFactory(env: NodeJS.ProcessEnv = process.env): MercadoPagoGatewayPort {
   if (isMercadoPagoConfigured(env)) return new MercadoPagoHttpAdapter(loadMercadoPagoConfig(env));
-  if (env.NODE_ENV === 'production') {
+  if (!simulatorsAllowed(env)) {
     throw new Error('Mercado Pago no configurado: el simulador de Mercado Pago no puede usarse en producción');
   }
   return new MercadoPagoSimulatorAdapter(localOAuthCallbackUrl(env));

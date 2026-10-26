@@ -13,6 +13,16 @@ describe('fiscalAuthorizerFactory', () => {
     );
   });
 
+  it.each(['Staging', 'prod', ''])('still refuses the ARCA simulator in production with UNNA_ENV=%p (S16)', (unnaEnv) => {
+    expect(() => fiscalAuthorizerFactory({ NODE_ENV: 'production', UNNA_ENV: unnaEnv })).toThrow(
+      'ARCA real no configurado: el simulador de ARCA no puede usarse en producción',
+    );
+  });
+
+  it('uses the ARCA simulator in production with UNNA_ENV=staging (S16)', () => {
+    expect(fiscalAuthorizerFactory({ NODE_ENV: 'production', UNNA_ENV: 'staging' })).toBeInstanceOf(ArcaSimulatedAdapter);
+  });
+
   it.each(['development', 'test', undefined])('uses the simulator when NODE_ENV is %p and ARCA is not configured', (nodeEnv) => {
     expect(fiscalAuthorizerFactory({ NODE_ENV: nodeEnv })).toBeInstanceOf(ArcaSimulatedAdapter);
   });
@@ -33,6 +43,10 @@ describe('fiscalAuthorizerFactory', () => {
 
     it.each(['production', 'development'])('uses the real ARCA adapter when NODE_ENV is %p', (nodeEnv) => {
       expect(fiscalAuthorizerFactory({ ...env, NODE_ENV: nodeEnv })).toBeInstanceOf(ArcaFiscalAuthorizerAdapter);
+    });
+
+    it('keeps the real ARCA adapter in staging when ARCA is configured (S16)', () => {
+      expect(fiscalAuthorizerFactory({ ...env, NODE_ENV: 'production', UNNA_ENV: 'staging' })).toBeInstanceOf(ArcaFiscalAuthorizerAdapter);
     });
   });
 });

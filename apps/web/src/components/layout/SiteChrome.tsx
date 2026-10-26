@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { StagingBanner } from './StagingBanner';
 
 /**
  * Routes shown without the public site header and footer: the TV order screen, and the dashboard,
@@ -10,16 +11,28 @@ import { Footer } from './Footer';
  */
 const BARE_ROUTES = ['/pantalla', '/dashboard'];
 
+/** The TV order screen also goes without the staging banner, so nothing covers the board. */
+const NO_BANNER_ROUTES = ['/pantalla'];
+
+const matches = (pathname: string, routes: string[]) => routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? '';
-  if (BARE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
-    return <main className="min-h-screen">{children}</main>;
+  const banner = matches(pathname, NO_BANNER_ROUTES) ? null : <StagingBanner />;
+  if (matches(pathname, BARE_ROUTES)) {
+    return (
+      <>
+        <main className="min-h-screen">{children}</main>
+        {banner}
+      </>
+    );
   }
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 pt-16">{children}</main>
       <Footer />
+      {banner}
     </div>
   );
 }

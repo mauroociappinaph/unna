@@ -17,7 +17,13 @@ const charge = (mpOrderId: string) => ({
 
 describe('Simulated payment of a QR charge from the POS (S15, simulator only)', () => {
   const OLD_ENV = process.env.NODE_ENV;
-  afterEach(() => { process.env.NODE_ENV = OLD_ENV; });
+  const OLD_UNNA_ENV = process.env.UNNA_ENV;
+  beforeEach(() => { delete process.env.UNNA_ENV; });
+  afterEach(() => {
+    process.env.NODE_ENV = OLD_ENV;
+    if (OLD_UNNA_ENV === undefined) delete process.env.UNNA_ENV;
+    else process.env.UNNA_ENV = OLD_UNNA_ENV;
+  });
 
   const setup = async (gateway = new MercadoPagoSimulatorAdapter('http://localhost/cb')) => {
     const order = gateway instanceof MercadoPagoSimulatorAdapter
@@ -63,5 +69,23 @@ describe('Simulated payment of a QR charge from the POS (S15, simulator only)', 
     process.env.NODE_ENV = 'production';
     await expect(sim.controller.pay('biz-A', 'charge-1')).rejects.toBeInstanceOf(NotFoundException);
     expect(sim.syncByMpOrderId).not.toHaveBeenCalled();
+  });
+
+  it('pays in production with UNNA_ENV=staging (S16)', async () => {
+    const { controller, gateway, order, syncByMpOrderId } = await setup();
+    Object.assign(process.env, { NODE_ENV: 'production', UNNA_ENV: 'staging' });
+
+    await expect(controller.pay('biz-A', 'charge-1')).resolves.toMatchObject({ id: 'charge-1', status: 'paid', simulated: true });
+    expect((await (gateway as MercadoPagoSimulatorAdapter).getOrder('', order.id)).status).toBe('processed');
+    expect(syncByMpOrderId).toHaveBeenCalledWith(order.id);
+  });
+
+  it.each(['Staging', 'prod'])('answers 404 in production with UNNA_ENV=%p (S16)', async (unnaEnv) => {
+    const { controller, gateway, order, syncByMpOrderId } = await setup();
+    Object.assign(process.env, { NODE_ENV: 'production', UNNA_ENV: unnaEnv });
+
+    await expect(controller.pay('biz-A', 'charge-1')).rejects.toBeInstanceOf(NotFoundException);
+    expect((await (gateway as MercadoPagoSimulatorAdapter).getOrder('', order.id)).status).toBe('created');
+    expect(syncByMpOrderId).not.toHaveBeenCalled();
   });
 });

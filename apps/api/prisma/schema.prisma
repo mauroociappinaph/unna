@@ -76,6 +76,8 @@ model Sucursal {
   mpPosExternalId String?   @unique
   qrImageUrl      String?
   qrTemplateUrl   String?
+  // Claim of the store + POS provisioning in progress, so concurrent requests create one store.
+  mpProvisioningAt DateTime?
   businessId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -534,7 +536,7 @@ model MercadoPagoOAuthAttempt {
 }
 
 /// A Mercado Pago QR order (hybrid) for the pending balance of an order. The payment is registered
-/// once, from the order read from Mercado Pago (T33b).
+/// once, from the order read from Mercado Pago, under the order lock (unique mpOrderId and paymentId).
 model QrCharge {
   id          String    @id @default(uuid())
   businessId  String
@@ -548,6 +550,8 @@ model QrCharge {
   expiresAt   DateTime
   paidAt      DateTime?
   paymentId   String?   @unique
+  // Paid in Mercado Pago but not registered (caja closed, balance exceeded...): why, for the owner.
+  paymentError String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

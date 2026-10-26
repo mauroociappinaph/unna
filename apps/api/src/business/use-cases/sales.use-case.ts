@@ -14,6 +14,7 @@ import {
   Money,
   Order,
 } from '@unna/domain';
+import { registerOrderPayment } from './order-payment';
 
 export const ORDER_TYPES = ['dine_in', 'takeaway', 'delivery', 'pickup'] as const;
 export const PAYMENT_METHODS = ['cash', 'card', 'mercado_pago', 'transfer', 'qr'] as const;
@@ -42,8 +43,6 @@ interface Result<T> {
 const ok = <T>(value: T): Result<T> => ({ ok: true, value });
 const fail = <T>(message: string): Result<T> => ({ ok: false, error: new Error(message) });
 const notFound = <T>(message: string): Result<T> => ({ ok: false, error: new NotFoundError(message) });
-
-const formatCents = (cents: number) => Money.fromCents(cents).format();
 
 const isOneOf = <T extends string>(values: readonly T[], value: string): value is T =>
   (values as readonly string[]).includes(value);
@@ -202,50 +201,12 @@ export class SalesUseCase {
     if (!isOneOf(PAYMENT_METHODS, method)) return fail('Método de pago inválido');
     if (!Number.isInteger(command.amount) || command.amount <= 0) return fail('El monto debe ser un entero positivo en centavos');
 
-    // The balance check and both writes run under the order's lock: concurrent payments queue up
-    // and each one sees the payments committed before it, so the total cannot be exceeded.
-    // The cash session is read with a shared lock in the same transaction, so it cannot be closed
-    // until this payment, linked to it, commits.
-    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async ({ orders, payments, cashSessions }) => {
-      const order = await orders.findByIdAndBusinessId(command.orderId, command.businessId);
-      if (!order) return notFound('Pedido no encontrado');
-      if (['cancelled', 'refunded'].includes(order.status)) return fail('No se puede cobrar un pedido cancelado o reembolsado');
-      if (order.paymentStatus === 'completed') return fail('El pedido ya está pagado');
-      const cashSession = await cashSessions.findOpenBySucursalForPayment(command.businessId, order.sucursalId);
-      if (!cashSession) return fail('Abrí la caja para cobrar');
-
-      const previous = (await payments.findByOrderId(order.id)).filter((p) => p.status === 'completed');
-      const paid = previous.reduce((sum, p) => sum + p.amount, 0);
-      const remaining = order.totalAmount.toCents() - paid;
-      if (command.amount > remaining) {
-        return fail(`El monto supera el saldo pendiente (${formatCents(remaining)})`);
-      }
-
-      const now = new Date();
-      const payment: PaymentRecord = {
-        id: crypto.randomUUID(),
-        orderId: order.id,
-        businessId: command.businessId,
-        amount: command.amount,
-        method,
-        status: 'completed',
-        reference: command.reference,
-        processedAt: now,
-        cashSessionId: cashSession.id,
-        createdAt: now,
-      };
-      await payments.save(payment);
-
-      const all = [...previous, payment];
-      const newRemaining = remaining - command.amount;
-      let updated = order;
-      if (newRemaining === 0) {
-        const methods = new Set(all.map((p) => p.method));
-        updated = order.markPaymentCompleted(methods.size === 1 ? method : 'split', command.reference);
-        await orders.save(updated);
-      }
-
-      return ok({ order: updated, payments: all, remaining: newRemaining });
+    // The balance check and the writes run under the order's lock (see registerOrderPayment).
+    return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async (repositories) => {
+      const result = await registerOrderPayment(repositories, { ...command, method });
+      if (!result.ok) return { ok: false, error: result.error };
+      const { order, payments, remaining } = result.value!;
+      return ok({ order, payments, remaining });
     });
   }
 

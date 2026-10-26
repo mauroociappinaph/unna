@@ -55,6 +55,18 @@ Source: [notifications](https://www.mercadopago.com.ar/developers/en/docs/qr-cod
 - The payment is registered only from an order read from Mercado Pago (`GET /v1/orders/{id}`), never from the webhook body, and only once per Mercado Pago order (unique reference). It uses method `mercado_pago`, reference = Mercado Pago order id, and the open cash session of the sucursal.
 - Without `MP_CLIENT_ID` and `MP_CLIENT_SECRET`, a simulator replaces Mercado Pago; it throws in production (`NODE_ENV=production`). The simulator authorizes instantly and exposes a development-only endpoint to mark a QR order paid.
 
+### QR charges (T33b)
+- Creating a charge requires an order of the business that is not cancelled or paid, the Mercado Pago connection, the sucursal POS and an open caja. It runs under the order lock: concurrent requests get the same pending charge.
+- The Mercado Pago order: `type: "qr"`, `mode: "hybrid"`, `external_pos_id` = the sucursal POS, `total_amount` = pending balance, `expiration_time: "PT15M"`, `X-Idempotency-Key` = charge id, `external_reference` = `<order id>-<charge id>` without dashes, cut to 64 chars.
+- A pending charge whose 15 minutes passed is synced with Mercado Pago before a new one is created.
+- Sync (GET, DELETE, webhook, simulator): the order is read from Mercado Pago with the connection of the charge's business. `processed` → `paid`, `expired` → `expired`, `canceled`/`refunded` → `cancelled`; other statuses keep it `pending`. Applied under the order lock and only to a pending charge, so a payment is registered once per Mercado Pago order (also guarded by the unique `mpOrderId` and `paymentId` of the charge).
+- The payment goes through the same rules as `POST /orders/:orderId/payments` (open caja read `FOR SHARE`, pending balance).
+- **Paid but not registered.** If the caja was closed meanwhile, the amount no longer fits the balance, the order was cancelled or paid, or Mercado Pago charged a different amount, the money is already in the café's account. The charge stays `paid` with `paymentRegistered: false` and `paymentError` (the reason, e.g. "Abrí la caja para cobrar"). The owner registers it by hand (method `mercado_pago`, reference = the Mercado Pago order id) or refunds it.
+- Cancel calls Mercado Pago only while the order is `created`. If the customer paid meanwhile, the payment is registered and the charge comes back `paid`.
+- Webhook: the signature is checked before reading any data; missing or invalid → 401. The body is never read; the order comes from the signed `data.id` of the query. Valid notifications always get 200, including unknown orders and failed syncs (logged; the POS polling settles them). There is no `ts` tolerance: a replay only re-reads the order, which is idempotent. It is not rate limited: rejecting costs one HMAC and no query.
+- Provisioning the store + POS of a sucursal takes a claim on the sucursal (`mpProvisioningAt`, a single conditional update). Only one request calls Mercado Pago, so only one store is created. A concurrent request gets the QR if it is ready, or the in-progress error. Claims older than 2 minutes count as abandoned.
+- The simulator route is registered only when the simulator is used outside production. It also answers 404 if it runs with the real gateway or with `NODE_ENV=production`.
+
 ### Environment
 | Variable | Purpose |
 |---|---|
@@ -73,11 +85,13 @@ Owner routes require the JWT and `BusinessOwnerGuard`; amounts in cents.
 | `POST /businesses/:id/mercadopago/connect` | `{ authorizationUrl: string }` |
 | `DELETE /businesses/:id/mercadopago` | 204; removes tokens and cash registers links |
 | `POST /businesses/:id/sucursales/:sucursalId/mercadopago/pos` | Creates store + POS if missing (idempotent). `{ sucursalId, ready: true, qrImageUrl, qrTemplateUrl }` |
-| `POST /businesses/:id/orders/:orderId/qr-charge` | Charges the pending balance. `{ id, orderId, amount, status: "pending", qrData, expiresAt }` |
-| `GET /businesses/:id/qr-charges/:chargeId` | Syncs with Mercado Pago. `{ id, orderId, amount, status: "pending" \| "paid" \| "expired" \| "cancelled", qrData, expiresAt, paidAt: string \| null }` |
-| `DELETE /businesses/:id/qr-charges/:chargeId` | Cancels a pending charge. Returns the charge with `status: "cancelled"` |
+| `POST /businesses/:id/orders/:orderId/qr-charge` | Charges the pending balance. `{ id, orderId, amount, status: "pending", qrData, expiresAt, paidAt: null, paymentRegistered: false, paymentError: null }` |
+| `GET /businesses/:id/qr-charges/:chargeId` | Syncs with Mercado Pago. `{ id, orderId, amount, status: "pending" \| "paid" \| "expired" \| "cancelled", qrData, expiresAt, paidAt: string \| null, paymentRegistered: boolean, paymentError: string \| null }` |
+| `DELETE /businesses/:id/qr-charges/:chargeId` | Cancels a pending charge (200). Returns the charge with `status: "cancelled"`, or `"paid"` if it was paid meanwhile. Finished charges come back unchanged |
 | `GET /mercadopago/oauth/callback?code&state` | Public. 302 to `${FRONTEND_URL}/dashboard/mercadopago?status=connected` or `?status=error` |
-| `POST /public/mercadopago/webhook` | Public, signature validated, 200 |
-| `POST /mercadopago/simulator/orders/:mpOrderId/pay` | Simulator only, never in production |
+| `POST /public/mercadopago/webhook` | Public, signature validated, 200 (401 when missing or invalid) |
+| `POST /mercadopago/simulator/orders/:mpOrderId/pay` | Simulator only, never in production. Marks the simulated order paid, runs the webhook sync and returns the charge (404 if unknown or not pending) |
 
 Errors (Spanish messages): not connected → 400 "Conectá tu cuenta de Mercado Pago"; sucursal without POS → 400 "Activá el cobro QR en esta sucursal"; no open caja → 400 "Abrí la caja para cobrar"; order already paid → 400 "El pedido ya está pagado"; a pending charge already exists for the order → returns that charge.
+
+More errors: order of another business or missing → 404 "Pedido no encontrado"; charge of another business or missing → 404 "Cobro QR no encontrado"; cancelled order → 400 "No se puede cobrar un pedido cancelado o reembolsado"; cancel rejected while the customer is paying → 400 "No se pudo cancelar el cobro QR: hay un pago en curso. Probá de nuevo en unos segundos"; concurrent POS provisioning → 400 "Ya se está activando el cobro QR en esta sucursal. Probá de nuevo en unos segundos"; webhook signature → 401 "Firma de Mercado Pago inválida".

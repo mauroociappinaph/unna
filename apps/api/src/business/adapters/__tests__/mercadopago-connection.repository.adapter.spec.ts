@@ -75,6 +75,23 @@ describe('PrismaMercadoPagoConnectionRepositoryAdapter (S15)', () => {
     expect(updateMany).toHaveBeenCalledWith({ where: { businessId: 'biz-A' }, data: NO_LINKS });
   });
 
+  it('claims the provisioning of a sucursal without POS with one conditional update, taking over stale claims', async () => {
+    const updateMany = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 }).mockResolvedValue({ count: 1 });
+    const adapter = new PrismaMercadoPagoConnectionRepositoryAdapter(fake<PrismaService>(prismaWith({ sucursal: { updateMany } })));
+    const now = new Date('2026-10-25T12:00:00Z');
+    const staleBefore = new Date('2026-10-25T11:58:00Z');
+
+    await expect(adapter.claimSucursalProvisioning('biz-A', 'suc-1', now, staleBefore)).resolves.toBe(true);
+    await expect(adapter.claimSucursalProvisioning('biz-A', 'suc-1', now, staleBefore)).resolves.toBe(false);
+    await adapter.releaseSucursalProvisioning('biz-A', 'suc-1');
+
+    expect(updateMany).toHaveBeenNthCalledWith(1, {
+      where: { id: 'suc-1', businessId: 'biz-A', mpPosId: null, OR: [{ mpProvisioningAt: null }, { mpProvisioningAt: { lt: staleBefore } }] },
+      data: { mpProvisioningAt: now },
+    });
+    expect(updateMany).toHaveBeenNthCalledWith(3, { where: { id: 'suc-1', businessId: 'biz-A' }, data: { mpProvisioningAt: null } });
+  });
+
   it('keeps the sucursal links when the same account reconnects', async () => {
     const updateMany = jest.fn();
     const adapter = new PrismaMercadoPagoConnectionRepositoryAdapter(fake<PrismaService>(prismaWith({

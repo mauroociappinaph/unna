@@ -103,6 +103,20 @@ export class PrismaMercadoPagoConnectionRepositoryAdapter implements MercadoPago
   async saveSucursalPos(businessId: string, sucursalId: string, pos: MercadoPagoPosLink): Promise<void> {
     await this.prisma.sucursal.updateMany({ where: { id: sucursalId, businessId }, data: pos });
   }
+
+  // One conditional UPDATE: a concurrent claim waits for this row lock, re-checks the condition
+  // against the committed row and matches nothing, so exactly one request wins.
+  async claimSucursalProvisioning(businessId: string, sucursalId: string, now: Date, staleBefore: Date): Promise<boolean> {
+    const { count } = await this.prisma.sucursal.updateMany({
+      where: { id: sucursalId, businessId, mpPosId: null, OR: [{ mpProvisioningAt: null }, { mpProvisioningAt: { lt: staleBefore } }] },
+      data: { mpProvisioningAt: now },
+    });
+    return count === 1;
+  }
+
+  async releaseSucursalProvisioning(businessId: string, sucursalId: string): Promise<void> {
+    await this.prisma.sucursal.updateMany({ where: { id: sucursalId, businessId }, data: { mpProvisioningAt: null } });
+  }
 }
 
 function toSucursal(row: SucursalRow): MercadoPagoSucursal {

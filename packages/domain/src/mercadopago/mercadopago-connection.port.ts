@@ -70,4 +70,11 @@ export interface MercadoPagoConnectionRepositoryPort {
   findSucursal(businessId: string, sucursalId: string): Promise<MercadoPagoSucursal | null>;
   saveSucursalStore(businessId: string, sucursalId: string, mpStoreId: string): Promise<void>;
   saveSucursalPos(businessId: string, sucursalId: string, pos: MercadoPagoPosLink): Promise<void>;
+  /**
+   * Atomically claims the store + POS provisioning of a sucursal without a POS, so concurrent
+   * requests cannot create two stores. A claim taken before `staleBefore` counts as abandoned.
+   * False when another request holds it (or the sucursal already has a POS).
+   */
+  claimSucursalProvisioning(businessId: string, sucursalId: string, now: Date, staleBefore: Date): Promise<boolean>;
+  releaseSucursalProvisioning(businessId: string, sucursalId: string): Promise<void>;
 }

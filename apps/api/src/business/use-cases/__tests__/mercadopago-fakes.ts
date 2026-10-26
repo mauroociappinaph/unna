@@ -45,6 +45,8 @@ export class InMemoryMercadoPagoRepository implements MercadoPagoConnectionRepos
   attempts = new Map<string, MercadoPagoOAuthAttempt>();
   owners = new Map<string, string>([[BUSINESS, OWNER], ['biz-B', 'owner-B']]);
   sucursales: MercadoPagoSucursal[] = [sucursal(), sucursal({ id: 'suc-B', businessId: 'biz-B', name: 'Otro café' })];
+  /** Provisioning claims per sucursal id, like the Sucursal.mpProvisioningAt column. */
+  provisioningClaims = new Map<string, Date>();
 
   async findConnection(businessId: string) {
     return this.connections.get(businessId) ?? null;
@@ -88,6 +90,18 @@ export class InMemoryMercadoPagoRepository implements MercadoPagoConnectionRepos
   }
   async saveSucursalPos(businessId: string, sucursalId: string, pos: Parameters<MercadoPagoConnectionRepositoryPort['saveSucursalPos']>[2]) {
     this.patch(businessId, sucursalId, pos);
+  }
+
+  /** Check-and-set in one synchronous step, like the conditional UPDATE of the Prisma adapter. */
+  async claimSucursalProvisioning(businessId: string, sucursalId: string, now: Date, staleBefore: Date) {
+    const found = this.sucursales.find((s) => s.businessId === businessId && s.id === sucursalId);
+    const claim = this.provisioningClaims.get(sucursalId);
+    if (!found || found.mpPosId || (claim && claim >= staleBefore)) return false;
+    this.provisioningClaims.set(sucursalId, now);
+    return true;
+  }
+  async releaseSucursalProvisioning(businessId: string, sucursalId: string) {
+    if (this.sucursales.some((s) => s.businessId === businessId && s.id === sucursalId)) this.provisioningClaims.delete(sucursalId);
   }
 
   private patch(businessId: string, sucursalId: string, data: Partial<MercadoPagoSucursal>) {

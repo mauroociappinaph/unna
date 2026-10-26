@@ -39,6 +39,13 @@ import { MercadoPagoAccessTokenProvider } from './use-cases/mercadopago-access-t
 import { MercadoPagoPosUseCase } from './use-cases/mercadopago-pos.use-case';
 import { MercadoPagoController } from './mercadopago.controller';
 import { MercadoPagoOAuthController } from './mercadopago-oauth.controller';
+import { MercadoPagoWebhookController } from './mercadopago-webhook.controller';
+import { mercadoPagoSimulatorControllers } from './mercadopago-simulator.controller';
+import { QrChargeController } from './qr-charge.controller';
+import { QrChargeUseCase } from './use-cases/qr-charge.use-case';
+import { QrChargeSync } from './use-cases/qr-charge-sync';
+import { PrismaQrChargeRepositoryAdapter } from './adapters/qr-charge.repository.adapter';
+import { PrismaQrChargeUnitOfWorkAdapter } from './adapters/qr-charge-unit-of-work.adapter';
 
 /**
  * Real ARCA when ARCA_ENV, ARCA_CERT_PATH and ARCA_KEY_PATH are set. Otherwise the simulator, which
@@ -79,7 +86,7 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 
 @Module({
   imports: [PrismaModule, ThrottlerModule.forRoot(publicBoardThrottlerOptions())],
-  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController, OrderBoardController, PublicOrderBoardController, MercadoPagoController, MercadoPagoOAuthController],
+  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController, OrderBoardController, PublicOrderBoardController, MercadoPagoController, MercadoPagoOAuthController, QrChargeController, MercadoPagoWebhookController, ...mercadoPagoSimulatorControllers()],
   providers: [
     OnboardBusinessUseCase,
     BusinessManagementUseCase,
@@ -95,6 +102,10 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
     MercadoPagoConnectionUseCase,
     MercadoPagoAccessTokenProvider,
     MercadoPagoPosUseCase,
+    QrChargeUseCase,
+    QrChargeSync,
+    { provide: 'QrChargeRepositoryPort', useClass: PrismaQrChargeRepositoryAdapter },
+    { provide: 'QrChargeUnitOfWorkPort', useClass: PrismaQrChargeUnitOfWorkAdapter },
     { provide: 'MercadoPagoConnectionRepositoryPort', useClass: PrismaMercadoPagoConnectionRepositoryAdapter },
     { provide: 'MercadoPagoGatewayPort', useFactory: () => mercadoPagoGatewayFactory() },
     { provide: 'SecretCipherPort', useFactory: () => secretCipherFactory() },

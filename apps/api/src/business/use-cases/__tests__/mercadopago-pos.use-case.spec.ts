@@ -63,6 +63,64 @@ describe('MercadoPagoPosUseCase (S15)', () => {
     expect(repo.sucursales.find((s) => s.id === 'suc-B')).toMatchObject({ mpStoreId: null, mpPosId: null });
   });
 
+  describe('concurrent provisioning of the same sucursal', () => {
+    const slowStore = (gateway: ReturnType<typeof fakeGateway>) => {
+      let release: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      gateway.createStore.mockImplementationOnce(async () => {
+        await gate;
+        return { id: 'store-1' };
+      });
+      return () => release();
+    };
+
+    it('creates a single store and POS: the request that loses the claim does not call Mercado Pago', async () => {
+      const { useCase, gateway } = setup();
+      const finishStore = slowStore(gateway);
+
+      const first = useCase.provision(BUSINESS, 'suc-1');
+      const second = await useCase.provision(BUSINESS, 'suc-1');
+      finishStore();
+
+      expect(second).toEqual({ ok: false, error: new Error('Ya se está activando el cobro QR en esta sucursal. Probá de nuevo en unos segundos') });
+      await expect(first).resolves.toMatchObject({ ok: true, value: { ready: true } });
+      expect(gateway.createStore).toHaveBeenCalledTimes(1);
+      expect(gateway.createPos).toHaveBeenCalledTimes(1);
+      await expect(useCase.provision(BUSINESS, 'suc-1')).resolves.toEqual(await first);
+    });
+
+    it('releases the claim when Mercado Pago fails, so a retry can provision', async () => {
+      const { useCase, gateway, repo } = setup();
+      gateway.createStore.mockRejectedValueOnce(new Error('Mercado Pago respondió 500'));
+
+      await expect(useCase.provision(BUSINESS, 'suc-1')).rejects.toThrow('Mercado Pago respondió 500');
+
+      expect(repo.provisioningClaims.size).toBe(0);
+      await expect(useCase.provision(BUSINESS, 'suc-1')).resolves.toMatchObject({ ok: true });
+    });
+
+    it('takes over a claim abandoned more than 2 minutes ago', async () => {
+      const { useCase, repo } = setup();
+      repo.provisioningClaims.set('suc-1', new Date(Date.now() - 2 * 60 * 1000 - 1000));
+
+      await expect(useCase.provision(BUSINESS, 'suc-1')).resolves.toMatchObject({ ok: true });
+    });
+
+    it('uses the store saved by an earlier attempt that lost its POS, read after taking the claim', async () => {
+      const { useCase, gateway, repo } = setup();
+      const claim = repo.claimSucursalProvisioning.bind(repo);
+      jest.spyOn(repo, 'claimSucursalProvisioning').mockImplementationOnce(async (...args) => {
+        await repo.saveSucursalStore(BUSINESS, 'suc-1', 'store-earlier');
+        return claim(...args);
+      });
+
+      await useCase.provision(BUSINESS, 'suc-1');
+
+      expect(gateway.createStore).not.toHaveBeenCalled();
+      expect(gateway.createPos).toHaveBeenCalledWith('APP_USR-access-1', expect.objectContaining({ storeId: 'store-earlier' }));
+    });
+  });
+
   it('asks to connect the account first when the business is not connected', async () => {
     const { useCase, gateway } = setup({ connected: false });
     const result = await useCase.provision(BUSINESS, 'suc-1');

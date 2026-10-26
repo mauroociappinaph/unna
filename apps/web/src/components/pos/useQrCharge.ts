@@ -23,7 +23,8 @@ export function useQrCharge({ businessId, orderId, onPaid }: Options) {
   onPaidRef.current = onPaid;
 
   const chargeId = charge?.id;
-  const pending = charge?.status === 'pending';
+  // A charge still being created is polled like a pending one until its QR arrives (S18).
+  const pending = charge?.status === 'pending' || charge?.status === 'creating';
 
   useEffect(() => {
     if (!businessId || !chargeId || !pending) return;

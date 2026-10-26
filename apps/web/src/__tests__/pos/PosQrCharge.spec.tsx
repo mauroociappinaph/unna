@@ -263,4 +263,17 @@ describe('POS QR charge', () => {
 
     expect(within(qrRegion()).queryByRole('button', { name: 'Simular pago' })).not.toBeInTheDocument();
   });
+
+  it('waits on a charge still being created (no QR yet) and shows the QR once Mercado Pago answers (S18)', async () => {
+    mocked.createQrCharge.mockResolvedValue({ ...pending, status: 'creating', qrData: null });
+    mocked.getQrCharge.mockResolvedValue(pending);
+    const { user } = await openCheckout();
+
+    await user.click(screen.getByRole('button', { name: 'Cobrar con QR' }));
+
+    expect(await within(qrRegion()).findByText('Generando QR…')).toBeInTheDocument();
+    expect(within(qrRegion()).queryByRole('img', { name: 'QR de Mercado Pago para pagar el pedido' })).not.toBeInTheDocument();
+    await advance(3000);
+    expect(await within(qrRegion()).findByRole('img', { name: 'QR de Mercado Pago para pagar el pedido' })).toBeInTheDocument();
+  });
 });

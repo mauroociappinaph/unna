@@ -39,6 +39,7 @@ const formatCountdown = (seconds: number) =>
 export function QrChargePanel({ businessId, orderId, remaining, disabled, onPaid }: QrChargePanelProps) {
   const { charge, error, busy, start, cancel, simulatePayment } = useQrCharge({ businessId, orderId, onPaid });
   const pending = charge?.status === 'pending';
+  const creating = charge?.status === 'creating';
   const secondsLeft = useSecondsLeft(charge?.expiresAt, pending);
 
   if (!charge && remaining <= 0) return null;
@@ -60,7 +61,9 @@ export function QrChargePanel({ businessId, orderId, remaining, disabled, onPaid
         <Button variant="secondary" disabled={busy || disabled} onClick={start}>Cobrar con QR</Button>
       )}
 
-      {charge && pending && (
+      {charge && creating && <p role="status" className="text-gray-700">Generando QR…</p>}
+
+      {charge && pending && charge.qrData && (
         <div className="flex flex-col items-center gap-2 text-center">
           <QrCode data={charge.qrData} label="QR de Mercado Pago para pagar el pedido" />
           <p className="text-2xl font-bold text-gray-900">{formatMoney(charge.amount)}</p>

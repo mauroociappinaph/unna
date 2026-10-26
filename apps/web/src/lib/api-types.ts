@@ -242,7 +242,8 @@ export interface MercadoPagoStatus {
   sucursales: (MercadoPagoPos & { name: string })[];
 }
 
-export type QrChargeStatus = 'pending' | 'paid' | 'expired' | 'cancelled';
+/** `creating`: reserved while the API asks Mercado Pago for the QR (S18); it has no qrData yet. */
+export type QrChargeStatus = 'creating' | 'pending' | 'paid' | 'expired' | 'cancelled';
 
 /** Mercado Pago QR order for the pending balance of an order; amount in cents, qrData is the on-screen QR. */
 export interface QrCharge {
@@ -250,7 +251,7 @@ export interface QrCharge {
   orderId: string;
   amount: number;
   status: QrChargeStatus;
-  qrData: string;
+  qrData: string | null;
   expiresAt: string;
   paidAt?: string | null;
   /** True while the API runs the Mercado Pago simulator: the POS may offer "Simular pago". */

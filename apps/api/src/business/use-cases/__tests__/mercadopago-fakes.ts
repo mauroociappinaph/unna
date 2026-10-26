@@ -124,6 +124,7 @@ export const fakeGateway = () => ({
     id: 'pos-1', externalId: request.externalId, qrImageUrl: 'https://mp/qr.png', qrTemplateUrl: 'https://mp/qr.pdf',
   })),
   createQrOrder: jest.fn(),
+  createOnlineOrder: jest.fn(),
   getOrder: jest.fn(),
   cancelOrder: jest.fn(),
 }) satisfies MercadoPagoGatewayPort;

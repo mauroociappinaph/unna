@@ -1,9 +1,11 @@
 import { randomBytes, randomUUID } from 'crypto';
 import {
+  CreateMercadoPagoOnlineOrderRequest,
   CreateMercadoPagoPosRequest,
   CreateMercadoPagoQrOrderRequest,
   CreateMercadoPagoStoreRequest,
   MercadoPagoGatewayPort,
+  MercadoPagoOnlineOrder,
   MercadoPagoOrder,
   MercadoPagoPos,
   MercadoPagoTokens,
@@ -15,13 +17,16 @@ const PLACEHOLDER_QR = 'https://simulador-mercadopago.unna.invalid/qr';
 
 interface SimulatedOrder extends MercadoPagoOrder {
   expiresAt: Date;
+  /** Online orders (S20): where the simulated checkout sends the buyer back. */
+  successUrl?: string;
 }
 
 /**
  * Stand-in for Mercado Pago while UNNA has no application credentials (S15). Never wired in
  * production. Authorizes instantly (the authorization URL is the API callback with a fake code),
- * creates fake stores and POS with placeholder QR URLs and keeps QR orders in memory; `markPaid`
- * plays the buyer scanning the QR.
+ * creates fake stores and POS with placeholder QR URLs and keeps QR and online orders in memory;
+ * `markPaid` plays the buyer scanning the QR or paying at the checkout. The checkout URL of an online
+ * order is the simulator route of this API (same origin as the OAuth callback).
  */
 export class MercadoPagoSimulatorAdapter implements MercadoPagoGatewayPort {
   private readonly orders = new Map<string, SimulatedOrder>();
@@ -81,6 +86,32 @@ export class MercadoPagoSimulatorAdapter implements MercadoPagoGatewayPort {
     this.orders.set(id, order);
     this.ordersByIdempotencyKey.set(request.idempotencyKey, id);
     return withoutExpiry(order);
+  }
+
+  async createOnlineOrder(_accessToken: string, request: CreateMercadoPagoOnlineOrderRequest): Promise<MercadoPagoOnlineOrder> {
+    const existing = this.ordersByIdempotencyKey.get(request.idempotencyKey);
+    const id = existing ?? `ORDSIM${randomUUID().replace(/-/g, '').toUpperCase()}`;
+    if (!existing) {
+      this.orders.set(id, {
+        id,
+        status: 'created',
+        statusDetail: 'created',
+        externalReference: request.externalReference,
+        totalAmount: request.amount,
+        paymentId: null,
+        qrData: null,
+        expiresAt: new Date(this.now().getTime() + durationMs(request.expirationTime)),
+        successUrl: request.successUrl,
+      });
+      this.ordersByIdempotencyKey.set(request.idempotencyKey, id);
+    }
+    const order = this.current(id)!;
+    return { id, status: order.status, checkoutUrl: `${new URL(this.callbackUrl).origin}/api/v1/mercadopago/simulator/checkout/${id}` };
+  }
+
+  /** Where the simulated checkout of an online order sends the buyer back; null for other orders. */
+  successUrlOf(orderId: string): string | null {
+    return this.orders.get(orderId)?.successUrl ?? null;
   }
 
   async getOrder(_accessToken: string, orderId: string): Promise<MercadoPagoOrder> {

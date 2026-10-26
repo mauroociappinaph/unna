@@ -1,8 +1,10 @@
 import {
+  CreateMercadoPagoOnlineOrderRequest,
   CreateMercadoPagoPosRequest,
   CreateMercadoPagoQrOrderRequest,
   CreateMercadoPagoStoreRequest,
   MercadoPagoGatewayPort,
+  MercadoPagoOnlineOrder,
   MercadoPagoOrder,
   MercadoPagoOrderStatus,
   MercadoPagoPos,
@@ -13,7 +15,10 @@ import type { MercadoPagoConfig } from './mercadopago.config';
 const AUTHORIZATION_URL = 'https://auth.mercadopago.com/authorization';
 const API_URL = 'https://api.mercadopago.com';
 const DEFAULT_TIMEOUT_MS = 15000;
-const ORDER_STATUSES: readonly MercadoPagoOrderStatus[] = ['created', 'processed', 'refunded', 'expired', 'canceled', 'action_required'];
+const ORDER_STATUSES: readonly MercadoPagoOrderStatus[] = [
+  'created', 'processing', 'processed', 'failed', 'refunded', 'expired', 'canceled', 'action_required',
+];
+const NO_CHECKOUT_URL = 'Mercado Pago no devolvió el link de pago';
 // Only short machine codes (invalid_grant, order_already_canceled...) make it into error messages.
 const ERROR_CODE = /^[A-Za-z0-9_]{1,64}$/;
 
@@ -30,7 +35,7 @@ export function fromMercadoPagoAmount(amount: unknown): number {
 }
 
 /**
- * Mercado Pago over HTTPS with global fetch (OAuth + PKCE, stores, POS, Orders API type "qr").
+ * Mercado Pago over HTTPS with global fetch (OAuth + PKCE, stores, POS, Orders API types "qr" and "online").
  * Tokens travel only in headers and bodies; errors carry the HTTP status and Mercado Pago's error
  * code, never tokens, secrets or response text.
  */
@@ -128,6 +133,29 @@ export class MercadoPagoHttpAdapter implements MercadoPagoGatewayPort {
         transactions: { payments: [{ amount }] },
       },
     }));
+  }
+
+  /** Checkout Pro through the Orders API (S20): the buyer pays at `checkout_url`. */
+  async createOnlineOrder(accessToken: string, request: CreateMercadoPagoOnlineOrderRequest): Promise<MercadoPagoOnlineOrder> {
+    const response = await this.request('POST', '/v1/orders', {
+      accessToken,
+      idempotencyKey: request.idempotencyKey,
+      body: {
+        type: 'online',
+        processing_mode: 'manual',
+        external_reference: request.externalReference,
+        total_amount: toMercadoPagoAmount(request.amount),
+        expiration_time: request.expirationTime,
+        items: request.items.map((item) => ({ title: item.title, quantity: item.quantity, unit_price: toMercadoPagoAmount(item.unitPrice) })),
+        config: {
+          online: { success_url: request.successUrl, failure_url: request.failureUrl, pending_url: request.pendingUrl, auto_return: 'approved' },
+        },
+      },
+    });
+    const checkoutUrl = response.checkout_url ?? ((response.config as Json | undefined)?.online as Json | undefined)?.checkout_url;
+    if (typeof checkoutUrl !== 'string' || checkoutUrl === '') throw new Error(NO_CHECKOUT_URL);
+    const { id, status } = toOrder(response);
+    return { id, status, checkoutUrl };
   }
 
   async getOrder(accessToken: string, orderId: string): Promise<MercadoPagoOrder> {

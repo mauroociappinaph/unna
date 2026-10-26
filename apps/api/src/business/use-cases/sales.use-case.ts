@@ -17,26 +17,23 @@ import {
   Money,
   Order,
 } from '@unna/domain';
+import { NewOrderLine, OrderLineCatalog, OrderLineInput, priceOrderLine } from './order-line-pricing';
 import { registerOrderPayment } from './order-payment';
+
+export type { OrderLineInput };
 import { pageOrInvalidCursor } from './page-result';
 
 export const ORDER_TYPES = ['dine_in', 'takeaway', 'delivery', 'pickup'] as const;
 export const PAYMENT_METHODS = ['cash', 'card', 'mercado_pago', 'transfer', 'qr'] as const;
 const MAX_ORDER_NUMBER_ATTEMPTS = 5;
 
-function isOrderNumberCollision(error: unknown): boolean {
+/** A random order number taken by another order of the business (unique violation). */
+export function isOrderNumberCollision(error: unknown): boolean {
   const e = error as { code?: string; meta?: { target?: string[] | string } };
   return e?.code === 'P2002' && String(e.meta?.target ?? '').includes('orderNumber');
 }
 
 export const ORDER_ACTIONS = ['confirm', 'prepare', 'ready', 'deliver', 'cancel'] as const;
-
-export interface OrderLineInput {
-  productId: string;
-  quantity: number;
-  notes?: string;
-  modifiers?: Array<{ modifierGroupId: string; optionId: string }>;
-}
 
 interface Result<T> {
   ok: boolean;
@@ -50,9 +47,6 @@ const notFound = <T>(message: string): Result<T> => ({ ok: false, error: new Not
 
 const isOneOf = <T extends string>(values: readonly T[], value: string): value is T =>
   (values as readonly string[]).includes(value);
-
-/** A priced order line; the order assigns its own id to it. */
-type NewOrderLine = Parameters<Order['addItem']>[0];
 
 @Injectable()
 export class SalesUseCase {
@@ -90,7 +84,7 @@ export class SalesUseCase {
 
     const lines: NewOrderLine[] = [];
     for (const line of command.items) {
-      const built = await this.buildLine(command.businessId, line);
+      const built = await priceOrderLine(this.catalog(), command.businessId, line);
       if (!built.ok) return fail(built.error!.message);
       lines.push(built.value!);
     }
@@ -126,7 +120,7 @@ export class SalesUseCase {
     return this.unitOfWork.withOrderLock(command.orderId, command.businessId, async (repositories) => {
       const order = await this.findModifiable(repositories, command.businessId, command.orderId);
       if (!order.ok) return order;
-      const built = await this.buildLine(command.businessId, command.line);
+      const built = await priceOrderLine(this.catalog(), command.businessId, command.line);
       if (!built.ok) return fail<Order>(built.error!.message);
       const updated = order.value!.addItem(built.value!);
       await repositories.orders.save(updated);
@@ -248,55 +242,8 @@ export class SalesUseCase {
     return ok(order);
   }
 
-  /** Prices, tax and names come from the catalog, never from the client. */
-  private async buildLine(businessId: string, line: OrderLineInput): Promise<Result<NewOrderLine>> {
-    if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
-      return fail<NewOrderLine>('La cantidad debe ser un entero positivo');
-    }
-    const product = await this.products.findByIdAndBusinessId(line.productId, businessId);
-    if (!product) return notFound<NewOrderLine>(`Producto ${line.productId} no encontrado`);
-    if (!product.canBeSold()) return fail<NewOrderLine>(`El producto "${product.name}" no está disponible para la venta`);
-
-    const groups = await Promise.all(
-      product.modifierGroupIds.map((id) => this.modifierGroups.findByIdAndBusinessId(id, businessId)),
-    );
-    const selected = line.modifiers ?? [];
-    const modifiers: Array<{ modifierGroupId: string; optionId: string; name: string; priceDelta: number }> = [];
-
-    for (const choice of selected) {
-      const group = groups.find((g) => g?.id === choice.modifierGroupId && g.isActive);
-      if (!group) return fail<NewOrderLine>(`El modificador ${choice.modifierGroupId} no aplica a "${product.name}"`);
-      const option = group.options.find((o) => o.id === choice.optionId && o.isActive);
-      if (!option) return notFound<NewOrderLine>(`Opción ${choice.optionId} no encontrada en "${group.name}"`);
-      modifiers.push({ modifierGroupId: group.id, optionId: option.id, name: option.name, priceDelta: option.priceDelta });
-    }
-
-    for (const group of groups) {
-      if (!group || !group.isActive) continue;
-      const count = modifiers.filter((m) => m.modifierGroupId === group.id).length;
-      const min = group.isRequired ? Math.max(1, group.minSelection) : group.minSelection;
-      if (count < min) return fail<NewOrderLine>(`Elegí al menos ${min} opción(es) de "${group.name}"`);
-      if (group.maxSelection > 0 && count > group.maxSelection) {
-        return fail<NewOrderLine>(`Podés elegir hasta ${group.maxSelection} opción(es) de "${group.name}"`);
-      }
-    }
-
-    // Deltas can be negative ("sin X" options), so add them in cents and validate only the final price.
-    const unitCents = modifiers.reduce((sum, m) => sum + m.priceDelta, product.basePrice.amount);
-    if (unitCents < 0) return fail<NewOrderLine>(`El precio de "${product.name}" con sus modificadores no puede ser negativo`);
-    const unitPrice = Money.fromCents(unitCents, product.basePrice.currency);
-    const totalPrice = unitPrice.multiply(line.quantity);
-    return ok({
-      productId: product.id,
-      productName: product.name,
-      productSku: product.sku,
-      quantity: line.quantity,
-      unitPrice,
-      totalPrice,
-      taxRate: product.taxRate,
-      taxAmount: totalPrice.percentage(product.taxRate),
-      notes: line.notes,
-      modifiers,
-    });
+  /** Prices, tax and names come from the catalog, never from the client (see priceOrderLine). */
+  private catalog(): OrderLineCatalog {
+    return { products: this.products, modifierGroups: this.modifierGroups };
   }
 }

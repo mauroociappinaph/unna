@@ -225,9 +225,9 @@ export function OnboardingWizard() {
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
                         index + 1 < currentStep
-                          ? 'bg-unna-green text-white'
+                          ? 'bg-unna-green-dark text-white'
                           : index + 1 === currentStep
-                          ? 'bg-unna-green text-white ring-2 ring-unna-green ring-offset-2'
+                          ? 'bg-unna-green-dark text-white ring-2 ring-unna-green ring-offset-2'
                           : 'bg-gray-100 text-gray-400'
                       }`}
                     >

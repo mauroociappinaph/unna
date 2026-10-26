@@ -52,6 +52,7 @@ export class MercadoPagoSimulatorOwnerController {
     assertSimulator(this.gateway);
     const charge = await this.charges.findById(businessId, chargeId);
     if (!charge) throw new NotFoundException('Cobro QR no encontrado');
+    if (!charge.mpOrderId) throw new NotFoundException(NOT_PAYABLE);
     return { ...(await paySimulatedOrder(this.gateway, this.sync, charge.mpOrderId)), simulated: true };
   }
 }

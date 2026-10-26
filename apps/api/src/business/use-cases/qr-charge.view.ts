@@ -6,7 +6,8 @@ export interface QrChargeView {
   orderId: string;
   amount: number;
   status: QrChargeStatus;
-  qrData: string;
+  /** Null only while the charge is still `creating` (S18). */
+  qrData: string | null;
   expiresAt: string;
   paidAt: string | null;
   /** True once the payment is registered on the order (only for `paid`). */

@@ -1,4 +1,4 @@
-import { formatReceiptNumber } from '../receipt-numbering';
+import { formatReceiptNumber, RECEIPT_ISSUE_LEASE_MS } from '../receipt-numbering';
 
 describe('formatReceiptNumber', () => {
   it('formats <type>-<point of sale 4>-<number 8>', () => {
@@ -11,5 +11,11 @@ describe('formatReceiptNumber', () => {
     for (const n of [0, -1, 1.5, 100000000]) {
       expect(() => formatReceiptNumber('B', '0001', n)).toThrow('Número de comprobante inválido');
     }
+  });
+});
+
+describe('RECEIPT_ISSUE_LEASE_MS (S18)', () => {
+  it('lets one ARCA authorization hold a sequence for 2 minutes, more than its three 15 s calls', () => {
+    expect(RECEIPT_ISSUE_LEASE_MS).toBe(2 * 60 * 1000);
   });
 });

@@ -47,10 +47,31 @@ describe('PrismaQrChargeRepositoryAdapter (S15)', () => {
       data: { status: 'paid', mpPaymentId: 'PAY1', paidAt: paid.paidAt, paymentId: 'pay-1', paymentError: null },
     });
   });
+
+  it('finds the reservation of an order, scoped to the business (S18)', async () => {
+    const reserved = { ...ROW, status: 'creating', mpOrderId: null, qrData: null };
+    const findFirst = jest.fn(async () => reserved);
+    const adapter = new PrismaQrChargeRepositoryAdapter(fake<PrismaService>({ qrCharge: { findFirst } }));
+
+    await expect(adapter.findCreatingByOrder('biz-A', 'order-1')).resolves.toEqual({ ...CHARGE, status: 'creating', mpOrderId: null, qrData: null });
+    expect(findFirst).toHaveBeenCalledWith({ where: { businessId: 'biz-A', orderId: 'order-1', status: 'creating' } });
+  });
+
+  it('completes only a reservation still creating, with its Mercado Pago order, QR and expiration (S18)', async () => {
+    const updateMany = jest.fn(async () => ({ count: 1 }));
+    const adapter = new PrismaQrChargeRepositoryAdapter(fake<PrismaService>({ qrCharge: { updateMany } }));
+
+    await adapter.complete(CHARGE);
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'charge-1', businessId: 'biz-A', status: 'creating' },
+      data: { status: 'pending', mpOrderId: 'ORD1', qrData: 'qr', expiresAt: CHARGE.expiresAt },
+    });
+  });
 });
 
 describe('PrismaQrChargeUnitOfWorkAdapter (S15)', () => {
-  it('locks the order row first and binds the charges to the same transaction, with room for a Mercado Pago call', async () => {
+  it('locks the order row first and binds the charges to the same short transaction (no Mercado Pago call inside, S18)', async () => {
     const calls: string[] = [];
     const tx = {
       $queryRaw: jest.fn(async (sql: TemplateStringsArray) => { calls.push(sql.join('?')); return []; }),
@@ -65,6 +86,6 @@ describe('PrismaQrChargeUnitOfWorkAdapter (S15)', () => {
     expect(calls[0]).toMatch(/SELECT id FROM orders WHERE id = \? AND "businessId" = \? FOR UPDATE/);
     expect(tx.$queryRaw.mock.calls[0].slice(1)).toEqual(['order-1', 'biz-A']);
     expect(calls[1]).toBe('qrCharge.findFirst');
-    expect($transaction).toHaveBeenCalledWith(expect.any(Function), { maxWait: 10_000, timeout: 30_000 });
+    expect($transaction).toHaveBeenCalledWith(expect.any(Function));
   });
 });

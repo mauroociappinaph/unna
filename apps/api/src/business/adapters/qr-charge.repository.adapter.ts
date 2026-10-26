@@ -26,6 +26,11 @@ export class PrismaQrChargeRepositoryAdapter implements QrChargeRepositoryPort {
     return rows.map(toRecord);
   }
 
+  async findCreatingByOrder(businessId: string, orderId: string): Promise<QrChargeRecord | null> {
+    const row = await this.db.qrCharge.findFirst({ where: { businessId, orderId, status: 'creating' } });
+    return row ? toRecord(row) : null;
+  }
+
   async create(charge: QrChargeRecord): Promise<void> {
     await this.db.qrCharge.create({ data: charge });
   }
@@ -35,6 +40,14 @@ export class PrismaQrChargeRepositoryAdapter implements QrChargeRepositoryPort {
     await this.db.qrCharge.updateMany({
       where: { id: charge.id, businessId: charge.businessId },
       data: { status, mpPaymentId, paidAt, paymentId, paymentError },
+    });
+  }
+
+  async complete(charge: QrChargeRecord): Promise<void> {
+    const { status, mpOrderId, qrData, expiresAt } = charge;
+    await this.db.qrCharge.updateMany({
+      where: { id: charge.id, businessId: charge.businessId, status: 'creating' },
+      data: { status, mpOrderId, qrData, expiresAt },
     });
   }
 }

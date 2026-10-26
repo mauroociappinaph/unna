@@ -1,6 +1,7 @@
 import {
   MERCADOPAGO_PROVISIONING_STALE_MS,
   QR_CHARGE_EXPIRATION,
+  QR_CHARGE_RESERVATION_STALE_MS,
   QR_CHARGE_TTL_MS,
   qrChargeExternalReference,
   qrChargeStatusFor,
@@ -14,6 +15,10 @@ describe('QR charge rules (S15)', () => {
 
   it('considers a provisioning claim abandoned after 2 minutes', () => {
     expect(MERCADOPAGO_PROVISIONING_STALE_MS).toBe(2 * 60 * 1000);
+  });
+
+  it('considers a charge reservation abandoned after 2 minutes (S18)', () => {
+    expect(QR_CHARGE_RESERVATION_STALE_MS).toBe(2 * 60 * 1000);
   });
 
   describe('external reference', () => {

@@ -2,12 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   NotFoundError,
   BusinessRepositoryPort,
-  FiscalAuthorizationRequest,
-  FiscalAuthorizationResult,
   FiscalAuthorizerPort,
   FiscalDocument,
-  FiscalReceiptType,
-  LockedReceiptIssue,
   Order,
   OrderRepositoryPort,
   Page,
@@ -16,22 +12,15 @@ import {
   ReceiptIssueUnitOfWorkPort,
   ReceiptRepositoryPort,
   ReceiptSummary,
-  buildArcaQrUrl,
-  receiverVatCondition,
   resolveFiscalDocument,
 } from '@unna/domain';
 import { pageOrInvalidCursor } from './page-result';
+import { Issuer, ReceiptIssueLease } from './receipt-issue-lease';
+
+export { FiscalAuthorizerUnavailableError } from './receipt-issue-lease';
 
 export const RECEIPT_TYPES = ['ticket', 'A', 'B', 'C'] as const;
 export type IssuableReceiptType = (typeof RECEIPT_TYPES)[number];
-
-/** ARCA did not answer: the receipt stays a retriable draft. Mapped to 503, not to a client error. */
-export class FiscalAuthorizerUnavailableError extends Error {
-  constructor() {
-    super('ARCA no está disponible en este momento; el comprobante quedó en borrador y podés reintentarlo');
-    this.name = 'FiscalAuthorizerUnavailableError';
-  }
-}
 
 interface Result<T> {
   ok: boolean;
@@ -53,26 +42,25 @@ export interface IssueReceiptCommand {
   customerCondition?: string;
 }
 
-/** The business data a fiscal receipt needs from ARCA's point of view. */
-interface Issuer {
-  cuit: string;
-  pointOfSale: string;
-}
-
 @Injectable()
 export class InvoicingUseCase {
+  private readonly issues: ReceiptIssueLease;
+
   constructor(
     @Inject('OrderRepositoryPort') private readonly orders: OrderRepositoryPort,
     @Inject('ReceiptRepositoryPort') private readonly receipts: ReceiptRepositoryPort,
     @Inject('BusinessRepositoryPort') private readonly businesses: BusinessRepositoryPort,
-    @Inject('ReceiptIssueUnitOfWorkPort') private readonly unitOfWork: ReceiptIssueUnitOfWorkPort,
-    @Inject('FiscalAuthorizerPort') private readonly authorizer: FiscalAuthorizerPort,
-  ) {}
+    @Inject('ReceiptIssueUnitOfWorkPort') unitOfWork: ReceiptIssueUnitOfWorkPort,
+    @Inject('FiscalAuthorizerPort') authorizer: FiscalAuthorizerPort,
+  ) {
+    this.issues = new ReceiptIssueLease(unitOfWork, authorizer);
+  }
 
   /**
    * Issues the receipt of a paid order. Tickets take the next number of their own sequence; A/B/C
-   * are authorized by ARCA under the lock of their sequence and keep the number ARCA approved.
-   * When ARCA rejects or fails, the receipt stays a draft without a number and a retry reuses it.
+   * are authorized by ARCA, without locks held, under the lease of their sequence and keep the
+   * number ARCA approved (ReceiptIssueLease, S18). When ARCA rejects or fails, the receipt stays a
+   * draft without a number and a retry reuses it.
    */
   async issueReceipt(businessId: string, orderId: string, command: IssueReceiptCommand): Promise<Result<Receipt>> {
     if (!isOneOf(RECEIPT_TYPES, command.type)) return fail('Tipo de comprobante inválido');
@@ -99,11 +87,8 @@ export class InvoicingUseCase {
     }
 
     const scope = { businessId, orderId: order.id, pointOfSale: issuer.pointOfSale, receiptType: type };
-    return this.unitOfWork.withIssueLock(scope, async (locked) => {
-      const existing = await locked.receipts.findByOrderId(order.id);
-      if (existing.some((r) => r.status === 'issued')) return fail<Receipt>('El pedido ya tiene un comprobante');
-
-      const draft = Receipt.create({
+    return this.issues.issue(scope, issuer, (previous) =>
+      Receipt.create({
         businessId,
         sucursalId: order.sucursalId,
         type,
@@ -120,18 +105,9 @@ export class InvoicingUseCase {
         docNumber: document?.docNumber,
         discountAmount: order.discountAmount,
         items: this.receiptLines(order),
-        replaces: existing.find((r) => r.status === 'draft'),
-      });
-
-      if (type === 'ticket') {
-        const number = (await locked.sequence.lastNumber()) + 1;
-        await locked.sequence.advanceTo(number);
-        const ticket = draft.issueTicket(number);
-        await locked.receipts.save(ticket);
-        return ok(ticket);
-      }
-      return this.authorize(draft, type, issuer, locked);
-    });
+        replaces: previous,
+      }),
+    );
   }
 
   async getReceipt(businessId: string, receiptId: string): Promise<Result<Receipt>> {
@@ -142,76 +118,6 @@ export class InvoicingUseCase {
   /** Newest first, without the items (each receipt carries its itemCount). */
   async listReceipts(businessId: string, page: PageRequest): Promise<Result<Page<ReceiptSummary>>> {
     return pageOrInvalidCursor(await this.receipts.findPageByBusinessId(businessId, page));
-  }
-
-  /** Runs under the sequence lock: the number advances only when ARCA approves it, so there are no gaps. */
-  private async authorize(draft: Receipt, type: FiscalReceiptType, issuer: Issuer, locked: LockedReceiptIssue): Promise<Result<Receipt>> {
-    const pointOfSale = Number(issuer.pointOfSale);
-    let lastAuthorized: number;
-    try {
-      lastAuthorized = await this.authorizer.lastAuthorizedNumber(issuer.cuit, pointOfSale, type);
-    } catch (error) {
-      return this.keepRetriableDraft(draft, error, locked);
-    }
-
-    const request: FiscalAuthorizationRequest = {
-      issuerCuit: issuer.cuit,
-      pointOfSale,
-      receiptType: type,
-      number: Math.max(await locked.sequence.lastNumber(), lastAuthorized) + 1,
-      issueDate: new Date(),
-      concept: 1,
-      docType: draft.docType!,
-      docNumber: draft.docNumber!,
-      receiverVatCondition: receiverVatCondition(type, draft.customerCondition),
-      netAmount: draft.netAmount.toCents(),
-      exemptAmount: 0,
-      ivaAmount: draft.ivaAmount.toCents(),
-      totalAmount: draft.totalAmount.toCents(),
-      ivaBreakdown: draft.ivaBreakdown,
-      currency: 'PES',
-    };
-    const requested = draft.setCaeRequest(JSON.stringify(request));
-
-    let result: FiscalAuthorizationResult;
-    try {
-      result = await this.authorizer.authorize(request);
-    } catch (error) {
-      return this.keepRetriableDraft(requested, error, locked);
-    }
-
-    if (!result.approved) {
-      const message = `ARCA rechazó el comprobante: ${result.errors.map((e) => `${e.code} - ${e.message}`).join('; ')}`;
-      await locked.receipts.save(requested.failAuthorization(message));
-      return fail(message);
-    }
-
-    await locked.sequence.advanceTo(result.number);
-    const issued = requested.authorize({
-      number: result.number,
-      cae: result.cae,
-      caeExpiration: result.caeExpiration,
-      caeResponse: result.raw,
-      qrCode: buildArcaQrUrl({
-        issueDate: request.issueDate,
-        issuerCuit: issuer.cuit,
-        pointOfSale,
-        receiptType: type,
-        number: result.number,
-        totalAmount: request.totalAmount,
-        docType: request.docType,
-        docNumber: request.docNumber,
-        cae: result.cae,
-      }),
-    });
-    await locked.receipts.save(issued);
-    return ok(issued);
-  }
-
-  /** ARCA did not answer (timeout, outage): keep the draft without a number so the cashier can retry. */
-  private async keepRetriableDraft(draft: Receipt, error: unknown, locked: LockedReceiptIssue): Promise<Result<Receipt>> {
-    await locked.receipts.save(draft.failAuthorization(`ARCA no respondió: ${(error as Error).message}`));
-    return { ok: false, error: new FiscalAuthorizerUnavailableError() };
   }
 
   private receiptLines(order: Order): Parameters<typeof Receipt.create>[0]['items'] {

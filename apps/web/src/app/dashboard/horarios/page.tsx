@@ -169,7 +169,7 @@ function HorariosContent() {
                   href={`/dashboard/horarios?sucursal=${sucursal.id}`}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedSucursal === sucursal.id
-                      ? 'bg-unna-green text-white'
+                      ? 'bg-unna-green-dark text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -180,7 +180,7 @@ function HorariosContent() {
                 href="/dashboard/horarios?sucursal=main"
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   selectedSucursal === 'main'
-                    ? 'bg-unna-green text-white'
+                    ? 'bg-unna-green-dark text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >

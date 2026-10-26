@@ -183,7 +183,7 @@ export function Step4Confirmacion({ data, onSubmit, isSubmitting, submitError, s
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                      sucursal.isMain ? 'bg-unna-green text-white' : 'bg-gray-100 text-gray-600'
+                      sucursal.isMain ? 'bg-unna-green-dark text-white' : 'bg-gray-100 text-gray-600'
                     }`}>
                       {sucursal.isMain ? '🏠' : index + 1}
                     </span>

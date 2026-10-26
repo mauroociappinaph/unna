@@ -41,7 +41,17 @@ describe('HomePage (landing for take-away cafés)', () => {
     expect(within(available).queryByText(/Próximamente/)).not.toBeInTheDocument();
   });
 
-  it.each([/ARCA/, /caja y turnos/i, /pedido anticipado/i, /tarjeta de sellos/i])(
+  it.each([/ARCA/, /caja y turnos/i, /QR de Mercado Pago/i, /modo hora pico/i, /pantalla de pedidos/i])(
+    'lists the shipped feature %s under "Disponible hoy" (S19)',
+    (feature) => {
+      render(<HomePage />);
+
+      expect(within(screen.getByRole('region', { name: 'Disponible hoy' })).getByText(feature)).toBeInTheDocument();
+      expect(within(screen.getByRole('region', { name: 'Próximamente' })).queryByText(feature)).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([/pedido anticipado/i, /tarjeta de sellos/i, /costo por taza/i])(
     'labels the planned feature %s as "Próximamente"',
     (feature) => {
       render(<HomePage />);

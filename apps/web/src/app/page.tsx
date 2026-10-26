@@ -37,28 +37,32 @@ const availableFeatures = [
     title: 'Varias sucursales',
     desc: 'Cada local con sus datos y sus horarios de atención.',
   },
+  {
+    title: 'Facturación electrónica ARCA',
+    desc: 'Factura A, B o C desde el mismo cobro, con numeración correlativa y el QR fiscal.',
+  },
+  {
+    title: 'Caja y turnos',
+    desc: 'Apertura, movimientos y cierre con lo esperado contra lo declarado, por medio de pago.',
+  },
+  {
+    title: 'Cobro con QR de Mercado Pago',
+    desc: 'Conectás tu cuenta, el cliente escanea el QR de la caja o de la pantalla y el pago queda registrado solo.',
+  },
+  {
+    title: 'Modo hora pico',
+    desc: 'Favoritos, repetir el último pedido y atajos de teclado para vender en pocos toques.',
+  },
+  {
+    title: 'Pantalla de pedidos',
+    desc: 'La barra ve qué preparar y una pantalla para tus clientes muestra qué pedidos están listos.',
+  },
 ];
 
 const upcomingFeatures = [
   {
-    title: 'Facturación electrónica ARCA',
-    desc: 'La factura sale en el mismo cobro, sin pasos extra en el mostrador.',
-  },
-  {
-    title: 'Caja y turnos',
-    desc: 'Apertura, cierre y arqueo por turno.',
-  },
-  {
-    title: 'Cobro con QR de Mercado Pago integrado',
-    desc: 'El cliente escanea, paga y el pedido queda cobrado solo.',
-  },
-  {
-    title: 'Modo hora pico',
-    desc: 'Favoritos, repetir el último pedido y teclado para vender en pocos toques.',
-  },
-  {
     title: 'Pedido anticipado',
-    desc: 'El cliente pide en el camino y recibe el aviso de "tu café está listo".',
+    desc: 'El cliente pide y paga desde el celular, y sigue su pedido hasta que está listo.',
   },
   {
     title: 'Tarjeta de sellos',

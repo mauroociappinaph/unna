@@ -20,10 +20,20 @@ describe('Mercado Pago simulator route (S15)', () => {
       expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'production' })).toEqual([]);
       expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'development', MP_CLIENT_ID: 'id', MP_CLIENT_SECRET: 'secret' })).toEqual([]);
     });
+
+    it('is registered in production with UNNA_ENV=staging (S16)', () => {
+      expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'production', UNNA_ENV: 'staging' })).toEqual([MercadoPagoSimulatorController, MercadoPagoSimulatorOwnerController]);
+      expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'production', UNNA_ENV: 'staging', MP_CLIENT_ID: 'id', MP_CLIENT_SECRET: 'secret' })).toEqual([]);
+    });
+
+    it.each(['Staging', 'prod', ''])('is not registered in production with UNNA_ENV=%p (S16)', (unnaEnv) => {
+      expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'production', UNNA_ENV: unnaEnv })).toEqual([]);
+    });
   });
 
   describe('HTTP', () => {
     const OLD_ENV = process.env.NODE_ENV;
+    const OLD_UNNA_ENV = process.env.UNNA_ENV;
     let app: INestApplication | undefined;
     const syncByMpOrderId = jest.fn();
 
@@ -40,10 +50,13 @@ describe('Mercado Pago simulator route (S15)', () => {
 
     beforeEach(() => {
       process.env.NODE_ENV = 'test';
+      delete process.env.UNNA_ENV;
       syncByMpOrderId.mockReset();
     });
     afterEach(async () => {
       process.env.NODE_ENV = OLD_ENV;
+      if (OLD_UNNA_ENV === undefined) delete process.env.UNNA_ENV;
+      else process.env.UNNA_ENV = OLD_UNNA_ENV;
       await app?.close();
       app = undefined;
     });
@@ -86,6 +99,34 @@ describe('Mercado Pago simulator route (S15)', () => {
 
       expect((await pay(order.id)).status).toBe(404);
       expect((await simulator.getOrder('', order.id)).status).toBe('created');
+    });
+
+    it('pays a simulated order in production with UNNA_ENV=staging (S16)', async () => {
+      const simulator = new MercadoPagoSimulatorAdapter('http://localhost/cb');
+      const order = await simulator.createQrOrder('', { externalReference: 'r', externalPosId: 'p', amount: 1, description: 'd', expirationTime: 'PT15M', idempotencyKey: 'k' });
+      syncByMpOrderId.mockResolvedValue({ ...CHARGE, mpOrderId: order.id });
+      const staging = { NODE_ENV: 'production', UNNA_ENV: 'staging' };
+      // Only the buyer route: the owner route needs the auth guards' providers (covered in its own spec).
+      await start(simulator, mercadoPagoSimulatorControllers(staging).slice(0, 1));
+      Object.assign(process.env, staging);
+
+      const response = await pay(order.id);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({ id: 'charge-1', status: 'paid' });
+      expect((await simulator.getOrder('', order.id)).status).toBe('processed');
+      expect(syncByMpOrderId).toHaveBeenCalledWith(order.id);
+    });
+
+    it.each(['Staging', 'prod'])('answers 404 in production with UNNA_ENV=%p even with the simulator (S16)', async (unnaEnv) => {
+      const simulator = new MercadoPagoSimulatorAdapter('http://localhost/cb');
+      const order = await simulator.createQrOrder('', { externalReference: 'r', externalPosId: 'p', amount: 1, description: 'd', expirationTime: 'PT15M', idempotencyKey: 'k' });
+      await start(simulator);
+      Object.assign(process.env, { NODE_ENV: 'production', UNNA_ENV: unnaEnv });
+
+      expect((await pay(order.id)).status).toBe(404);
+      expect((await simulator.getOrder('', order.id)).status).toBe('created');
+      expect(syncByMpOrderId).not.toHaveBeenCalled();
     });
 
     it('does not exist when the module is built for production', async () => {

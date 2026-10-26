@@ -14,6 +14,20 @@ describe('mercadoPagoGatewayFactory (S15)', () => {
     );
   });
 
+  it.each(['Staging', 'prod', ''])('still refuses the simulator in production with UNNA_ENV=%p (S16)', (unnaEnv) => {
+    expect(() => mercadoPagoGatewayFactory({ NODE_ENV: 'production', UNNA_ENV: unnaEnv })).toThrow(
+      'Mercado Pago no configurado: el simulador de Mercado Pago no puede usarse en producción',
+    );
+  });
+
+  it('uses the simulator in production with UNNA_ENV=staging and no credentials (S16)', () => {
+    expect(mercadoPagoGatewayFactory({ NODE_ENV: 'production', UNNA_ENV: 'staging' })).toBeInstanceOf(MercadoPagoSimulatorAdapter);
+  });
+
+  it('keeps the real adapter in staging when the credentials are set (S16)', () => {
+    expect(mercadoPagoGatewayFactory({ ...credentials, NODE_ENV: 'production', UNNA_ENV: 'staging' })).toBeInstanceOf(MercadoPagoHttpAdapter);
+  });
+
   it.each(['development', 'test', undefined])('uses the simulator when NODE_ENV is %p and there are no credentials', (nodeEnv) => {
     expect(mercadoPagoGatewayFactory({ NODE_ENV: nodeEnv })).toBeInstanceOf(MercadoPagoSimulatorAdapter);
     expect(mercadoPagoGatewayFactory({ NODE_ENV: nodeEnv, MP_CLIENT_ID: '123', MP_CLIENT_SECRET: '  ' })).toBeInstanceOf(MercadoPagoSimulatorAdapter);

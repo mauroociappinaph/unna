@@ -3,6 +3,7 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import type { MercadoPagoGatewayPort, QrChargeRepositoryPort } from '@unna/domain';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
+import { simulatorsAllowed } from '../common/runtime-env';
 import { isMercadoPagoConfigured } from './adapters/mercadopago/mercadopago.config';
 import { MercadoPagoSimulatorAdapter } from './adapters/mercadopago/mercadopago-simulator.adapter';
 import { QrChargeSync } from './use-cases/qr-charge-sync';
@@ -12,9 +13,9 @@ const NOT_PAYABLE = 'Orden simulada no encontrada o ya no está pendiente';
 
 /**
  * Development only (S15): plays the buyer paying a simulated QR order, then runs the same sync as
- * the webhook. Registered only when the simulator is wired outside production
+ * the webhook. Registered only when the simulator is wired outside production or in staging
  * (mercadoPagoSimulatorControllers); it also answers 404 if it ever runs with the real gateway or
- * in production.
+ * in production without staging.
  */
 @ApiExcludeController()
 @Controller('mercadopago/simulator')
@@ -56,7 +57,7 @@ export class MercadoPagoSimulatorOwnerController {
 }
 
 function assertSimulator(gateway: MercadoPagoGatewayPort): asserts gateway is MercadoPagoSimulatorAdapter {
-  if (!(gateway instanceof MercadoPagoSimulatorAdapter) || process.env.NODE_ENV === 'production') {
+  if (!(gateway instanceof MercadoPagoSimulatorAdapter) || !simulatorsAllowed()) {
     throw new NotFoundException();
   }
 }
@@ -69,7 +70,7 @@ async function paySimulatedOrder(gateway: MercadoPagoGatewayPort, sync: QrCharge
   return toQrChargeView(charge);
 }
 
-/** The simulator routes exist only with the simulator (no MP_CLIENT_ID/SECRET) outside production. */
+/** The simulator routes exist only with the simulator (no MP_CLIENT_ID/SECRET) outside production or in staging. */
 export function mercadoPagoSimulatorControllers(env: NodeJS.ProcessEnv = process.env): Type[] {
-  return !isMercadoPagoConfigured(env) && env.NODE_ENV !== 'production' ? [MercadoPagoSimulatorController, MercadoPagoSimulatorOwnerController] : [];
+  return !isMercadoPagoConfigured(env) && simulatorsAllowed(env) ? [MercadoPagoSimulatorController, MercadoPagoSimulatorOwnerController] : [];
 }

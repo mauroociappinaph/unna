@@ -1,3 +1,5 @@
+# Local development: dev servers with bind mounts (Dockerfile.dev in each app).
+# Production images are apps/*/Dockerfile, built from the repo root (see docs/deploy/README.md).
 services:
   postgres:
     image: postgres:16-alpine
@@ -19,7 +21,7 @@ services:
   api:
     build:
       context: ./apps/api
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: unna-api
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/unna?schema=public
@@ -42,7 +44,7 @@ services:
   web:
     build:
       context: ./apps/web
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: unna-web
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001

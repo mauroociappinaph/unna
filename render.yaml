@@ -1,0 +1,49 @@
+# Render Blueprint for the UNNA staging environment (free plan). Guide: docs/deploy/README.md
+# Spec: https://render.com/docs/blueprint-spec
+# Values with `sync: false` are secrets: Render asks for them only when the Blueprint is first applied.
+# Render passes every env var to the Docker build as a build arg (https://render.com/docs/docker),
+# so the web picks up NEXT_PUBLIC_* at build time. The API Dockerfile declares no ARG for secrets.
+services:
+  - type: web
+    name: unna-api
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    # Swagger UI: an existing route that answers 200 once Nest is listening.
+    healthCheckPath: /api/docs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: UNNA_ENV
+        value: staging
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MP_TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+  - type: web
+    name: unna-web
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_UNNA_ENV
+        value: staging
+      - key: NEXT_PUBLIC_API_URL
+        sync: false

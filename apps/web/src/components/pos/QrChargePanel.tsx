@@ -37,7 +37,7 @@ const formatCountdown = (seconds: number) =>
 
 /** "Cobrar con QR": Mercado Pago QR on screen for the pending balance (S15). */
 export function QrChargePanel({ businessId, orderId, remaining, disabled, onPaid }: QrChargePanelProps) {
-  const { charge, error, busy, start, cancel } = useQrCharge({ businessId, orderId, onPaid });
+  const { charge, error, busy, start, cancel, simulatePayment } = useQrCharge({ businessId, orderId, onPaid });
   const pending = charge?.status === 'pending';
   const secondsLeft = useSecondsLeft(charge?.expiresAt, pending);
 
@@ -68,7 +68,13 @@ export function QrChargePanel({ businessId, orderId, remaining, disabled, onPaid
           <p className="text-sm text-gray-600">
             Mostrale este QR al cliente; también puede escanear el QR impreso de la caja.
           </p>
-          <Button variant="outline" size="sm" disabled={busy} onClick={cancel}>Cancelar</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={busy} onClick={cancel}>Cancelar</Button>
+            {charge.simulated && (
+              <Button variant="secondary" size="sm" disabled={busy} onClick={simulatePayment}>Simular pago</Button>
+            )}
+          </div>
+          {charge.simulated && <p className="text-xs text-gray-500">Modo de prueba: Mercado Pago simulado.</p>}
         </div>
       )}
 

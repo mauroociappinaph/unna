@@ -2,7 +2,7 @@ import { INestApplication, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { MercadoPagoGatewayPort } from '@unna/domain';
-import { MercadoPagoSimulatorController, mercadoPagoSimulatorControllers } from '../mercadopago-simulator.controller';
+import { MercadoPagoSimulatorController, MercadoPagoSimulatorOwnerController, mercadoPagoSimulatorControllers } from '../mercadopago-simulator.controller';
 import { MercadoPagoSimulatorAdapter } from '../adapters/mercadopago/mercadopago-simulator.adapter';
 import { MercadoPagoHttpAdapter } from '../adapters/mercadopago/mercadopago-http.adapter';
 import { QrChargeSync } from '../use-cases/qr-charge-sync';
@@ -16,7 +16,7 @@ const CHARGE = {
 describe('Mercado Pago simulator route (S15)', () => {
   describe('registration', () => {
     it('is registered only for the simulator outside production', () => {
-      expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'development' })).toEqual([MercadoPagoSimulatorController]);
+      expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'development' })).toEqual([MercadoPagoSimulatorController, MercadoPagoSimulatorOwnerController]);
       expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'production' })).toEqual([]);
       expect(mercadoPagoSimulatorControllers({ NODE_ENV: 'development', MP_CLIENT_ID: 'id', MP_CLIENT_SECRET: 'secret' })).toEqual([]);
     });

@@ -34,5 +34,10 @@ export function createMercadoPagoApi(client: AxiosInstance) {
     async cancelQrCharge(businessId: string, chargeId: string): Promise<QrCharge> {
       return (await client.delete(`/businesses/${businessId}/qr-charges/${chargeId}`)).data;
     },
+
+    /** Simulator only (never in production): plays the customer paying the QR. */
+    async simulateQrPayment(businessId: string, chargeId: string): Promise<QrCharge> {
+      return (await client.post(`/mercadopago/simulator/businesses/${businessId}/qr-charges/${chargeId}/pay`)).data;
+    },
   };
 }

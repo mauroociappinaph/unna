@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../../common/guards/business-owner.guard';
 import type { QrChargeUseCase } from '../use-cases/qr-charge.use-case';
 import { fake } from '../use-cases/__tests__/test-doubles';
+import { MercadoPagoSimulatorAdapter } from '../adapters/mercadopago/mercadopago-simulator.adapter';
+import { MercadoPagoHttpAdapter } from '../adapters/mercadopago/mercadopago-http.adapter';
 
 const VIEW = { id: 'charge-1', orderId: 'order-1', amount: 100, status: 'pending', qrData: 'qr', expiresAt: 'x', paidAt: null, paymentRegistered: false, paymentError: null };
 
@@ -19,14 +21,22 @@ describe('QrChargeController (S15)', () => {
       get: jest.fn(async () => ({ ok: true, value: VIEW })),
       cancel: jest.fn(async () => ({ ok: true, value: { ...VIEW, status: 'cancelled' } })),
     };
-    const controller = new QrChargeController(fake<QrChargeUseCase>(qrCharges));
+    const controller = new QrChargeController(fake<QrChargeUseCase>(qrCharges), new MercadoPagoHttpAdapter({ clientId: 'id', clientSecret: 's', redirectUri: 'https://x/cb' }, jest.fn()));
 
-    await expect(controller.create('biz-A', 'order-1')).resolves.toEqual(VIEW);
-    await expect(controller.get('biz-A', 'charge-1')).resolves.toEqual(VIEW);
+    await expect(controller.create('biz-A', 'order-1')).resolves.toEqual({ ...VIEW, simulated: false });
+    await expect(controller.get('biz-A', 'charge-1')).resolves.toEqual({ ...VIEW, simulated: false });
     await expect(controller.cancel('biz-A', 'charge-1')).resolves.toMatchObject({ status: 'cancelled' });
     expect(qrCharges.create).toHaveBeenCalledWith('biz-A', 'order-1');
     expect(qrCharges.get).toHaveBeenCalledWith('biz-A', 'charge-1');
     expect(qrCharges.cancel).toHaveBeenCalledWith('biz-A', 'charge-1');
     expect(Reflect.getMetadata(HTTP_CODE_METADATA, QrChargeController.prototype.cancel)).toBe(200);
+  });
+
+  it('tells the POS when the simulator is wired, so it can offer a simulated payment', async () => {
+    const qrCharges = { create: jest.fn(async () => ({ ok: true, value: VIEW })), get: jest.fn(async () => ({ ok: true, value: VIEW })), cancel: jest.fn() };
+    const controller = new QrChargeController(fake<QrChargeUseCase>(qrCharges), new MercadoPagoSimulatorAdapter('http://localhost/cb'));
+
+    await expect(controller.create('biz-A', 'order-1')).resolves.toMatchObject({ simulated: true });
+    await expect(controller.get('biz-A', 'charge-1')).resolves.toMatchObject({ simulated: true });
   });
 });

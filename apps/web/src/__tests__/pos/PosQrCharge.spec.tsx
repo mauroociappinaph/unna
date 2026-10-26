@@ -28,6 +28,7 @@ jest.mock('@/lib/api', () => ({
     createQrCharge: jest.fn(),
     getQrCharge: jest.fn(),
     cancelQrCharge: jest.fn(),
+    simulateQrPayment: jest.fn(),
   },
 }));
 
@@ -218,5 +219,24 @@ describe('POS QR charge', () => {
     expect(await within(qrRegion()).findByRole('alert')).toHaveTextContent(message);
     expect(screen.getByRole('button', { name: 'Cobrar con QR' })).toBeEnabled();
     expect(mocked.getQrCharge).not.toHaveBeenCalled();
+  });
+
+  it('offers "Simular pago" only while the Mercado Pago simulator is wired, and pays through it', async () => {
+    mocked.createQrCharge.mockResolvedValue({ ...pending, simulated: true });
+    mocked.simulateQrPayment.mockResolvedValue({ ...pending, status: 'paid', paidAt: NOW.toISOString(), simulated: true });
+    mocked.listPayments.mockResolvedValue([]);
+    const { user } = await startQr();
+
+    mocked.listPayments.mockResolvedValue([qrPayment]);
+    await user.click(within(qrRegion()).getByRole('button', { name: 'Simular pago' }));
+
+    expect(mocked.simulateQrPayment).toHaveBeenCalledWith('biz-1', 'qr-1');
+    expect(await within(qrRegion()).findByRole('status')).toHaveTextContent('Pago recibido');
+  });
+
+  it('does not offer "Simular pago" with the real Mercado Pago', async () => {
+    await startQr();
+
+    expect(within(qrRegion()).queryByRole('button', { name: 'Simular pago' })).not.toBeInTheDocument();
   });
 });

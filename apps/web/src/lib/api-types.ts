@@ -377,6 +377,8 @@ export interface QrCharge {
   qrData: string;
   expiresAt: string;
   paidAt?: string | null;
+  /** True while the API runs the Mercado Pago simulator: the POS may offer "Simular pago". */
+  simulated?: boolean;
 }
 
 /** Formats integer cents as Argentine pesos, e.g. 150000 -> "$ 1.500,00". */

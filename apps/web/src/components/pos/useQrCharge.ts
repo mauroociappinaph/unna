@@ -76,5 +76,14 @@ export function useQrCharge({ businessId, orderId, onPaid }: Options) {
     }, 'No se pudo cancelar el cobro QR');
   };
 
-  return { charge, error, busy, start, cancel };
+  const simulatePayment = () => {
+    if (!chargeId) return;
+    run(async (id) => {
+      const paid = await api.simulateQrPayment(id, chargeId);
+      setCharge(paid);
+      if (paid.status === 'paid') onPaidRef.current();
+    }, 'No se pudo simular el pago');
+  };
+
+  return { charge, error, busy, start, cancel, simulatePayment };
 }

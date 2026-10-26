@@ -55,6 +55,13 @@ describe('Tracking page', () => {
     expect(currentStep()).toHaveTextContent('Recibido');
   });
 
+  it('heads the page with the café name and the sucursal', async () => {
+    renderPage();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Café Lunes' })).toBeInTheDocument();
+    expect(screen.getAllByText(/Palermo/).length).toBeGreaterThan(0);
+  });
+
   it.each<[TrackingStatus, string]>([
     ['awaiting_payment', 'Pago pendiente'],
     ['received', 'Recibido'],

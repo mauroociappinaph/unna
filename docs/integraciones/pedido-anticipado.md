@@ -36,7 +36,7 @@ Owner routes: JWT + `BusinessOwnerGuard`; amounts in cents.
 | `DELETE /businesses/:id/sucursales/:sucursalId/pedido-anticipado` | Disable. 204 |
 | `GET /public/pedido/:slug` | `{ businessName, sucursalName, accepting: boolean, reason: string \| null, estimatedMinutes: number, categories: [{ id, name }], products: [{ id, name, description \| null, price, categoryId \| null, imageUrl \| null, modifierGroups: [{ id, name, minSelection, maxSelection, isRequired, options: [{ id, name, priceDelta }] }] }] }` |
 | `POST /public/pedido/:slug/checkouts` | Body `{ customerName (1..40 chars), items: [{ productId, quantity, modifiers?: [{ modifierGroupId, optionId }], notes? }] }`. 201 `{ trackingToken, checkoutUrl, total }` |
-| `GET /public/pedido/seguimiento/:trackingToken` | `{ status, orderNumber \| null, customerFirstName, sucursalName, total, items: [{ name, quantity }], estimatedMinutes \| null, updatedAt }` (syncs with Mercado Pago while `awaiting_payment`) |
+| `GET /public/pedido/seguimiento/:trackingToken` | `{ status, orderNumber \| null, customerFirstName, businessName, sucursalName, total, items: [{ name, quantity }], estimatedMinutes \| null, updatedAt }` (syncs with Mercado Pago while `awaiting_payment`) |
 | `GET /mercadopago/simulator/checkout/:mpOrderId` | Simulator only: marks paid, syncs, 302 to the success URL |
 
 Back URLs given to Mercado Pago: `${FRONTEND_URL}/pedido/seguimiento/<trackingToken>` for success, pending and failure.

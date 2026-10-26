@@ -67,6 +67,7 @@ export function tracking(overrides: Partial<OrderTracking> = {}): OrderTracking 
     status: 'received',
     orderNumber: '042',
     customerFirstName: 'Martina',
+    businessName: 'Café Lunes',
     sucursalName: 'Palermo',
     total: 460000,
     items: [

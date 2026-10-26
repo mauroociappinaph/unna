@@ -96,7 +96,7 @@ export function OrderTrackingView({ token }: { token: string }) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* The tracking reply has no café name; the sucursal is where the customer picks the order up. */}
-      <PublicOrderHeader businessName={tracking?.sucursalName} />
+      <PublicOrderHeader businessName={tracking?.businessName} sucursalName={tracking?.sucursalName} />
       <main className="mx-auto max-w-2xl px-4 py-6">
         {notFound ? (
           <p className="py-12 text-center text-lg font-semibold text-gray-900">{notFound}</p>

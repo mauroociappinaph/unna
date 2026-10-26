@@ -74,6 +74,7 @@ export interface OrderTracking {
   status: TrackingStatus;
   orderNumber: string | null;
   customerFirstName: string;
+  businessName: string;
   sucursalName: string;
   total: number;
   items: { name: string; quantity: number }[];

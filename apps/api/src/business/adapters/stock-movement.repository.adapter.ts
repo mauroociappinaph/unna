@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { StockMovement as StockMovementRecord } from '@prisma/client';
+import { Prisma, StockMovement as StockMovementRecord } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { StockMovementRepositoryPort, StockMovement } from '@unna/domain';
+import { Page, PageRequest, StockMovementListFilters, StockMovementRepositoryPort, StockMovement } from '@unna/domain';
+import { cursorFields, keysetPage, mapPage, NEWEST_FIRST, withinDates } from './keyset-page';
 
 @Injectable()
 export class PrismaStockMovementRepositoryAdapter implements StockMovementRepositoryPort {
@@ -26,22 +27,19 @@ export class PrismaStockMovementRepositoryAdapter implements StockMovementReposi
     });
   }
 
-  async findByProductId(productId: string): Promise<StockMovement[]> {
-    const records = await this.prisma.stockMovement.findMany({ where: { productId }, orderBy: { createdAt: 'desc' } });
-    return records.map((r) => this.toDomain(r));
-  }
+  async findPageByBusinessId(businessId: string, filters: StockMovementListFilters, page: PageRequest): Promise<Page<StockMovement> | null> {
+    const conditions: Prisma.StockMovementWhereInput[] = [{ businessId }];
+    if (filters.productId) conditions.push({ productId: filters.productId });
+    const createdAt = withinDates(filters.from, filters.to);
+    if (createdAt) conditions.push({ createdAt });
 
-  async findByBusinessId(businessId: string): Promise<StockMovement[]> {
-    const records = await this.prisma.stockMovement.findMany({ where: { businessId }, orderBy: { createdAt: 'desc' } });
-    return records.map((r) => this.toDomain(r));
-  }
-
-  async findByBusinessIdAndDateRange(businessId: string, from: Date, to: Date): Promise<StockMovement[]> {
-    const records = await this.prisma.stockMovement.findMany({
-      where: { businessId, createdAt: { gte: from, lte: to } },
-      orderBy: { createdAt: 'desc' },
-    });
-    return records.map((r) => this.toDomain(r));
+    const rows = await keysetPage(
+      page,
+      (id) => this.prisma.stockMovement.findFirst({ where: { id, businessId }, select: cursorFields }),
+      (after, take) =>
+        this.prisma.stockMovement.findMany({ where: { AND: after ? [...conditions, after] : conditions }, orderBy: NEWEST_FIRST, take }),
+    );
+    return mapPage(rows, (r) => this.toDomain(r));
   }
 
   private toDomain(r: StockMovementRecord): StockMovement {

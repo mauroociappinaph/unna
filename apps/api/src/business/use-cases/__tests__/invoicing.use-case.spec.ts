@@ -10,6 +10,7 @@ import {
   Receipt,
   ReceiptIssueScope,
   ReceiptIssueUnitOfWorkPort,
+  summarizeReceipt,
 } from '@unna/domain';
 import { fake } from './test-doubles';
 
@@ -125,7 +126,11 @@ const setup = (ivaCondition: IVACondition = 'responsable_inscripto', orders: Ord
     fake({ findByIdAndBusinessId: async (id: string, businessId: string) => orders.find((o) => o.id === id && o.businessId === businessId) ?? null }),
     fake({
       findByIdAndBusinessId: async (id: string, businessId: string) => store.receipts.find((r) => r.id === id && r.businessId === businessId) ?? null,
-      findByBusinessId: async (businessId: string) => store.receipts.filter((r) => r.businessId === businessId),
+      findPageByBusinessId: async (businessId: string) => ({
+        items: store.receipts
+          .filter((r) => r.businessId === businessId)
+          .map(({ items, ...fields }) => summarizeReceipt(fields, items.length)),
+      }),
     }),
     fake({ findById: async (id: string) => (id === business.id ? business : null) }),
     store.unitOfWork,
@@ -418,7 +423,8 @@ describe('InvoicingUseCase reads', () => {
 
     expect((await invoicing.getReceipt('biz-A', issued.value!.id)).value).toBe(issued.value);
     expect((await invoicing.getReceipt('biz-B', issued.value!.id)).error?.message).toBe('Comprobante no encontrado');
-    expect((await invoicing.listReceipts('biz-A')).value).toEqual([issued.value]);
-    expect((await invoicing.listReceipts('biz-B')).value).toEqual([]);
+    const { items, ...fields } = issued.value!;
+    expect((await invoicing.listReceipts('biz-A', { limit: 50 })).value).toEqual({ items: [summarizeReceipt(fields, items.length)] });
+    expect((await invoicing.listReceipts('biz-B', { limit: 50 })).value).toEqual({ items: [] });
   });
 });

@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Request, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 import { unwrap } from '../common/use-case-result';
+import { pageRequest, sendPage } from '../common/pagination';
 import { StockUseCase } from './use-cases/stock.use-case';
-import { AddStockDto, AdjustThresholdsDto, InitializeStockDto, RecordCountDto, RemoveStockDto } from './dto/stock.dto';
+import { AddStockDto, AdjustThresholdsDto, InitializeStockDto, ListStockMovementsQuery, RecordCountDto, RemoveStockDto } from './dto/stock.dto';
 import type { AuthenticatedRequest } from './authenticated-request';
 
 @ApiTags('Stock / Inventario')
@@ -38,18 +40,14 @@ export class StockController {
   }
 
   @Get('movements')
-  @ApiOperation({ summary: 'Listar movimientos de stock' })
-  async listMovements(
-    @Param('businessId') businessId: string,
-    @Query('productId') productId?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
-    return unwrap(this.stockUseCase.listMovements(businessId, {
-      productId,
-      from: from ? new Date(from) : undefined,
-      to: to ? new Date(to) : undefined,
-    }));
+  @ApiOperation({ summary: 'Listar movimientos de stock, más recientes primero; cursor siguiente en X-Next-Cursor' })
+  async listMovements(@Param('businessId') businessId: string, @Query() query: ListStockMovementsQuery, @Res({ passthrough: true }) res: Response) {
+    const filters = {
+      productId: query.productId,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+    };
+    return sendPage(res, unwrap(this.stockUseCase.listMovements(businessId, filters, pageRequest(query))));
   }
 
   @Get('level/:productId')

@@ -12,8 +12,13 @@ import {
   Address,
   Order,
   OrderItem,
+  OrderSummary,
   Money,
+  Page,
+  PageRequest,
+  CLOSED_ORDER_STATUSES,
 } from '@unna/domain';
+import { cursorFields, keysetPage, mapPage, NEWEST_FIRST, withinDates } from './keyset-page';
 
 const money = (cents: number) => Money.fromCents(cents, 'ARS');
 
@@ -31,7 +36,10 @@ export const inOpenTransaction: AtomicWrites = async (writes) => {
   for (const write of writes) await write;
 };
 
+type OrderRow = Prisma.OrderGetPayload<object>;
 type OrderRecord = Prisma.OrderGetPayload<{ include: { items: true } }>;
+/** The list counts the items instead of loading them (S17). */
+const withItemCount = { _count: { select: { items: true } } } satisfies Prisma.OrderInclude;
 type LineModifiers = OrderItem['modifiers'];
 
 class PrismaOrderRepository implements OrderRepositoryPort {
@@ -97,36 +105,26 @@ class PrismaOrderRepository implements OrderRepositoryPort {
     return record ? this.toDomain(record) : null;
   }
 
-  async findByBusinessId(businessId: string, filters: OrderListFilters = {}): Promise<Order[]> {
-    const records = await this.db.order.findMany({
-      where: {
-        businessId,
-        ...(filters.status ? { status: filters.status } : {}),
-        ...(filters.sucursalId ? { sucursalId: filters.sucursalId } : {}),
-        ...(filters.from || filters.to
-          ? { createdAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } }
-          : {}),
-      },
-      include: { items: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    return records.map((r) => this.toDomain(r));
+  async findPageByBusinessId(businessId: string, filters: OrderListFilters, page: PageRequest): Promise<Page<OrderSummary> | null> {
+    const conditions: Prisma.OrderWhereInput[] = [{ businessId }];
+    if (filters.status) conditions.push({ status: filters.status });
+    if (filters.open) conditions.push({ status: { notIn: [...CLOSED_ORDER_STATUSES] } });
+    if (filters.sucursalId) conditions.push({ sucursalId: filters.sucursalId });
+    const createdAt = withinDates(filters.from, filters.to);
+    if (createdAt) conditions.push({ createdAt });
+
+    const rows = await keysetPage(
+      page,
+      (id) => this.db.order.findFirst({ where: { id, businessId }, select: cursorFields }),
+      (after, take) =>
+        this.db.order.findMany({ where: { AND: after ? [...conditions, after] : conditions }, include: withItemCount, orderBy: NEWEST_FIRST, take }),
+    );
+    return mapPage(rows, (r) => ({ ...this.toFields(r), itemCount: r._count.items }));
   }
 
-  // Stored type, status and payment fields were written from the domain values, so they are valid members.
   private toDomain(r: OrderRecord): Order {
     return Order.reconstitute({
-      id: r.id,
-      businessId: r.businessId,
-      sucursalId: r.sucursalId,
-      orderNumber: r.orderNumber,
-      type: r.type as Order['type'],
-      status: r.status as Order['status'],
-      tableNumber: r.tableNumber ?? undefined,
-      customerName: r.customerName ?? undefined,
-      customerPhone: r.customerPhone ?? undefined,
-      customerEmail: r.customerEmail ?? undefined,
-      deliveryAddress: toAddress(r.deliveryAddress),
+      ...this.toFields(r),
       items: (r.items ?? []).map((i) =>
         OrderItem.reconstitute({
           id: i.id,
@@ -145,6 +143,23 @@ class PrismaOrderRepository implements OrderRepositoryPort {
           updatedAt: i.updatedAt,
         }),
       ),
+    });
+  }
+
+  // Stored type, status and payment fields were written from the domain values, so they are valid members.
+  private toFields(r: OrderRow): Omit<OrderSummary, 'itemCount'> {
+    return {
+      id: r.id,
+      businessId: r.businessId,
+      sucursalId: r.sucursalId,
+      orderNumber: r.orderNumber,
+      type: r.type as Order['type'],
+      status: r.status as Order['status'],
+      tableNumber: r.tableNumber ?? undefined,
+      customerName: r.customerName ?? undefined,
+      customerPhone: r.customerPhone ?? undefined,
+      customerEmail: r.customerEmail ?? undefined,
+      deliveryAddress: toAddress(r.deliveryAddress),
       subtotal: money(r.subtotal),
       taxAmount: money(r.taxAmount),
       discountAmount: money(r.discountAmount),
@@ -159,7 +174,7 @@ class PrismaOrderRepository implements OrderRepositoryPort {
       completedAt: r.completedAt ?? undefined,
       cancelledAt: r.cancelledAt ?? undefined,
       cancelledReason: r.cancelledReason ?? undefined,
-    });
+    };
   }
 }
 

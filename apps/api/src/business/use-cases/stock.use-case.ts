@@ -1,6 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { NotFoundError, StockLevelRepositoryPort, StockMovementRepositoryPort, ProductRepositoryPort, StockLevel, StockMovement, StockMovementType } from '@unna/domain';
+import {
+  NotFoundError,
+  Page,
+  PageRequest,
+  StockLevelRepositoryPort,
+  StockMovementListFilters,
+  StockMovementRepositoryPort,
+  ProductRepositoryPort,
+  StockLevel,
+  StockMovement,
+  StockMovementType,
+} from '@unna/domain';
 import { UseCaseResult } from '../../common/use-case-result';
+import { pageOrInvalidCursor } from './page-result';
 
 interface StockMovementInput {
   productId: string;
@@ -165,17 +177,12 @@ export class StockUseCase {
     return { ok: true, value: levels };
   }
 
-  async listMovements(businessId: string, filters?: { productId?: string; from?: Date; to?: Date }): Promise<UseCaseResult<StockMovement[]>> {
-    let movements: StockMovement[];
-    if (filters?.from && filters?.to) {
-      movements = await this.movementRepository.findByBusinessIdAndDateRange(businessId, filters.from, filters.to);
-    } else if (filters?.productId) {
+  /** Newest first; the product, from and to filters apply together. */
+  async listMovements(businessId: string, filters: StockMovementListFilters, page: PageRequest): Promise<UseCaseResult<Page<StockMovement>>> {
+    if (filters.productId) {
       const missing = await this.productMissing(filters.productId, businessId);
       if (missing) return missing;
-      movements = await this.movementRepository.findByProductId(filters.productId);
-    } else {
-      movements = await this.movementRepository.findByBusinessId(businessId);
     }
-    return { ok: true, value: movements };
+    return pageOrInvalidCursor(await this.movementRepository.findPageByBusinessId(businessId, filters, page));
   }
 }

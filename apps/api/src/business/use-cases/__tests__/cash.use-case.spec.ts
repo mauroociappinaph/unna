@@ -17,7 +17,11 @@ const cashStore = (initial: CashSession[] = [], payments: StoredPayment[] = []) 
       state.sessions.find((s) => s.businessId === businessId && s.sucursalId === sucursalId && s.isOpen) ?? null,
     findByIdAndBusinessId: async (id, businessId) =>
       state.sessions.find((s) => s.id === id && s.businessId === businessId) ?? null,
-    listByBusiness: async (businessId) => state.sessions.filter((s) => s.businessId === businessId),
+    findPageByBusiness: async (businessId) => ({
+      items: state.sessions
+        .filter((s) => s.businessId === businessId)
+        .map(({ movements, ...fields }) => ({ ...fields, movementCount: movements.length })),
+    }),
     findPaymentsBySession: async (sessionId) => payments.filter((p) => p.cashSessionId === sessionId),
     save: async (session) => {
       guard();
@@ -133,9 +137,10 @@ describe('CashUseCase', () => {
 
     it('lists the sessions of the business', async () => {
       const session = openSession();
-      const result = await cashFor(cashStore([session])).list('biz-A', {});
+      const result = await cashFor(cashStore([session])).list('biz-A', {}, { limit: 50 });
 
-      expect(result.value).toEqual([session]);
+      const { movements, ...fields } = session;
+      expect(result.value).toEqual({ items: [{ ...fields, movementCount: movements.length }] });
     });
   });
 

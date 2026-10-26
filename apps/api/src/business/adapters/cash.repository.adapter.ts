@@ -7,11 +7,18 @@ import {
   CashSessionListFilters,
   CashSessionPayment,
   CashSessionRepositoryPort,
+  CashSessionSummary,
   CashUnitOfWorkPort,
+  Page,
+  PageRequest,
 } from '@unna/domain';
 import { AtomicWrites, Db, inOpenTransaction } from './sales.repository.adapter';
+import { cursorFields, keysetPage, mapPage, NEWEST_FIRST, withinDates } from './keyset-page';
 
+type CashSessionRow = Prisma.CashSessionGetPayload<object>;
 type CashSessionRecord = Prisma.CashSessionGetPayload<{ include: { movements: true } }>;
+/** The list counts the movements instead of loading them (S17); the detail has them. */
+const withMovementCount = { _count: { select: { movements: true } } } satisfies Prisma.CashSessionInclude;
 
 const withMovements = { movements: { orderBy: { createdAt: 'asc' } } } satisfies Prisma.CashSessionInclude;
 
@@ -38,20 +45,25 @@ class PrismaCashSessionRepository implements CashSessionRepositoryPort {
     return record ? this.toDomain(record) : null;
   }
 
-  async listByBusiness(businessId: string, filters: CashSessionListFilters = {}): Promise<CashSession[]> {
-    const records = await this.db.cashSession.findMany({
-      where: {
-        businessId,
-        ...(filters.sucursalId ? { sucursalId: filters.sucursalId } : {}),
-        ...(filters.status ? { status: filters.status } : {}),
-        ...(filters.from || filters.to
-          ? { openedAt: { ...(filters.from ? { gte: filters.from } : {}), ...(filters.to ? { lte: filters.to } : {}) } }
-          : {}),
-      },
-      include: withMovements,
-      orderBy: { openedAt: 'desc' },
-    });
-    return records.map((r) => this.toDomain(r));
+  async findPageByBusiness(businessId: string, filters: CashSessionListFilters, page: PageRequest): Promise<Page<CashSessionSummary> | null> {
+    const conditions: Prisma.CashSessionWhereInput[] = [{ businessId }];
+    if (filters.sucursalId) conditions.push({ sucursalId: filters.sucursalId });
+    if (filters.status) conditions.push({ status: filters.status });
+    const openedAt = withinDates(filters.from, filters.to);
+    if (openedAt) conditions.push({ openedAt });
+
+    const rows = await keysetPage(
+      page,
+      (id) => this.db.cashSession.findFirst({ where: { id, businessId }, select: cursorFields }),
+      (after, take) =>
+        this.db.cashSession.findMany({
+          where: { AND: after ? [...conditions, after] : conditions },
+          include: withMovementCount,
+          orderBy: NEWEST_FIRST,
+          take,
+        }),
+    );
+    return mapPage(rows, (r) => ({ ...this.toFields(r), movementCount: r._count.movements }));
   }
 
   async findPaymentsBySession(sessionId: string): Promise<CashSessionPayment[]> {
@@ -92,16 +104,10 @@ class PrismaCashSessionRepository implements CashSessionRepositoryPort {
     ]);
   }
 
-  // Stored status and movement types were written from the domain values, so they are valid members.
+  // Stored movement types were written from the domain values, so they are valid members.
   private toDomain(r: CashSessionRecord): CashSession {
     return CashSession.reconstitute({
-      id: r.id,
-      businessId: r.businessId,
-      sucursalId: r.sucursalId,
-      status: r.status as CashSession['status'],
-      openedBy: r.openedBy,
-      openedAt: r.openedAt,
-      openingAmount: r.openingAmount,
+      ...this.toFields(r),
       movements: r.movements.map((m) => ({
         id: m.id,
         sessionId: m.sessionId,
@@ -111,13 +117,26 @@ class PrismaCashSessionRepository implements CashSessionRepositoryPort {
         createdBy: m.createdBy,
         createdAt: m.createdAt,
       })),
+    });
+  }
+
+  // The stored status was written from the domain values, so it is a valid member.
+  private toFields(r: CashSessionRow): Omit<CashSessionSummary, 'movementCount'> {
+    return {
+      id: r.id,
+      businessId: r.businessId,
+      sucursalId: r.sucursalId,
+      status: r.status as CashSession['status'],
+      openedBy: r.openedBy,
+      openedAt: r.openedAt,
+      openingAmount: r.openingAmount,
       closedBy: r.closedBy ?? undefined,
       closedAt: r.closedAt ?? undefined,
       expected: toAmounts(r.expected),
       declared: toAmounts(r.declared),
       difference: toAmounts(r.difference),
       notes: r.notes ?? undefined,
-    });
+    };
   }
 }
 

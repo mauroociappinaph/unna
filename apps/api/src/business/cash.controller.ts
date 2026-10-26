@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
@@ -6,6 +7,7 @@ import { CASH_MOVEMENT_TYPES, CashMovementType, CashSessionStatus } from '@unna/
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 import { unwrap } from '../common/use-case-result';
+import { PageQuery, pageRequest, sendPage } from '../common/pagination';
 import { AuthenticatedRequest } from './authenticated-request';
 import { CashUseCase } from './use-cases/cash.use-case';
 
@@ -20,7 +22,7 @@ class CurrentCashSessionQuery {
   @IsUUID() sucursalId!: string;
 }
 
-class ListCashSessionsQuery {
+class ListCashSessionsQuery extends PageQuery {
   @IsOptional() @IsUUID() sucursalId?: string;
   @IsOptional() @IsIn(SESSION_STATUSES) status?: CashSessionStatus;
   @IsOptional() @IsDateString() from?: string;
@@ -67,16 +69,15 @@ export class CashController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar cajas' })
-  list(@Param('businessId') businessId: string, @Query() query: ListCashSessionsQuery) {
-    return unwrap(
-      this.cash.list(businessId, {
-        sucursalId: query.sucursalId,
-        status: query.status,
-        from: query.from ? new Date(query.from) : undefined,
-        to: query.to ? new Date(query.to) : undefined,
-      }),
-    );
+  @ApiOperation({ summary: 'Listar cajas, más recientes primero, sin movimientos (movementCount); cursor siguiente en X-Next-Cursor' })
+  list(@Param('businessId') businessId: string, @Query() query: ListCashSessionsQuery, @Res({ passthrough: true }) res: Response) {
+    const filters = {
+      sucursalId: query.sucursalId,
+      status: query.status,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+    };
+    return sendPage(res, unwrap(this.cash.list(businessId, filters, pageRequest(query))));
   }
 
   @Get(':sessionId')

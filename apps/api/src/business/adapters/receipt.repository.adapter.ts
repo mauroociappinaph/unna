@@ -1,7 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Address, FiscalDocType, FiscalIvaLine, Money, Receipt, ReceiptItem, ReceiptRepositoryPort } from '@unna/domain';
+import {
+  Address,
+  FiscalDocType,
+  FiscalIvaLine,
+  Money,
+  Page,
+  PageRequest,
+  Receipt,
+  ReceiptItem,
+  ReceiptRepositoryPort,
+  ReceiptSummary,
+  summarizeReceipt,
+} from '@unna/domain';
+import { cursorFields, keysetPage, mapPage, NEWEST_FIRST } from './keyset-page';
 
 const money = (cents: number) => Money.fromCents(cents, 'ARS');
 
@@ -19,7 +32,11 @@ export const inOpenTransaction: AtomicWrites = async (writes) => {
   for (const write of writes) await write;
 };
 
+type ReceiptRow = Prisma.ReceiptGetPayload<object>;
 type ReceiptRecord = Prisma.ReceiptGetPayload<{ include: { items: true } }>;
+type ReceiptFields = Parameters<typeof summarizeReceipt>[0];
+/** The list counts the items instead of loading them (S17). */
+const withItemCount = { _count: { select: { items: true } } } satisfies Prisma.ReceiptInclude;
 type LineModifiers = ReceiptItem['modifiers'];
 
 /** Receipts with their fiscal fields (number, customer document, IVA per rate, ARCA outcome). */
@@ -102,18 +119,42 @@ export class PrismaReceiptRepository implements ReceiptRepositoryPort {
     return records.map((r) => this.toDomain(r));
   }
 
-  async findByBusinessId(businessId: string): Promise<Receipt[]> {
-    const records = await this.db.receipt.findMany({
-      where: { businessId },
-      include: { items: true },
-      orderBy: { createdAt: 'desc' },
+  async findPageByBusinessId(businessId: string, page: PageRequest): Promise<Page<ReceiptSummary> | null> {
+    const rows = await keysetPage(
+      page,
+      (id) => this.db.receipt.findFirst({ where: { id, businessId }, select: cursorFields }),
+      (after, take) =>
+        this.db.receipt.findMany({ where: { AND: after ? [{ businessId }, after] : [{ businessId }] }, include: withItemCount, orderBy: NEWEST_FIRST, take }),
+    );
+    return mapPage(rows, (r) => summarizeReceipt(this.toFields(r), r._count.items));
+  }
+
+  private toDomain(r: ReceiptRecord): Receipt {
+    return Receipt.reconstitute({
+      ...this.toFields(r),
+      items: (r.items ?? []).map((i) =>
+        ReceiptItem.reconstitute({
+          id: i.id,
+          receiptId: i.receiptId,
+          productId: i.productId,
+          productName: i.productName,
+          productSku: i.productSku ?? undefined,
+          quantity: i.quantity,
+          unitPrice: money(i.unitPrice),
+          totalPrice: money(i.totalPrice),
+          taxRate: i.taxRate,
+          taxAmount: money(i.taxAmount),
+          modifiers: (i.modifiers as LineModifiers | null) ?? [],
+          createdAt: i.createdAt,
+          updatedAt: i.updatedAt,
+        }),
+      ),
     });
-    return records.map((r) => this.toDomain(r));
   }
 
   // Stored type, status, document type and IVA lines were written from the domain values, so they are valid.
-  private toDomain(r: ReceiptRecord): Receipt {
-    return Receipt.reconstitute({
+  private toFields(r: ReceiptRow): ReceiptFields {
+    return {
       id: r.id,
       businessId: r.businessId,
       sucursalId: r.sucursalId,
@@ -145,30 +186,13 @@ export class PrismaReceiptRepository implements ReceiptRepositoryPort {
       caeResponse: r.caeResponse ?? undefined,
       pdfUrl: r.pdfUrl ?? undefined,
       qrCode: r.qrCode ?? undefined,
-      items: (r.items ?? []).map((i) =>
-        ReceiptItem.reconstitute({
-          id: i.id,
-          receiptId: i.receiptId,
-          productId: i.productId,
-          productName: i.productName,
-          productSku: i.productSku ?? undefined,
-          quantity: i.quantity,
-          unitPrice: money(i.unitPrice),
-          totalPrice: money(i.totalPrice),
-          taxRate: i.taxRate,
-          taxAmount: money(i.taxAmount),
-          modifiers: (i.modifiers as LineModifiers | null) ?? [],
-          createdAt: i.createdAt,
-          updatedAt: i.updatedAt,
-        }),
-      ),
       notes: r.notes ?? undefined,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
       issuedAt: r.issuedAt ?? undefined,
       cancelledAt: r.cancelledAt ?? undefined,
       cancelledReason: r.cancelledReason ?? undefined,
-    });
+    };
   }
 }
 

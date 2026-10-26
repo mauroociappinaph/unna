@@ -33,11 +33,13 @@ Tardás unos 30 minutos. Los recursos los creás vos desde tu cuenta; nada se cr
    postgresql://postgres.<ref-del-proyecto>:<tu-password>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
    ```
 
-6. Agregale `?sslmode=require` al final. Ese es tu `DATABASE_URL`:
+6. Agregale `?sslmode=require&connection_limit=5&pool_timeout=10` al final. Ese es tu `DATABASE_URL`:
 
    ```text
-   postgresql://postgres.<ref>:<tu-password>@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
+   postgresql://postgres.<ref>:<tu-password>@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require&connection_limit=5&pool_timeout=10
    ```
+
+   `connection_limit=5` evita que la API se quede con las pocas conexiones que da el plan gratis de Supabase (una sola instancia en Render no necesita más), y `pool_timeout=10` hace que una consulta espere hasta 10 segundos por una conexión libre antes de fallar.
 
 ### Qué conexión usar y por qué
 
@@ -104,7 +106,7 @@ Pegalos directo en Render. No los guardes en el repo, ni en un `.env` commiteado
 
 | Variable | Valor |
 |---|---|
-| `DATABASE_URL` | La URL del Session pooler del paso 1.6, con `?sslmode=require` |
+| `DATABASE_URL` | La URL del Session pooler del paso 1.6, con `?sslmode=require&connection_limit=5&pool_timeout=10` |
 | `JWT_SECRET` | Generado con `openssl rand -base64 48` |
 | `JWT_REFRESH_SECRET` | Otro generado con `openssl rand -base64 48` |
 | `MP_TOKEN_ENCRYPTION_KEY` | Generado con `openssl rand -base64 32` |
@@ -133,9 +135,10 @@ Variables opcionales (agregalas a mano en **Environment** si las necesitás): `E
 ## 4. Verificar
 
 1. En `unna-api` → **Logs**, tiene que aparecer `All migrations have been successfully applied.` (la primera vez) o `No pending migrations to apply.`, y después `API running`.
-2. Abrí `https://<tu-api>.onrender.com/api/docs`: tiene que verse Swagger. Render usa esa misma ruta como health check.
-3. Abrí `https://<tu-web>.onrender.com`: abajo a la izquierda tiene que verse **"Ambiente de prueba"**.
-4. Creá una cuenta y hacé un pedido de punta a punta.
+2. Abrí `https://<tu-api>.onrender.com/api/v1/health`: tiene que responder `{"status":"ok"}`. Render usa esa ruta como health check; no consulta la base, así que solo dice que la API está escuchando.
+3. Abrí `https://<tu-api>.onrender.com/api/docs`: tiene que verse Swagger. En staging (`UNNA_ENV=staging`) está prendido; en producción sin esa variable no se publica.
+4. Abrí `https://<tu-web>.onrender.com`: abajo a la izquierda tiene que verse **"Ambiente de prueba"**.
+5. Creá una cuenta y hacé un pedido de punta a punta.
 
 ---
 

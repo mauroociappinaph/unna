@@ -53,6 +53,11 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
     return record ? this.toDomain(record) : null;
   }
 
+  async findOwnerId(businessId: string): Promise<string | null> {
+    const record = await this.prisma.business.findUnique({ where: { id: businessId }, select: { id: true, ownerId: true } });
+    return record?.ownerId ?? null;
+  }
+
   async findByOwnerId(ownerId: string): Promise<Business[]> {
     const records = await this.prisma.business.findMany({ 
       where: { ownerId },

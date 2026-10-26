@@ -8,6 +8,13 @@ export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 
 export type PaymentMethod = 'cash' | 'card' | 'mercado_pago' | 'transfer' | 'qr' | 'split';
 export type ReceiptType = 'A' | 'B' | 'C' | 'ticket' | 'proforma';
 
+/** Statuses after which an order is no longer worked on; the POS lists only the other ones as open (S17). */
+export const CLOSED_ORDER_STATUSES: readonly OrderStatus[] = ['delivered', 'cancelled', 'refunded'];
+
+export function isOrderClosed(status: OrderStatus): boolean {
+  return CLOSED_ORDER_STATUSES.includes(status);
+}
+
 export { OrderItem, type OrderItemProps };
 
 export interface OrderProps {

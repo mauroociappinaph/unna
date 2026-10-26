@@ -7,8 +7,12 @@ import {
   CashSession,
   CashSessionListFilters,
   CashSessionRepositoryPort,
+  CashSessionSummary,
   CashUnitOfWorkPort,
+  Page,
+  PageRequest,
 } from '@unna/domain';
+import { pageOrInvalidCursor } from './page-result';
 
 interface Result<T> {
   ok: boolean;
@@ -66,8 +70,9 @@ export class CashUseCase {
     return session ? ok(session) : notFound(NOT_FOUND);
   }
 
-  async list(businessId: string, filters: CashSessionListFilters): Promise<Result<CashSession[]>> {
-    return ok(await this.sessions.listByBusiness(businessId, filters));
+  /** Newest first, without the movements (each session carries its movementCount). */
+  async list(businessId: string, filters: CashSessionListFilters, page: PageRequest): Promise<Result<Page<CashSessionSummary>>> {
+    return pageOrInvalidCursor(await this.sessions.findPageByBusiness(businessId, filters, page));
   }
 
   async addMovement(command: {

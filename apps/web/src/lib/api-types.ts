@@ -6,6 +6,8 @@ import type { PaymentMethod } from './api-types-sales';
 
 // Orders, payments and receipts live in api-types-sales.ts; import them from here.
 export * from './api-types-sales';
+// Pedido anticipado of the owner panel lives in api-types-pedido.ts.
+export * from './api-types-pedido';
 
 export interface Money {
   amount: number;

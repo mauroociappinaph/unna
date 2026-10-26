@@ -127,6 +127,12 @@ export default function DashboardPage() {
                   action: 'Configurar Mercado Pago',
                   href: '/dashboard/mercadopago',
                 },
+                {
+                  title: 'Pedido anticipado',
+                  desc: 'Activá el link de cada sucursal e imprimí su QR: tus clientes piden y pagan desde el celular y retiran en el mostrador.',
+                  action: 'Configurar pedido anticipado',
+                  href: '/dashboard/pedido-anticipado',
+                },
               ].map((step, i) => (
                 <Link key={i} href={step.href} className="bg-white rounded-2xl border border-gray-100 p-6 hover:border-unna-green/30 transition-colors hover:shadow-lg">
                   <div className="w-12 h-12 bg-unna-green/10 rounded-xl flex items-center justify-center mb-4">

@@ -6,10 +6,11 @@ import { Footer } from './Footer';
 import { StagingBanner } from './StagingBanner';
 
 /**
- * Routes shown without the public site header and footer: the TV order screen, and the dashboard,
- * which has its own header with the business navigation and logout.
+ * Routes shown without the public site header and footer: the TV order screen, the dashboard,
+ * which has its own header with the business navigation and logout, and the customer order pages,
+ * which show the café's own minimal header.
  */
-const BARE_ROUTES = ['/pantalla', '/dashboard'];
+const BARE_ROUTES = ['/pantalla', '/dashboard', '/pedido'];
 
 /** The TV order screen also goes without the staging banner, so nothing covers the board. */
 const NO_BANNER_ROUTES = ['/pantalla'];

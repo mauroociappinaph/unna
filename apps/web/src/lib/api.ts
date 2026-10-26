@@ -3,6 +3,7 @@ import { createBusinessApi } from './api-client/business';
 import { createCashApi } from './api-client/cash';
 import { createCatalogApi } from './api-client/catalog';
 import { createHttpClient } from './api-client/http';
+import { createMercadoPagoApi } from './api-client/mercadopago';
 import { createSalesApi } from './api-client/sales';
 import { createStockApi } from './api-client/stock';
 
@@ -18,4 +19,5 @@ export const api = {
   ...createStockApi(client),
   ...createSalesApi(client),
   ...createCashApi(client),
+  ...createMercadoPagoApi(client),
 };

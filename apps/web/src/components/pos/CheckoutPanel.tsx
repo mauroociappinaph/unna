@@ -1,10 +1,12 @@
 import { Button } from '@/components/ui/Button';
 import type { IssueReceiptInput, IvaCondition, Payment, PaymentMethod, Receipt } from '@/lib/api-types';
 import { PaymentPanel } from './PaymentPanel';
+import { QrChargePanel } from './QrChargePanel';
 import { ReceiptIssuer } from './ReceiptIssuer';
 import { ReceiptView } from './ReceiptView';
 
 interface CheckoutPanelProps {
+  businessId: string | undefined;
   orderId: string;
   payments: Payment[];
   remaining: number;
@@ -14,12 +16,14 @@ interface CheckoutPanelProps {
   busy: boolean;
   cashOpen: boolean;
   onPay: (amount: number, method: PaymentMethod) => void;
+  onQrPaid: () => void;
   onIssueReceipt: (input: IssueReceiptInput) => void;
   onInvalid: (message: string) => void;
 }
 
 export function CheckoutPanel({
-  orderId, payments, remaining, receipt, retryReceipt, ivaCondition, busy, cashOpen, onPay, onIssueReceipt, onInvalid,
+  businessId, orderId, payments, remaining, receipt, retryReceipt, ivaCondition, busy, cashOpen, onPay, onQrPaid, onIssueReceipt,
+  onInvalid,
 }: CheckoutPanelProps) {
   const canIssueReceipt = payments.length > 0 && remaining === 0 && !receipt;
 
@@ -32,6 +36,14 @@ export function CheckoutPanel({
         busy={busy || !cashOpen}
         onPay={onPay}
         onInvalidAmount={onInvalid}
+      />
+      <QrChargePanel
+        key={`qr-${orderId}`}
+        businessId={businessId}
+        orderId={orderId}
+        remaining={remaining}
+        disabled={busy || !cashOpen}
+        onPaid={onQrPaid}
       />
       {canIssueReceipt && (
         <ReceiptIssuer

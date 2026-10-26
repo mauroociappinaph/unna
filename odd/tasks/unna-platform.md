@@ -88,6 +88,19 @@ Reglas de diseño (orquestador):
 - Barra: por sucursal, solo pedidos cobrados y no cerrados de hoy, en columnas Nuevos / En preparación / Listos, con acciones que usan los estados existentes; se actualiza sola.
 - Pantalla pública: sin sesión, con un token secreto por sucursal que el dueño genera y puede regenerar; muestra solo número corto del pedido, primer nombre del cliente y estado (en preparación / listo), de hoy y cobrados. Endpoint público: riesgo de seguridad.
 
+### S15: Cobro con QR de Mercado Pago
+Usuario: "qr de lercado pago". Respuestas:
+- Cuenta: "La del café, vía 'Conectar con MP' (Recomendado)".
+- Tipo de QR: "Híbrido: QR impreso + QR en pantalla (Recomendado)".
+Reglas de diseño (orquestador):
+- Integración con la Orders API vigente (POST /v1/orders, type "qr", modo híbrido); las APIs QR anteriores están en migración.
+- Cada negocio conecta su propia cuenta con OAuth; los tokens se guardan cifrados (AES-256-GCM) y nunca se devuelven ni se loguean; el negocio puede desconectar.
+- Cada sucursal tiene su tienda y su caja (POS) en Mercado Pago, creadas por UNNA; el QR fijo de la caja se puede imprimir desde el panel.
+- En el POS, "Cobrar con QR" crea la orden de Mercado Pago por el saldo pendiente y muestra el QR en pantalla; el cliente puede pagar con ese o con el impreso.
+- El pago se confirma solo por datos consultados a Mercado Pago (webhook con firma validada + consulta de la orden); se registra una sola vez como pago del pedido, en la caja abierta, con la referencia de Mercado Pago.
+- Se puede cancelar un cobro QR pendiente; un pedido pagado por QR que se anula necesita devolución.
+- Sin credenciales de la aplicación (MP_CLIENT_ID/MP_CLIENT_SECRET) se usa un simulador, que nunca corre en producción. Endpoint público (webhook) y credenciales: riesgo de seguridad.
+
 ### S14: Refactor de arquitectura (sin cambio de comportamiento)
 Usuario: "Hay archivo s de mas de 400 lineas y estas usando los patrones de Hexagonal srp dry y ddd ??" → elige "Refactor antes del merge".
 Reglas (orquestador):
@@ -184,6 +197,10 @@ unna/
 | T32c | S14 | worker | Dominio: OrderItem y ReceiptItem en archivos propios | 6a0521e |
 | T32d | S14 | inline | Errores tipados (NotFound) en lugar del regex de texto; integración, smoke, revisión y PRs | cbf77f9 |
 | T31e | S13 | inline | Fix renovación de sesión concurrente (revisión); propuestas aprobadas: dashboard sin chrome público, POS en "Para llevar" | 02ceca2, 2c71785, 1fc3bda |
+| T33a | S15 | worker | API: conexión OAuth con Mercado Pago (tokens cifrados, refresh, desconectar), tienda y caja por sucursal, puerto + adaptador real + simulador | 3826b3d |
+| T33b | S15 | worker | API: cobro QR (orden híbrida, estado, cancelar), webhook público con firma, registro de pago idempotente | a628929, ad7804e |
+| T33c | S15 | worker | Web: conectar Mercado Pago en configuración, cobro QR en el POS, QR imprimible por sucursal | f812706, c2676b8, 7ac4c8a |
+| T33d | S15 | inline | Integración, smoke con simulador, revisión, PRs | see L40 |
 
 ## Log
 
@@ -224,3 +241,5 @@ unna/
 **L36**: S13 completo. Usuario: "Agrega el  @nestjs/throttler" → 6.7.1 fijo, solo en el endpoint público (120/min por IP, PUBLIC_BOARD_RATE_LIMIT; TRUST_PROXY para IP real detrás del proxy). Integración: refresh de sesión en la barra (pantalla de todo el día; regresión del login detectada antes de commitear y fijada con test), pantalla pública sin header/footer del sitio (SiteChrome). Navegador: barra (columnas, "Empezar" mueve el pedido), pantalla pública sin sesión (solo número y primer nombre; token inválido → "Pantalla no disponible"; nada en localStorage), POS con favoritos (fijado primero, luego más vendidos); bug de números desbordando la tarjeta en /pantalla corregido (1024/1280/1920 px). Verificación: tests sin caché domain 171, shared 9, api 270, web 207; smoke 82/82. Propuestas abiertas: quitar header/footer públicos del dashboard; POS arranca en "Para llevar".
 **L37**: Revisión nativa de S13 en 3 cortes (corte entero excedía el presupuesto): backend, POS y barra/pantalla aprobados, 24 observaciones no bloqueantes. Corregida la renovación de sesión concurrente (02ceca2). Usuario: "para las fos propuestas tendoy el ok. y hace revisiom nativa" → 2c71785. Usuario pregunta por archivos >400 líneas y patrones; auditoría: 7 archivos >400 (product-catalog.use-case 729 con 5 clases, product.repository.adapter 554 con 6, catalog.controller 453 con 5, pos/page 475 con 26 estados, receipt 441, order 433, api.ts 408), 404 por regex de texto en use-case-result.ts:42. Elige "Refactor antes del merge" → S14.
 **L38**: S14 completo. Archivos de código >400 líneas: 0 (product-catalog.use-case 729 → 5 archivos, mayor 191; product.repository.adapter 554 → 131 + 5 adaptadores; catalog.controller 453 → 5 controladores; pos/page 475 → 144 + 5 hooks y 5 componentes; api.ts 408 → 21 + lib/api-client por recurso; order.ts 310; receipt.ts 358). 404 por tipo (NotFoundError del dominio) en vez del regex "no encontrad"; RED 2 fallos → GREEN; grep sin restos. Integración: lint/build/tsc 4/4, tests sin caché domain 172, shared 9, api 278, web 214; smoke 82/82. Revisión nativa en 5 cortes (fix+propuestas, dominio, API, web, errores): todos aprobados; observación de resiliencia aplicada (timeout del refresh compartido, 1fc3bda). Pendientes de backlog: migraciones Prisma desde el init (cambios con db push), filtro de validación por fragmentos de texto, corte de medianoche en la barra.
+**L39**: Usuario: "qr de lercado pago". Exploración: medios mercado_pago/qr existen solo como registro manual (sales.use-case.ts:19); Mercado Pago unificó QR en la Orders API. Decisiones: cuenta del café vía OAuth, QR híbrido → S15.
+**L40**: S15 completo (con simulador). Investigación de la Orders API en docs/integraciones/mercadopago-qr.md (7eb105c, 1ff8142, 786bfd3). Conexión OAuth con PKCE, tokens AES-256-GCM, tienda y caja por sucursal (3826b3d); cobro QR híbrido, webhook firmado, pago único compartiendo registerOrderPayment con los pagos manuales, cobro "pagado sin registrar" visible si la caja se cerró, serialización de la activación (a628929); web: conectar, QR imprimible y "Cobrar con QR" en el POS (f812706); botón "Simular pago" solo con simulador (7ac4c8a). Bug del smoke: regex del id simulado demasiado amplia (no era bug de la app). Integración: lint/build/tsc 4/4, tests sin caché domain 189, shared 9, api 432, web 234; smoke 82/82 y smoke QR 25/25 (conexión, state de un solo uso, aislamiento entre negocios, webhook sin firma 401, dos pagos concurrentes = un pago). Revisión nativa en 4 cortes, todos aprobados; aplicada la observación del webhook (503 para que Mercado Pago reintente, ad7804e). Usuario: "Podes levantar el front y back para ver la app" → stack local con simulador. Pendiente para producción: migraciones Prisma, credenciales reales de Mercado Pago (aplicación, webhook, usuarios de prueba), validar campos de ubicación y MCC con cuenta de prueba, el API no arranca en producción sin MP_* ni ARCA.

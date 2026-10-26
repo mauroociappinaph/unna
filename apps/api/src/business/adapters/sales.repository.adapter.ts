@@ -228,19 +228,24 @@ class PrismaLockedCashSessions implements LockedCashSessionsPort {
   }
 }
 
+/**
+ * Locks the order row in the open transaction `tx` and returns the repositories bound to it. The
+ * lock is held until the transaction ends; a missing order locks nothing and the work reports it.
+ */
+export async function lockOrder(tx: Db, orderId: string, businessId: string): Promise<LockedOrderRepositories> {
+  await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} AND "businessId" = ${businessId} FOR UPDATE`;
+  return {
+    orders: new PrismaOrderRepository(tx, inOpenTransaction),
+    payments: new PrismaPaymentRepository(tx),
+    cashSessions: new PrismaLockedCashSessions(tx),
+  };
+}
+
 @Injectable()
 export class PrismaSalesUnitOfWorkAdapter implements SalesUnitOfWorkPort {
   constructor(private readonly prisma: PrismaService) {}
 
   withOrderLock<T>(orderId: string, businessId: string, work: (repositories: LockedOrderRepositories) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(async (tx) => {
-      // Row lock held until the transaction ends; a missing order locks nothing and the work reports it.
-      await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} AND "businessId" = ${businessId} FOR UPDATE`;
-      return work({
-        orders: new PrismaOrderRepository(tx, inOpenTransaction),
-        payments: new PrismaPaymentRepository(tx),
-        cashSessions: new PrismaLockedCashSessions(tx),
-      });
-    });
+    return this.prisma.$transaction(async (tx) => work(await lockOrder(tx, orderId, businessId)));
   }
 }

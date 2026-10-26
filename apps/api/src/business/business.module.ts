@@ -27,7 +27,25 @@ import { PrismaReceiptIssueUnitOfWorkAdapter } from './adapters/receipt-sequence
 import { ArcaSimulatedAdapter } from './adapters/arca-simulated.adapter';
 import { isArcaConfigured } from './adapters/arca/arca.config';
 import { createArcaFiscalAuthorizer } from './adapters/arca/arca-fiscal-authorizer.adapter';
-import type { FiscalAuthorizerPort } from '@unna/domain';
+import type { FiscalAuthorizerPort, MercadoPagoGatewayPort } from '@unna/domain';
+import { isMercadoPagoConfigured, loadMercadoPagoConfig, localOAuthCallbackUrl } from './adapters/mercadopago/mercadopago.config';
+import { MercadoPagoHttpAdapter } from './adapters/mercadopago/mercadopago-http.adapter';
+import { MercadoPagoSimulatorAdapter } from './adapters/mercadopago/mercadopago-simulator.adapter';
+import { secretCipherFactory } from './adapters/mercadopago/aes-gcm-secret-cipher';
+import { PrismaMercadoPagoConnectionRepositoryAdapter } from './adapters/mercadopago-connection.repository.adapter';
+import { MercadoPagoAuthorizationUseCase } from './use-cases/mercadopago-authorization.use-case';
+import { MercadoPagoConnectionUseCase } from './use-cases/mercadopago-connection.use-case';
+import { MercadoPagoAccessTokenProvider } from './use-cases/mercadopago-access-token.provider';
+import { MercadoPagoPosUseCase } from './use-cases/mercadopago-pos.use-case';
+import { MercadoPagoController } from './mercadopago.controller';
+import { MercadoPagoOAuthController } from './mercadopago-oauth.controller';
+import { MercadoPagoWebhookController } from './mercadopago-webhook.controller';
+import { mercadoPagoSimulatorControllers } from './mercadopago-simulator.controller';
+import { QrChargeController } from './qr-charge.controller';
+import { QrChargeUseCase } from './use-cases/qr-charge.use-case';
+import { QrChargeSync } from './use-cases/qr-charge-sync';
+import { PrismaQrChargeRepositoryAdapter } from './adapters/qr-charge.repository.adapter';
+import { PrismaQrChargeUnitOfWorkAdapter } from './adapters/qr-charge-unit-of-work.adapter';
 
 /**
  * Real ARCA when ARCA_ENV, ARCA_CERT_PATH and ARCA_KEY_PATH are set. Otherwise the simulator, which
@@ -39,6 +57,19 @@ export function fiscalAuthorizerFactory(env: NodeJS.ProcessEnv = process.env): F
     throw new Error('ARCA real no configurado: el simulador de ARCA no puede usarse en producción');
   }
   return new ArcaSimulatedAdapter();
+}
+
+/**
+ * Real Mercado Pago when MP_CLIENT_ID and MP_CLIENT_SECRET are set (MP_REDIRECT_URI is then
+ * required). Otherwise the simulator, which "authorizes" instantly and fakes payments, so it never
+ * runs in production.
+ */
+export function mercadoPagoGatewayFactory(env: NodeJS.ProcessEnv = process.env): MercadoPagoGatewayPort {
+  if (isMercadoPagoConfigured(env)) return new MercadoPagoHttpAdapter(loadMercadoPagoConfig(env));
+  if (env.NODE_ENV === 'production') {
+    throw new Error('Mercado Pago no configurado: el simulador de Mercado Pago no puede usarse en producción');
+  }
+  return new MercadoPagoSimulatorAdapter(localOAuthCallbackUrl(env));
 }
 import { SalesUseCase } from './use-cases/sales.use-case';
 import { SalesController } from './sales.controller';
@@ -55,7 +86,7 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 
 @Module({
   imports: [PrismaModule, ThrottlerModule.forRoot(publicBoardThrottlerOptions())],
-  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController, OrderBoardController, PublicOrderBoardController],
+  controllers: [BusinessController, CategoryController, ProductController, ModifierGroupController, PriceListController, StockController, SalesController, CashController, OrderBoardController, PublicOrderBoardController, MercadoPagoController, MercadoPagoOAuthController, QrChargeController, MercadoPagoWebhookController, ...mercadoPagoSimulatorControllers()],
   providers: [
     OnboardBusinessUseCase,
     BusinessManagementUseCase,
@@ -67,6 +98,17 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
     SalesUseCase,
     CashUseCase,
     OrderBoardUseCase,
+    MercadoPagoAuthorizationUseCase,
+    MercadoPagoConnectionUseCase,
+    MercadoPagoAccessTokenProvider,
+    MercadoPagoPosUseCase,
+    QrChargeUseCase,
+    QrChargeSync,
+    { provide: 'QrChargeRepositoryPort', useClass: PrismaQrChargeRepositoryAdapter },
+    { provide: 'QrChargeUnitOfWorkPort', useClass: PrismaQrChargeUnitOfWorkAdapter },
+    { provide: 'MercadoPagoConnectionRepositoryPort', useClass: PrismaMercadoPagoConnectionRepositoryAdapter },
+    { provide: 'MercadoPagoGatewayPort', useFactory: () => mercadoPagoGatewayFactory() },
+    { provide: 'SecretCipherPort', useFactory: () => secretCipherFactory() },
     { provide: 'OrderBoardRepositoryPort', useClass: PrismaOrderBoardRepositoryAdapter },
     { provide: 'CashSessionRepositoryPort', useClass: PrismaCashSessionRepositoryAdapter },
     { provide: 'CashUnitOfWorkPort', useClass: PrismaCashUnitOfWorkAdapter },

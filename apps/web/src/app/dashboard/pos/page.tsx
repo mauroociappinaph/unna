@@ -113,6 +113,7 @@ export default function PosPage() {
 
               {order && checkout.showPayment && (
                 <CheckoutPanel
+                  businessId={business?.id}
                   orderId={order.id}
                   payments={checkout.payments}
                   remaining={checkout.remaining}
@@ -122,6 +123,7 @@ export default function PosPage() {
                   busy={busy}
                   cashOpen={cashOpen}
                   onPay={checkout.pay}
+                  onQrPaid={checkout.syncPayments}
                   onIssueReceipt={checkout.issueReceipt}
                   onInvalid={setError}
                 />

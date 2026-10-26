@@ -57,7 +57,8 @@ export class MercadoPagoSimulatorOwnerController {
   }
 }
 
-function assertSimulator(gateway: MercadoPagoGatewayPort): asserts gateway is MercadoPagoSimulatorAdapter {
+/** 404 unless the simulator is wired and allowed right now (never in plain production). */
+export function assertSimulator(gateway: MercadoPagoGatewayPort): asserts gateway is MercadoPagoSimulatorAdapter {
   if (!(gateway instanceof MercadoPagoSimulatorAdapter) || !simulatorsAllowed()) {
     throw new NotFoundException();
   }
@@ -71,7 +72,12 @@ async function paySimulatedOrder(gateway: MercadoPagoGatewayPort, sync: QrCharge
   return toQrChargeView(charge);
 }
 
+/** The simulator is wired: no MP_CLIENT_ID/SECRET, outside production or in staging. */
+export function mercadoPagoSimulatorWired(env: NodeJS.ProcessEnv = process.env): boolean {
+  return !isMercadoPagoConfigured(env) && simulatorsAllowed(env);
+}
+
 /** The simulator routes exist only with the simulator (no MP_CLIENT_ID/SECRET) outside production or in staging. */
 export function mercadoPagoSimulatorControllers(env: NodeJS.ProcessEnv = process.env): Type[] {
-  return !isMercadoPagoConfigured(env) && simulatorsAllowed(env) ? [MercadoPagoSimulatorController, MercadoPagoSimulatorOwnerController] : [];
+  return mercadoPagoSimulatorWired(env) ? [MercadoPagoSimulatorController, MercadoPagoSimulatorOwnerController] : [];
 }

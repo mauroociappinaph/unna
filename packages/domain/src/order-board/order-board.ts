@@ -1,4 +1,5 @@
 import type { OrderStatus } from '../value-objects/order';
+import type { DayOfWeek } from '../value-objects/schedule';
 
 // Bar queue and public order board (S13): which of today's paid orders show up and where.
 
@@ -17,6 +18,15 @@ export function argentinaDayWindow(now: Date): { from: Date; to: Date } {
   const local = now.getTime() - ARGENTINA_OFFSET_MS;
   const from = local - (((local % DAY_MS) + DAY_MS) % DAY_MS) + ARGENTINA_OFFSET_MS;
   return { from: new Date(from), to: new Date(from + DAY_MS) };
+}
+
+const WEEKDAYS: readonly DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+/** Argentine weekday and HH:mm of `now`, as Schedule.isOpenAt takes them. */
+export function argentinaClock(now: Date): { day: DayOfWeek; time: string } {
+  const local = new Date(now.getTime() - ARGENTINA_OFFSET_MS);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return { day: WEEKDAYS[local.getUTCDay()], time: `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}` };
 }
 
 /** What the customer hears called: the last 3 characters of the order number. */

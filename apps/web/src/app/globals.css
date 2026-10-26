@@ -65,3 +65,20 @@
     text-wrap: balance;
   }
 }
+
+/* Printing a single element (lib/print.ts): only the marked block shows on paper. */
+@media print {
+  body:has(.print-target) * {
+    visibility: hidden;
+  }
+
+  body .print-target,
+  body .print-target * {
+    visibility: visible;
+  }
+
+  body .print-target {
+    position: absolute;
+    inset: 0 auto auto 0;
+  }
+}

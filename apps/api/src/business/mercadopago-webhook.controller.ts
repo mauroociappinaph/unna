@@ -1,6 +1,7 @@
 import { Controller, Headers, HttpCode, Logger, Post, Query, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { verifyMercadoPagoWebhookSignature } from './adapters/mercadopago/mercadopago-webhook-signature';
+import { OnlineCheckoutSync } from './use-cases/online-checkout-sync';
 import { QrChargeSync } from './use-cases/qr-charge-sync';
 
 const INVALID_SIGNATURE = 'Firma de Mercado Pago inválida';
@@ -9,7 +10,8 @@ const INVALID_SIGNATURE = 'Firma de Mercado Pago inválida';
  * Public Mercado Pago notifications (S15). No session: the x-signature (MP_WEBHOOK_SECRET) is the
  * credential and is checked before any data is read, so rejecting is cheap. The body is never read:
  * the signed `data.id` of the query names the order, which is then read from Mercado Pago with the
- * connection of the charge's business. Valid notifications get 200, also for orders UNNA does not
+ * connection of its business: an online checkout of the pedido anticipado (S20) when one has that
+ * order, otherwise a QR charge. Valid notifications get 200, also for orders UNNA does not
  * know; when the sync of a known order fails they get 503, so Mercado Pago retries them (the POS may
  * be closed, and then nothing else would register the payment). The sync is idempotent.
  */
@@ -18,7 +20,10 @@ const INVALID_SIGNATURE = 'Firma de Mercado Pago inválida';
 export class MercadoPagoWebhookController {
   private readonly logger = new Logger(MercadoPagoWebhookController.name);
 
-  constructor(private readonly sync: QrChargeSync) {}
+  constructor(
+    private readonly sync: QrChargeSync,
+    private readonly onlineCheckouts: OnlineCheckoutSync,
+  ) {}
 
   @Post('webhook')
   @HttpCode(200)
@@ -39,7 +44,8 @@ export class MercadoPagoWebhookController {
     if (!mpOrderId) return;
 
     try {
-      await this.sync.syncByMpOrderId(mpOrderId);
+      const checkout = await this.onlineCheckouts.syncByMpOrderId(mpOrderId);
+      if (!checkout) await this.sync.syncByMpOrderId(mpOrderId);
     } catch (error) {
       // Only the message: it never carries tokens (see MercadoPagoHttpAdapter).
       this.logger.warn(`No se pudo sincronizar la orden ${mpOrderId} de Mercado Pago: ${(error as Error).message}`);

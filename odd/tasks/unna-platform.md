@@ -112,6 +112,7 @@ Reglas (orquestador):
 - El cliente queda en una página de seguimiento que se actualiza sola: recibido → en preparación → listo para retirar, con tiempo estimado.
 - Solo se aceptan pedidos con la sucursal abierta (horario) y con caja abierta; si no, el link lo explica.
 - Endpoints públicos con límite por IP; precios siempre del servidor; el cliente no ve datos de otros pedidos.
+- Diseño (orquestador, tras la investigación): Checkout Pro por la Orders API (`type: "online"`, `checkout_url`), mismo webhook firmado que el QR; el pedido de UNNA se crea recién cuando el pago está aprobado (no hay pedidos impagos en el POS ni en la barra); contrato en docs/integraciones/pedido-anticipado.md.
 
 ### S17: Mejoras rápidas de performance
 Usuario: "ANaliza toda la performance de la app y rendimiento" → informe; "ok hacelo" a la recomendación: "hacer 1, 2, 3 y 6, más los índices" (el 4, locks con Mercado Pago/ARCA, queda como tarea propia).

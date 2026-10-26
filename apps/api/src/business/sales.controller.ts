@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, ServiceUnavailableException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Res, ServiceUnavailableException, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -18,6 +19,7 @@ import {
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
 import { unwrap } from '../common/use-case-result';
+import { PageQuery, pageRequest, sendPage } from '../common/pagination';
 import { ORDER_ACTIONS, ORDER_TYPES, PAYMENT_METHODS, SalesUseCase } from './use-cases/sales.use-case';
 import { FiscalAuthorizerUnavailableError, InvoicingUseCase, IssuableReceiptType, RECEIPT_TYPES } from './use-cases/invoicing.use-case';
 
@@ -66,8 +68,10 @@ class IssueReceiptDto {
   @IsOptional() @IsString() @MaxLength(40) customerCondition?: string;
 }
 
-class ListOrdersQuery {
+class ListOrdersQuery extends PageQuery {
   @IsOptional() @IsString() status?: string;
+  /** "true": only orders that are not closed (delivered, cancelled, refunded). */
+  @IsOptional() @IsIn(['true', 'false']) open?: string;
   @IsOptional() @IsUUID() sucursalId?: string;
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
@@ -90,16 +94,16 @@ export class SalesController {
   }
 
   @Get('orders')
-  @ApiOperation({ summary: 'Listar pedidos' })
-  listOrders(@Param('businessId') businessId: string, @Query() query: ListOrdersQuery) {
-    return unwrap(
-      this.sales.listOrders(businessId, {
-        status: query.status,
-        sucursalId: query.sucursalId,
-        from: query.from ? new Date(query.from) : undefined,
-        to: query.to ? new Date(query.to) : undefined,
-      }),
-    );
+  @ApiOperation({ summary: 'Listar pedidos, más recientes primero, sin ítems (itemCount); cursor siguiente en X-Next-Cursor' })
+  listOrders(@Param('businessId') businessId: string, @Query() query: ListOrdersQuery, @Res({ passthrough: true }) res: Response) {
+    const filters = {
+      status: query.status,
+      open: query.open === 'true',
+      sucursalId: query.sucursalId,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+    };
+    return sendPage(res, unwrap(this.sales.listOrders(businessId, filters, pageRequest(query))));
   }
 
   @Get('orders/:orderId')
@@ -158,9 +162,9 @@ export class SalesController {
   }
 
   @Get('receipts')
-  @ApiOperation({ summary: 'Listar comprobantes' })
-  listReceipts(@Param('businessId') businessId: string) {
-    return unwrap(this.invoicing.listReceipts(businessId));
+  @ApiOperation({ summary: 'Listar comprobantes, más recientes primero, sin ítems (itemCount); cursor siguiente en X-Next-Cursor' })
+  listReceipts(@Param('businessId') businessId: string, @Query() query: PageQuery, @Res({ passthrough: true }) res: Response) {
+    return sendPage(res, unwrap(this.invoicing.listReceipts(businessId, pageRequest(query))));
   }
 
   @Get('receipts/:receiptId')

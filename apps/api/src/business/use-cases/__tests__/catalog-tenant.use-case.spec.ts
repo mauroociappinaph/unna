@@ -61,7 +61,7 @@ describe('Catalog tenant isolation', () => {
       ['getLevel', (s: StockUseCase) => s.getLevel('prod-B', OWN)],
       ['recordCount', (s: StockUseCase) => s.recordCount({ productId: 'prod-B', businessId: OWN, ownerId: 'u', countedQuantity: 0 })],
       ['adjustThresholds', (s: StockUseCase) => s.adjustThresholds({ productId: 'prod-B', businessId: OWN, ownerId: 'u', minThreshold: 1 })],
-      ['listMovements', (s: StockUseCase) => s.listMovements(OWN, { productId: 'prod-B' })],
+      ['listMovements', (s: StockUseCase) => s.listMovements(OWN, { productId: 'prod-B' }, { limit: 50 })],
     ])('%s is rejected and writes nothing', async (_name, run) => {
       const result = await run(stock);
       expect(result.ok).toBe(false);

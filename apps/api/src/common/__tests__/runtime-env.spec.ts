@@ -1,4 +1,4 @@
-import { simulatorsAllowed } from '../runtime-env';
+import { simulatorsAllowed, swaggerEnabled } from '../runtime-env';
 
 describe('simulatorsAllowed (S16)', () => {
   it.each(['development', 'test', undefined])('allows the simulators when NODE_ENV is %p', (nodeEnv) => {
@@ -31,5 +31,17 @@ describe('simulatorsAllowed (S16)', () => {
       if (old.UNNA_ENV === undefined) delete process.env.UNNA_ENV;
       else process.env.UNNA_ENV = old.UNNA_ENV;
     }
+  });
+});
+
+describe('swaggerEnabled (S17)', () => {
+  it.each(['development', 'test', undefined])('serves Swagger when NODE_ENV is %p', (nodeEnv) => {
+    expect(swaggerEnabled({ NODE_ENV: nodeEnv })).toBe(true);
+  });
+
+  it('hides it in production, except with UNNA_ENV=staging exactly', () => {
+    expect(swaggerEnabled({ NODE_ENV: 'production' })).toBe(false);
+    expect(swaggerEnabled({ NODE_ENV: 'production', UNNA_ENV: 'Staging' })).toBe(false);
+    expect(swaggerEnabled({ NODE_ENV: 'production', UNNA_ENV: 'staging' })).toBe(true);
   });
 });

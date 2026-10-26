@@ -17,9 +17,10 @@ export class BusinessOwnerGuard implements CanActivate {
     const businessId: string | undefined = req.params?.businessId;
     if (!businessId) return true;
 
-    const business = await this.businessRepository.findById(businessId);
-    if (!business) throw new NotFoundException('Negocio no encontrado');
-    if (business.ownerId !== req.user?.sub) {
+    // Only the owner is read: the guard runs on every business route (S17).
+    const ownerId = await this.businessRepository.findOwnerId(businessId);
+    if (ownerId === null) throw new NotFoundException('Negocio no encontrado');
+    if (ownerId !== req.user?.sub) {
       throw new ForbiddenException('No tenés permisos sobre este negocio');
     }
     return true;

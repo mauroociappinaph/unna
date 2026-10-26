@@ -7,6 +7,7 @@ export type {
   PriceListRepositoryPort,
   StockLevelRepositoryPort,
   StockMovementRepositoryPort,
+  StockMovementListFilters,
   OrderRepositoryPort,
   OrderListFilters,
   PaymentRepositoryPort,

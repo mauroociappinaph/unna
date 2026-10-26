@@ -11,8 +11,8 @@ services:
     region: virginia
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    # Swagger UI: an existing route that answers 200 once Nest is listening.
-    healthCheckPath: /api/docs
+    # Lightweight health check: answers 200 once Nest is listening, without touching the database.
+    healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production

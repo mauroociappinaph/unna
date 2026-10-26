@@ -1,17 +1,20 @@
 import { Button } from '@/components/ui/Button';
-import { formatMoney, type CashSession } from '@/lib/api-types';
+import { formatMoney, type CashSessionListItem } from '@/lib/api-types';
 import { formatDateTime } from '@/components/pos/pos-format';
 
 interface CashHistoryProps {
-  sessions: CashSession[];
+  sessions: CashSessionListItem[];
   busy: boolean;
-  onSelect: (session: CashSession) => void;
+  /** There is an older page of sessions to load. */
+  hasMore: boolean;
+  onSelect: (session: CashSessionListItem) => void;
+  onLoadMore: () => void;
 }
 
-const totalDifference = (session: CashSession) => Object.values(session.difference ?? {}).reduce((total, n) => total + n, 0);
+const totalDifference = (session: CashSessionListItem) => Object.values(session.difference ?? {}).reduce((total, n) => total + n, 0);
 
-/** Closed sessions of the sucursal, newest first. */
-export function CashHistory({ sessions, busy, onSelect }: CashHistoryProps) {
+/** Closed sessions of the sucursal, newest first, one page at a time (S17). */
+export function CashHistory({ sessions, busy, hasMore, onSelect, onLoadMore }: CashHistoryProps) {
   const closed = sessions
     .filter((s) => s.status === 'closed')
     .sort((a, b) => b.openedAt.localeCompare(a.openedAt));
@@ -50,6 +53,11 @@ export function CashHistory({ sessions, busy, onSelect }: CashHistoryProps) {
             );
           })}
         </ul>
+      )}
+      {hasMore && (
+        <Button variant="outline" size="sm" disabled={busy} onClick={onLoadMore}>
+          Ver más
+        </Button>
       )}
     </section>
   );

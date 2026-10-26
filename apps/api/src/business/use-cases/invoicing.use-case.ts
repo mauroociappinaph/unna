@@ -10,13 +10,17 @@ import {
   LockedReceiptIssue,
   Order,
   OrderRepositoryPort,
+  Page,
+  PageRequest,
   Receipt,
   ReceiptIssueUnitOfWorkPort,
   ReceiptRepositoryPort,
+  ReceiptSummary,
   buildArcaQrUrl,
   receiverVatCondition,
   resolveFiscalDocument,
 } from '@unna/domain';
+import { pageOrInvalidCursor } from './page-result';
 
 export const RECEIPT_TYPES = ['ticket', 'A', 'B', 'C'] as const;
 export type IssuableReceiptType = (typeof RECEIPT_TYPES)[number];
@@ -135,8 +139,9 @@ export class InvoicingUseCase {
     return receipt ? ok(receipt) : notFound('Comprobante no encontrado');
   }
 
-  async listReceipts(businessId: string): Promise<Result<Receipt[]>> {
-    return ok(await this.receipts.findByBusinessId(businessId));
+  /** Newest first, without the items (each receipt carries its itemCount). */
+  async listReceipts(businessId: string, page: PageRequest): Promise<Result<Page<ReceiptSummary>>> {
+    return pageOrInvalidCursor(await this.receipts.findPageByBusinessId(businessId, page));
   }
 
   /** Runs under the sequence lock: the number advances only when ARCA approves it, so there are no gaps. */

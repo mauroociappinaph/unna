@@ -9,6 +9,7 @@ import { ErrorBanner } from './ErrorBanner';
 import { STOCK_MOVEMENT_LABELS, STOCK_OUT_TYPE_LABELS } from './catalog-utils';
 import { apiErrorMessage } from '@/lib/api-errors';
 
+/** Movements per page; "Ver más" loads the next older page (S17). */
 const RECENT_MOVEMENTS = 10;
 
 type PanelMode = 'in' | 'out' | 'movements';
@@ -84,44 +85,72 @@ function StockChangeForm({ mode, onSubmit, onCancel }: StockChangeFormProps) {
 
 function MovementsList({ businessId, productId }: { businessId: string; productId: string }) {
   const [movements, setMovements] = useState<StockMovement[] | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     api
-      .listStockMovements(businessId, productId)
-      .then((list) => active && setMovements(list.slice(0, RECENT_MOVEMENTS)))
+      .listStockMovements(businessId, { productId, limit: RECENT_MOVEMENTS })
+      .then((page) => {
+        if (!active) return;
+        setMovements(page.items);
+        setNextCursor(page.nextCursor);
+      })
       .catch((err) => active && setError(apiErrorMessage(err, 'No se pudieron cargar los movimientos')));
     return () => {
       active = false;
     };
   }, [businessId, productId]);
 
-  if (error) return <ErrorBanner message={error} />;
+  const loadMore = async () => {
+    if (!nextCursor) return;
+    setLoadingMore(true);
+    try {
+      const page = await api.listStockMovements(businessId, { productId, limit: RECENT_MOVEMENTS, cursor: nextCursor });
+      setMovements((current) => [...(current ?? []), ...page.items]);
+      setNextCursor(page.nextCursor);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'No se pudieron cargar más movimientos'));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  if (error && !movements) return <ErrorBanner message={error} />;
   if (!movements) return <p className="text-gray-500">Cargando movimientos…</p>;
   if (movements.length === 0) return <p className="text-gray-500">Este producto todavía no tiene movimientos.</p>;
 
   return (
-    <table className="w-full text-sm">
-      <thead className="text-left text-gray-600">
-        <tr>
-          <th className="py-2">Fecha</th>
-          <th className="py-2">Tipo</th>
-          <th className="py-2">Cantidad</th>
-          <th className="py-2">Motivo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {movements.map((movement) => (
-          <tr key={movement.id} className="border-t border-gray-100">
-            <td className="py-2">{new Date(movement.createdAt).toLocaleString('es-AR')}</td>
-            <td className="py-2">{STOCK_MOVEMENT_LABELS[movement.type] ?? movement.type}</td>
-            <td className="py-2">{movement.type === 'in' ? `+${movement.quantity}` : `-${movement.quantity}`}</td>
-            <td className="py-2">{movement.reason}</td>
+    <div className="space-y-3">
+      <ErrorBanner message={error} />
+      <table className="w-full text-sm">
+        <thead className="text-left text-gray-600">
+          <tr>
+            <th className="py-2">Fecha</th>
+            <th className="py-2">Tipo</th>
+            <th className="py-2">Cantidad</th>
+            <th className="py-2">Motivo</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {movements.map((movement) => (
+            <tr key={movement.id} className="border-t border-gray-100">
+              <td className="py-2">{new Date(movement.createdAt).toLocaleString('es-AR')}</td>
+              <td className="py-2">{STOCK_MOVEMENT_LABELS[movement.type] ?? movement.type}</td>
+              <td className="py-2">{movement.type === 'in' ? `+${movement.quantity}` : `-${movement.quantity}`}</td>
+              <td className="py-2">{movement.reason}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {nextCursor && (
+        <Button variant="outline" size="sm" loading={loadingMore} onClick={loadMore}>
+          Ver más
+        </Button>
+      )}
+    </div>
   );
 }
 

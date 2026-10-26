@@ -7,6 +7,9 @@ import {
   ModifierGroupRepositoryPort,
   OrderListFilters,
   OrderRepositoryPort,
+  OrderSummary,
+  Page,
+  PageRequest,
   PaymentRecord,
   PaymentRepositoryPort,
   ProductRepositoryPort,
@@ -15,6 +18,7 @@ import {
   Order,
 } from '@unna/domain';
 import { registerOrderPayment } from './order-payment';
+import { pageOrInvalidCursor } from './page-result';
 
 export const ORDER_TYPES = ['dine_in', 'takeaway', 'delivery', 'pickup'] as const;
 export const PAYMENT_METHODS = ['cash', 'card', 'mercado_pago', 'transfer', 'qr'] as const;
@@ -222,8 +226,9 @@ export class SalesUseCase {
     return order ? ok(order) : notFound('Pedido no encontrado');
   }
 
-  async listOrders(businessId: string, filters: OrderListFilters): Promise<Result<Order[]>> {
-    return ok(await this.orders.findByBusinessId(businessId, filters));
+  /** Newest first, without the items (each order carries its itemCount). */
+  async listOrders(businessId: string, filters: OrderListFilters, page: PageRequest): Promise<Result<Page<OrderSummary>>> {
+    return pageOrInvalidCursor(await this.orders.findPageByBusinessId(businessId, filters, page));
   }
 
   private async findModifiable(

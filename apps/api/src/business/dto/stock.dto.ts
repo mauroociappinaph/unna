@@ -1,5 +1,6 @@
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import type { StockMovementType } from '@unna/domain';
+import { PageQuery } from '../../common/pagination';
 
 /** Exit movement types; 'in' only goes through the entry endpoint. */
 export const STOCK_OUT_TYPES = [
@@ -35,4 +36,11 @@ export class AdjustThresholdsDto {
   @IsOptional() @IsInt() @Min(0) maxThreshold?: number;
   @IsOptional() @IsInt() @Min(0) reorderPoint?: number;
   @IsOptional() @IsInt() @Min(1) reorderQuantity?: number;
+}
+
+/** Filters of the movements list; each one applies on its own or together (S17). */
+export class ListStockMovementsQuery extends PageQuery {
+  @IsOptional() @IsString() @MaxLength(100) productId?: string;
+  @IsOptional() @IsDateString() from?: string;
+  @IsOptional() @IsDateString() to?: string;
 }

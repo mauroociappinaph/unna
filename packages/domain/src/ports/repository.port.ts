@@ -7,6 +7,9 @@ import { PriceList } from '../value-objects/price-list';
 import { StockLevel, StockMovement } from '../value-objects/stock';
 import { Order } from '../value-objects/order';
 import { Receipt } from '../value-objects/receipt';
+import type { OrderSummary } from '../value-objects/order-summary';
+import type { ReceiptSummary } from '../value-objects/receipt-summary';
+import type { Page, PageRequest } from '../common/pagination';
 
 export interface RepositoryPort<T extends { id: string }> {
   save(aggregate: T): Promise<void>;
@@ -20,6 +23,8 @@ export interface UserRepositoryPort extends RepositoryPort<User> {
 }
 
 export interface BusinessRepositoryPort extends RepositoryPort<Business> {
+  /** Owner of the business, reading nothing else; null when the business does not exist. */
+  findOwnerId(businessId: string): Promise<string | null>;
   findByOwnerId(ownerId: string): Promise<Business[]>;
   existsByName(name: string): Promise<boolean>;
   existsByCuit(cuit: string): Promise<boolean>;
@@ -87,17 +92,24 @@ export interface StockLevelRepositoryPort {
   delete(productId: string): Promise<void>;
 }
 
+export interface StockMovementListFilters {
+  productId?: string;
+  from?: Date;
+  to?: Date;
+}
+
 export interface StockMovementRepositoryPort {
   save(movement: StockMovement): Promise<void>;
-  findByProductId(productId: string): Promise<StockMovement[]>;
-  findByBusinessId(businessId: string): Promise<StockMovement[]>;
-  findByBusinessIdAndDateRange(businessId: string, from: Date, to: Date): Promise<StockMovement[]>;
+  /** Newest first. Null when the cursor is not a movement of the business. */
+  findPageByBusinessId(businessId: string, filters: StockMovementListFilters, page: PageRequest): Promise<Page<StockMovement> | null>;
 }
 
 // ============ T24: Sales / POS ============
 
 export interface OrderListFilters {
   status?: string;
+  /** Only orders whose status is not closed (CLOSED_ORDER_STATUSES). */
+  open?: boolean;
   sucursalId?: string;
   from?: Date;
   to?: Date;
@@ -106,7 +118,8 @@ export interface OrderListFilters {
 export interface OrderRepositoryPort {
   save(order: Order): Promise<void>;
   findByIdAndBusinessId(id: string, businessId: string): Promise<Order | null>;
-  findByBusinessId(businessId: string, filters?: OrderListFilters): Promise<Order[]>;
+  /** Newest first, without the items. Null when the cursor is not an order of the business. */
+  findPageByBusinessId(businessId: string, filters: OrderListFilters, page: PageRequest): Promise<Page<OrderSummary> | null>;
 }
 
 export interface PaymentRecord {
@@ -156,5 +169,6 @@ export interface ReceiptRepositoryPort {
   save(receipt: Receipt): Promise<void>;
   findByIdAndBusinessId(id: string, businessId: string): Promise<Receipt | null>;
   findByOrderId(orderId: string): Promise<Receipt[]>;
-  findByBusinessId(businessId: string): Promise<Receipt[]>;
+  /** Newest first, without the items. Null when the cursor is not a receipt of the business. */
+  findPageByBusinessId(businessId: string, page: PageRequest): Promise<Page<ReceiptSummary> | null>;
 }

@@ -74,7 +74,7 @@ describe('Catalogo page', () => {
     mocked.listProducts.mockResolvedValue([milanesa, soda]);
     mocked.listModifierGroups.mockResolvedValue([group]);
     mocked.listStockLevels.mockResolvedValue([level]);
-    mocked.listStockMovements.mockResolvedValue(movements);
+    mocked.listStockMovements.mockResolvedValue({ items: movements, nextCursor: null });
   });
 
   afterEach(() => {
@@ -480,7 +480,32 @@ describe('Catalogo page', () => {
 
       expect(await screen.findByText('Stock inicial')).toBeInTheDocument();
       expect(screen.getByText('Compra')).toBeInTheDocument();
-      expect(mocked.listStockMovements).toHaveBeenCalledWith(businessId, milanesa.id);
+      expect(mocked.listStockMovements).toHaveBeenCalledWith(businessId, { productId: milanesa.id, limit: 10 });
+      expect(screen.queryByRole('button', { name: 'Ver más' })).not.toBeInTheDocument();
+    });
+
+    it('appends older movements with "Ver más" using the cursor and hides it on the last page (S17)', async () => {
+      const older: StockMovement = { ...movements[0], id: 'mov-older', type: 'waste', reason: 'Vencido' };
+      mocked.listStockMovements
+        .mockResolvedValueOnce({ items: movements, nextCursor: movements[movements.length - 1].id })
+        .mockResolvedValueOnce({ items: [older], nextCursor: null });
+      const user = userEvent.setup();
+      render(<CatalogoPage />);
+      await openTab(user, 'Stock');
+      const row = await screen.findByRole('row', { name: /Milanesa/ });
+      await user.click(within(row).getByRole('button', { name: 'Movimientos' }));
+      await screen.findByText('Compra');
+
+      await user.click(screen.getByRole('button', { name: 'Ver más' }));
+
+      expect(await screen.findByText('Vencido')).toBeInTheDocument();
+      expect(screen.getByText('Compra')).toBeInTheDocument();
+      expect(mocked.listStockMovements).toHaveBeenLastCalledWith(businessId, {
+        productId: milanesa.id,
+        limit: 10,
+        cursor: movements[movements.length - 1].id,
+      });
+      expect(screen.queryByRole('button', { name: 'Ver más' })).not.toBeInTheDocument();
     });
 
     it('shows the API error message when removing stock fails', async () => {

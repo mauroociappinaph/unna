@@ -1,6 +1,8 @@
 // Cash register sessions (caja y turnos, S12). The payment side (linking a payment to the open
 // session under the order lock) is LockedCashSessionsPort in repository.port.ts.
 import type { CashSession, CashSessionPayment, CashSessionStatus } from '../cash/cash-session';
+import type { CashSessionSummary } from '../cash/cash-session-summary';
+import type { Page, PageRequest } from '../common/pagination';
 
 export interface CashSessionListFilters {
   sucursalId?: string;
@@ -12,8 +14,8 @@ export interface CashSessionListFilters {
 export interface CashSessionRepositoryPort {
   findOpenBySucursal(businessId: string, sucursalId: string): Promise<CashSession | null>;
   findByIdAndBusinessId(id: string, businessId: string): Promise<CashSession | null>;
-  /** Newest first. */
-  listByBusiness(businessId: string, filters?: CashSessionListFilters): Promise<CashSession[]>;
+  /** Newest first, without the movements. Null when the cursor is not a session of the business. */
+  findPageByBusiness(businessId: string, filters: CashSessionListFilters, page: PageRequest): Promise<Page<CashSessionSummary> | null>;
   /** Payments taken in the session, whatever their status. */
   findPaymentsBySession(sessionId: string): Promise<CashSessionPayment[]>;
   /** Writes the session and any movement not stored yet; stored movements never change. */

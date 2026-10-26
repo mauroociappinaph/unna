@@ -435,38 +435,6 @@
         "type": "dine_in",
         "status": "pending",
         "tableNumber": "4",
-        "items": [
-          {
-            "id": "a1f2f062-105d-4dcc-9642-b764b3dcd10b",
-            "orderId": "de978796-6e98-42df-b3dc-b15a86b383d2",
-            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
-            "productName": "Milanesa",
-            "quantity": 2,
-            "unitPrice": {
-              "amount": 170000,
-              "currency": "ARS"
-            },
-            "totalPrice": {
-              "amount": 340000,
-              "currency": "ARS"
-            },
-            "taxRate": 21,
-            "taxAmount": {
-              "amount": 71400,
-              "currency": "ARS"
-            },
-            "modifiers": [
-              {
-                "name": "Papas",
-                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
-                "priceDelta": 20000,
-                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
-              }
-            ],
-            "createdAt": "2026-10-25T22:37:32.978Z",
-            "updatedAt": "2026-10-25T22:37:32.979Z"
-          }
-        ],
         "subtotal": {
           "amount": 340000,
           "currency": "ARS"
@@ -486,7 +454,8 @@
         "paymentStatus": "pending",
         "sucursalName": "Central",
         "createdAt": "2026-10-25T22:37:32.978Z",
-        "updatedAt": "2026-10-25T22:37:32.979Z"
+        "updatedAt": "2026-10-25T22:37:32.979Z",
+        "itemCount": 1
       }
     ]
   },
@@ -1187,17 +1156,6 @@
         "openedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
         "openedAt": "2026-10-25T22:37:32.951Z",
         "openingAmount": 500000,
-        "movements": [
-          {
-            "id": "907aed9e-f783-4bc9-93a7-89cd9c943c56",
-            "sessionId": "971fa47c-a3ba-465d-8987-71ce922fe574",
-            "type": "out",
-            "amount": 20000,
-            "reason": "Proveedor de leche",
-            "createdBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
-            "createdAt": "2026-10-25T22:37:32.967Z"
-          }
-        ],
         "closedBy": "14f79a8b-57d0-49f5-953b-8aba07415f2c",
         "closedAt": "2026-10-25T22:37:33.158Z",
         "expected": {
@@ -1220,7 +1178,8 @@
           "cash": -1197100,
           "transfer": 0,
           "mercado_pago": 0
-        }
+        },
+        "movementCount": 1
       }
     ]
   },
@@ -1288,41 +1247,10 @@
         },
         "caeRequest": "{\"issuerCuit\":\"20248818566\",\"pointOfSale\":3,\"receiptType\":\"A\",\"number\":1,\"issueDate\":\"2026-10-25T22:37:33.118Z\",\"concept\":1,\"docType\":80,\"docNumber\":\"30712345671\",\"receiverVatCondition\":1,\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
         "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwMjQ4ODE4NTY2LCJwdG9WdGEiOjMsInRpcG9DbXAiOjEsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo4MCwibnJvRG9jUmVjIjozMDcxMjM0NTY3MSwidGlwb0NvZEF1dCI6IkUiLCJjb2RBdXQiOjcwMDAzMDEwMDAwMDAxfQ==",
-        "items": [
-          {
-            "id": "902db6f4-fde4-4155-b1d8-81b7ccbf6371",
-            "receiptId": "5e76082f-e1e3-4e29-b9ca-91224d194929",
-            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
-            "productName": "Milanesa",
-            "quantity": 1,
-            "unitPrice": {
-              "amount": 170000,
-              "currency": "ARS"
-            },
-            "totalPrice": {
-              "amount": 170000,
-              "currency": "ARS"
-            },
-            "taxRate": 21,
-            "taxAmount": {
-              "amount": 35700,
-              "currency": "ARS"
-            },
-            "modifiers": [
-              {
-                "name": "Papas",
-                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
-                "priceDelta": 20000,
-                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
-              }
-            ],
-            "createdAt": "2026-10-25T22:37:33.118Z",
-            "updatedAt": "2026-10-25T22:37:33.122Z"
-          }
-        ],
         "createdAt": "2026-10-25T22:37:33.118Z",
         "updatedAt": "2026-10-25T22:37:33.120Z",
-        "issuedAt": "2026-10-25T22:37:33.119Z"
+        "issuedAt": "2026-10-25T22:37:33.119Z",
+        "itemCount": 1
       },
       {
         "id": "44fd24ac-ac00-4c38-9484-c18438725ede",
@@ -1374,41 +1302,10 @@
         },
         "caeRequest": "{\"issuerCuit\":\"20248818566\",\"pointOfSale\":3,\"receiptType\":\"B\",\"number\":1,\"issueDate\":\"2026-10-25T22:37:33.086Z\",\"concept\":1,\"docType\":99,\"docNumber\":\"0\",\"receiverVatCondition\":5,\"netAmount\":170000,\"exemptAmount\":0,\"ivaAmount\":35700,\"totalAmount\":205700,\"ivaBreakdown\":[{\"rate\":21,\"base\":170000,\"amount\":35700}],\"currency\":\"PES\"}",
         "qrCode": "https://www.afip.gob.ar/fe/qr/?p=eyJ2ZXIiOjEsImZlY2hhIjoiMjAyNi0xMC0yNSIsImN1aXQiOjIwMjQ4ODE4NTY2LCJwdG9WdGEiOjMsInRpcG9DbXAiOjYsIm5yb0NtcCI6MSwiaW1wb3J0ZSI6MjA1NywibW9uZWRhIjoiUEVTIiwiY3R6IjoxLCJ0aXBvRG9jUmVjIjo5OSwibnJvRG9jUmVjIjowLCJ0aXBvQ29kQXV0IjoiRSIsImNvZEF1dCI6NzAwMDMwNjAwMDAwMDF9",
-        "items": [
-          {
-            "id": "c90bf289-abd1-4bb7-b548-1d1a3d342dc9",
-            "receiptId": "44fd24ac-ac00-4c38-9484-c18438725ede",
-            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
-            "productName": "Milanesa",
-            "quantity": 1,
-            "unitPrice": {
-              "amount": 170000,
-              "currency": "ARS"
-            },
-            "totalPrice": {
-              "amount": 170000,
-              "currency": "ARS"
-            },
-            "taxRate": 21,
-            "taxAmount": {
-              "amount": 35700,
-              "currency": "ARS"
-            },
-            "modifiers": [
-              {
-                "name": "Papas",
-                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
-                "priceDelta": 20000,
-                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
-              }
-            ],
-            "createdAt": "2026-10-25T22:37:33.086Z",
-            "updatedAt": "2026-10-25T22:37:33.091Z"
-          }
-        ],
         "createdAt": "2026-10-25T22:37:33.086Z",
         "updatedAt": "2026-10-25T22:37:33.088Z",
-        "issuedAt": "2026-10-25T22:37:33.088Z"
+        "issuedAt": "2026-10-25T22:37:33.088Z",
+        "itemCount": 1
       },
       {
         "id": "1ae71235-d97e-459a-bf53-3aacbfd57283",
@@ -1448,41 +1345,10 @@
           "amount": 0,
           "currency": "ARS"
         },
-        "items": [
-          {
-            "id": "436ceecb-808b-44c2-ad49-dd215fe3e99c",
-            "receiptId": "1ae71235-d97e-459a-bf53-3aacbfd57283",
-            "productId": "e1d5bdeb-da70-4ca9-b82a-c28acb506328",
-            "productName": "Milanesa",
-            "quantity": 2,
-            "unitPrice": {
-              "amount": 170000,
-              "currency": "ARS"
-            },
-            "totalPrice": {
-              "amount": 340000,
-              "currency": "ARS"
-            },
-            "taxRate": 21,
-            "taxAmount": {
-              "amount": 71400,
-              "currency": "ARS"
-            },
-            "modifiers": [
-              {
-                "name": "Papas",
-                "optionId": "fa940865-2aed-4dfe-9ca3-bb84a0101367",
-                "priceDelta": 20000,
-                "modifierGroupId": "f9115b96-5a70-4b29-8eae-c0492ab79f8a"
-              }
-            ],
-            "createdAt": "2026-10-25T22:37:33.045Z",
-            "updatedAt": "2026-10-25T22:37:33.049Z"
-          }
-        ],
         "createdAt": "2026-10-25T22:37:33.045Z",
         "updatedAt": "2026-10-25T22:37:33.047Z",
-        "issuedAt": "2026-10-25T22:37:33.046Z"
+        "issuedAt": "2026-10-25T22:37:33.046Z",
+        "itemCount": 1
       }
     ]
   },

@@ -1,5 +1,6 @@
 import type { AxiosInstance } from 'axios';
-import type { StockChange, StockLevel, StockMovement, StockOutType } from '../api-types';
+import type { Page, PageQuery, StockChange, StockLevel, StockMovement, StockOutType } from '../api-types';
+import { toPage } from './page';
 
 export function createStockApi(client: AxiosInstance) {
   return {
@@ -7,8 +8,8 @@ export function createStockApi(client: AxiosInstance) {
       return (await client.get(`/businesses/${businessId}/stock/levels`)).data;
     },
 
-    async listStockMovements(businessId: string, productId?: string): Promise<StockMovement[]> {
-      return (await client.get(`/businesses/${businessId}/stock/movements`, { params: productId ? { productId } : {} })).data;
+    async listStockMovements(businessId: string, filters: { productId?: string } & PageQuery = {}): Promise<Page<StockMovement>> {
+      return toPage(await client.get(`/businesses/${businessId}/stock/movements`, { params: filters }));
     },
 
     async initializeStock(businessId: string, productId: string, data: { initialQuantity: number; minThreshold?: number }): Promise<StockLevel> {

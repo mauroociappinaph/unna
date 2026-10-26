@@ -74,10 +74,13 @@ describe('POST /public/mercadopago/webhook (S15)', () => {
     expect((await post({ 'x-signature': signature(), 'x-request-id': REQUEST_ID })).status).toBe(200);
   });
 
-  it('still answers 200 when the sync fails, so the POS polling settles it later', async () => {
+  it('answers 503 when the sync of a known order fails, so Mercado Pago retries the notification', async () => {
     syncByMpOrderId.mockRejectedValue(new Error('Mercado Pago respondió 500'));
 
-    expect((await post({ 'x-signature': signature(), 'x-request-id': REQUEST_ID })).status).toBe(200);
+    const response = await post({ 'x-signature': signature(), 'x-request-id': REQUEST_ID });
+
+    expect(response.status).toBe(503);
+    expect(JSON.stringify(response.body)).not.toContain('Mercado Pago respondió 500');
   });
 
   it.each([

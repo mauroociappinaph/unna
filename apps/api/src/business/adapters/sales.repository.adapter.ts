@@ -249,6 +249,11 @@ class PrismaLockedCashSessions implements LockedCashSessionsPort {
  */
 export async function lockOrder(tx: Db, orderId: string, businessId: string): Promise<LockedOrderRepositories> {
   await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} AND "businessId" = ${businessId} FOR UPDATE`;
+  return orderRepositoriesIn(tx);
+}
+
+/** Order, payment and cash session repositories bound to the open transaction `tx`. */
+export function orderRepositoriesIn(tx: Db): LockedOrderRepositories {
   return {
     orders: new PrismaOrderRepository(tx, inOpenTransaction),
     payments: new PrismaPaymentRepository(tx),

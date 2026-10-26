@@ -54,6 +54,7 @@ model Business {
   mercadoPagoConnection    MercadoPagoConnection?
   mercadoPagoOAuthAttempts MercadoPagoOAuthAttempt[]
   qrCharges     QrCharge[]
+  onlineCheckouts OnlineCheckout[]
 
   @@map("businesses")
 }
@@ -78,6 +79,10 @@ model Sucursal {
   qrTemplateUrl   String?
   // Claim of the store + POS provisioning in progress, so concurrent requests create one store.
   mpProvisioningAt DateTime?
+  // Pedido anticipado (S20): public slug of the menu link. Kept when disabled, so enabling again
+  // gives the same link.
+  preorderSlug    String?   @unique
+  preorderEnabled Boolean   @default(false)
   businessId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -87,6 +92,7 @@ model Sucursal {
   receipts  Receipt[]
   cashSessions CashSession[]
   qrCharges    QrCharge[]
+  onlineCheckouts OnlineCheckout[]
 
   @@map("sucursales")
 }
@@ -309,6 +315,7 @@ model Order {
   payments        Payment[]
   receipts        Receipt[]
   qrCharges       QrCharge[]
+  onlineCheckout  OnlineCheckout?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -365,6 +372,7 @@ model Payment {
   business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   cashSession     CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
   qrCharge        QrCharge?
+  onlineCheckout  OnlineCheckout?
 
   @@index([orderId])
   @@index([cashSessionId])
@@ -576,4 +584,44 @@ model QrCharge {
 
   @@index([businessId, orderId, status])
   @@map("qr_charges")
+}
+
+// ============ S20: Pedido anticipado ============
+
+/// A pedido anticipado cart with server prices, paid online with Mercado Pago (Checkout Pro through
+/// the Orders API). The UNNA order is created only once the payment is approved, exactly once per
+/// checkout (under a lock on this row; unique orderId and paymentId as second guard).
+model OnlineCheckout {
+  id                String    @id @default(uuid())
+  businessId        String
+  sucursalId        String
+  sucursalName      String
+  // SHA-256 of the tracking token (32 random bytes); the token is only returned on creation.
+  trackingTokenHash String    @unique
+  // awaiting_payment, paid, payment_failed, expired, cancelled
+  status            String    @default("awaiting_payment")
+  customerName      String
+  // [{ productId, productName, productSku, quantity, unitPrice, totalPrice, taxRate, taxAmount, notes, modifiers, preparationTimeMinutes }]
+  lines             Json
+  total             Int // in cents
+  // Null until Mercado Pago created the online order.
+  mpOrderId         String?   @unique
+  checkoutUrl       String?
+  expiresAt         DateTime
+  paidAt            DateTime?
+  orderId           String?   @unique
+  paymentId         String?   @unique
+  mpPaymentId       String?
+  // Paid in Mercado Pago but not registered (caja closed...): why, for the owner.
+  paymentError      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sucursal Sucursal @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, status, createdAt])
+  @@map("online_checkouts")
 }

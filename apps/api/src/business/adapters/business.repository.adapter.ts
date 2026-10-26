@@ -19,6 +19,12 @@ const storedAs = <T>(json: Prisma.JsonValue): T => json as unknown as T;
 const scheduleJson = (schedule: Schedule): Prisma.InputJsonObject =>
   Object.fromEntries(Object.entries(schedule.toJSON()).map(([day, hours]) => [day, { ...hours }]));
 
+/** Schedule is stored through its toJSON (week shape); older rows may hold the raw instance. */
+export function scheduleFromJson(json: Prisma.JsonValue): Schedule {
+  const stored = json as ScheduleJson;
+  return Schedule.create(stored?.weekSchedule ?? stored, stored?.timezone);
+}
+
 @Injectable()
 export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
@@ -109,12 +115,6 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
     };
   }
 
-  // Schedule is stored through its toJSON (week shape); older rows may hold the raw instance.
-  private toSchedule(json: Prisma.JsonValue): Schedule {
-    const stored = json as ScheduleJson;
-    return Schedule.create(stored?.weekSchedule ?? stored, stored?.timezone);
-  }
-
   private toDomain(record: BusinessRecord): Business {
     const sucursales = (record.sucursales || []).map((s) => 
       Sucursal.reconstitute({
@@ -123,7 +123,7 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
         address: Address.create(storedAs<AddressJson>(s.address)),
         phone: s.phone,
         email: s.email,
-        schedule: this.toSchedule(s.schedule),
+        schedule: scheduleFromJson(s.schedule),
         isMain: s.isMain,
         isActive: s.isActive,
         createdAt: new Date(s.createdAt),
@@ -135,7 +135,7 @@ export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
       name: BusinessName.create(record.name),
       cuit: CUIT.create(record.cuit),
       address: Address.create(storedAs<AddressJson>(record.address)),
-      schedule: this.toSchedule(record.schedule),
+      schedule: scheduleFromJson(record.schedule),
       settings: BusinessSettings.create(storedAs<SettingsJson>(record.settings)),
       ownerId: record.ownerId,
       slug: record.slug,

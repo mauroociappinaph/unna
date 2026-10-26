@@ -57,13 +57,13 @@ const availableFeatures = [
     title: 'Pantalla de pedidos',
     desc: 'La barra ve qué preparar y una pantalla para tus clientes muestra qué pedidos están listos.',
   },
-];
-
-const upcomingFeatures = [
   {
     title: 'Pedido anticipado',
     desc: 'El cliente pide y paga desde el celular, y sigue su pedido hasta que está listo.',
   },
+];
+
+const upcomingFeatures = [
   {
     title: 'Tarjeta de sellos',
     desc: 'Fidelizá a quienes vuelven todos los días.',

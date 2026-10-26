@@ -498,6 +498,10 @@ model ReceiptSequence {
   pointOfSale  String   // 4 digits
   receiptType  String   // A, B, C, ticket
   lastNumber   Int      @default(0)
+  // Issue lease (S18): the receipt whose ARCA authorization is in flight, so one ARCA call per
+  // sequence runs at a time without holding a lock. Expired leases belong to crashed requests.
+  issuingReceiptId String?
+  issuingUntil     DateTime?
   updatedAt    DateTime @updatedAt
 
   @@id([businessId, pointOfSale, receiptType])
@@ -551,10 +555,12 @@ model QrCharge {
   orderId     String
   sucursalId  String
   amount      Int // in cents
-  status      String    @default("pending") // pending, paid, expired, cancelled
-  mpOrderId   String    @unique
+  // creating (reserved while Mercado Pago creates its order, S18), pending, paid, expired, cancelled
+  status      String    @default("pending")
+  // Null while creating; a reservation cancelled before Mercado Pago answered keeps them null.
+  mpOrderId   String?   @unique
   mpPaymentId String?
-  qrData      String
+  qrData      String?
   expiresAt   DateTime
   paidAt      DateTime?
   paymentId   String?   @unique

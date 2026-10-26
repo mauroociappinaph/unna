@@ -228,6 +228,29 @@ describe('Caja page', () => {
     expect(within(list).queryByRole('button', { name: 'Ver más' })).not.toBeInTheDocument();
   });
 
+  it('discards a "Ver más" page that arrives after switching sucursal and resets the history (S18)', async () => {
+    const otherHistory: CashSession[] = [{ ...history[0], id: 'session-suc2', sucursalId: 'suc-2' }];
+    const stale: CashSession = { ...history[0], id: 'session-stale', openedAt: '2026-10-19T12:00:00.000Z', closedAt: '2026-10-19T20:00:00.000Z' };
+    let releaseStale!: (page: { items: CashSession[]; nextCursor: string | null }) => void;
+    mocked.listCashSessions
+      .mockResolvedValueOnce(pageOf(history, history[history.length - 1].id))
+      .mockReturnValueOnce(new Promise((resolve) => { releaseStale = resolve; }))
+      .mockResolvedValueOnce(pageOf(otherHistory));
+    const user = await renderCaja();
+    const list = await screen.findByRole('region', { name: 'Historial de cajas' });
+    await within(list).findAllByRole('button', { name: /Ver detalle/ });
+
+    await user.click(within(list).getByRole('button', { name: 'Ver más' }));
+    await user.selectOptions(screen.getByLabelText('Sucursal'), 'suc-2');
+    await waitFor(() => expect(mocked.listCashSessions).toHaveBeenLastCalledWith('biz-1', { sucursalId: 'suc-2' }));
+    releaseStale(pageOf([stale], 'cursor-of-suc-1'));
+
+    const rows = await within(screen.getByRole('region', { name: 'Historial de cajas' })).findAllByRole('button', { name: /Ver detalle/ });
+    expect(rows).toHaveLength(otherHistory.filter((s) => s.status === 'closed').length);
+    expect(screen.queryByText(/19\/10/)).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Historial de cajas' })).queryByRole('button', { name: 'Ver más' })).not.toBeInTheDocument();
+  });
+
   it('shows no "Ver más" when the history fits in one page (S17)', async () => {
     mocked.listCashSessions.mockResolvedValue(pageOf(history));
     await renderCaja();

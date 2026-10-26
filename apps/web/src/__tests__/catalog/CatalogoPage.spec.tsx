@@ -508,6 +508,27 @@ describe('Catalogo page', () => {
       expect(screen.queryByRole('button', { name: 'Ver más' })).not.toBeInTheDocument();
     });
 
+    it('clears the "Ver más" error once a retry succeeds (S18)', async () => {
+      const older: StockMovement = { ...movements[0], id: 'mov-older', type: 'waste', reason: 'Vencido' };
+      mocked.listStockMovements
+        .mockResolvedValueOnce({ items: movements, nextCursor: movements[movements.length - 1].id })
+        .mockRejectedValueOnce(validationError('Sin conexión'))
+        .mockResolvedValueOnce({ items: [older], nextCursor: null });
+      const user = userEvent.setup();
+      render(<CatalogoPage />);
+      await openTab(user, 'Stock');
+      const row = await screen.findByRole('row', { name: /Milanesa/ });
+      await user.click(within(row).getByRole('button', { name: 'Movimientos' }));
+      await screen.findByText('Compra');
+
+      await user.click(screen.getByRole('button', { name: 'Ver más' }));
+      expect(await screen.findByText('Sin conexión')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Ver más' }));
+
+      expect(await screen.findByText('Vencido')).toBeInTheDocument();
+      expect(screen.queryByText('Sin conexión')).not.toBeInTheDocument();
+    });
+
     it('shows the API error message when removing stock fails', async () => {
       const user = userEvent.setup();
       mocked.removeStock.mockRejectedValue(validationError('Stock insuficiente'));

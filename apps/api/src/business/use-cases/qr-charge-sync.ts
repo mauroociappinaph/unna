@@ -16,8 +16,9 @@ const AMOUNT_MISMATCH = 'El monto cobrado en Mercado Pago no coincide con el cob
 /**
  * Brings a QR charge in line with its Mercado Pago order (S15), from the POS polling, a cancel, the
  * webhook or the simulator. Only an order read from Mercado Pago counts, never a notification body.
- * Each outcome is applied under the order lock and only to a charge still pending, so concurrent
- * syncs of a paid order register exactly one payment.
+ * Mercado Pago is read without any lock; each outcome is applied under the order lock and only to a
+ * charge still pending, so concurrent syncs of a paid order register exactly one payment. A charge
+ * still `creating` has no Mercado Pago order yet and is returned as it is (S18).
  */
 @Injectable()
 export class QrChargeSync {
@@ -36,20 +37,20 @@ export class QrChargeSync {
 
   /** Reads the order with the connection of the charge's business; finished charges are returned as they are. */
   async sync(charge: QrChargeRecord, now = new Date()): Promise<QrChargeRecord> {
-    if (charge.status !== 'pending') return charge;
-    return this.apply(charge, await this.readOrder(charge), now);
+    if (charge.status !== 'pending' || !charge.mpOrderId) return charge;
+    return this.apply(charge, await this.readOrder(charge.businessId, charge.mpOrderId), now);
   }
 
-  async readOrder(charge: QrChargeRecord): Promise<MercadoPagoOrder> {
-    const token = await this.tokens.validAccessToken(charge.businessId);
+  private async readOrder(businessId: string, mpOrderId: string): Promise<MercadoPagoOrder> {
+    const token = await this.tokens.validAccessToken(businessId);
     if (!token.ok) throw token.error ?? new Error('Conectá tu cuenta de Mercado Pago');
-    return this.gateway.getOrder(token.value as string, charge.mpOrderId);
+    return this.gateway.getOrder(token.value as string, mpOrderId);
   }
 
   /** Applies an order read from Mercado Pago to the charge; a status that is not final keeps it pending. */
   async apply(charge: QrChargeRecord, mpOrder: MercadoPagoOrder, now = new Date()): Promise<QrChargeRecord> {
     const status = qrChargeStatusFor(mpOrder.status);
-    if (mpOrder.id !== charge.mpOrderId || !status) return charge;
+    if (!charge.mpOrderId || mpOrder.id !== charge.mpOrderId || !status) return charge;
 
     return this.unitOfWork.withOrderLock(charge.orderId, charge.businessId, async (repositories) => {
       const current = await repositories.qrCharges.findById(charge.businessId, charge.id);
@@ -66,6 +67,8 @@ export class QrChargeSync {
    * with the reason, so the owner can register or refund it by hand.
    */
   private async paid(repositories: QrChargeLockedRepositories, charge: QrChargeRecord, mpOrder: MercadoPagoOrder, now: Date): Promise<QrChargeRecord> {
+    // Only reached from apply, which needs the Mercado Pago order id of the charge.
+    const reference = mpOrder.id;
     const paid: QrChargeRecord = { ...charge, status: 'paid', paidAt: now, mpPaymentId: mpOrder.paymentId };
     if (mpOrder.totalAmount !== charge.amount) return { ...paid, paymentError: AMOUNT_MISMATCH };
 
@@ -74,7 +77,7 @@ export class QrChargeSync {
       orderId: charge.orderId,
       amount: charge.amount,
       method: 'mercado_pago',
-      reference: charge.mpOrderId,
+      reference,
     });
     if (!registered.ok) return { ...paid, paymentError: registered.error?.message ?? 'No se pudo registrar el pago' };
     return { ...paid, paymentId: registered.value!.payment.id, paymentError: null };

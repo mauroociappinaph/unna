@@ -8,6 +8,12 @@ export const QR_CHARGE_TTL_MS = 15 * 60 * 1000;
 /** A store + POS provisioning claim older than this is considered abandoned (crashed request). */
 export const MERCADOPAGO_PROVISIONING_STALE_MS = 2 * 60 * 1000;
 
+/**
+ * A charge reserved before calling Mercado Pago (`creating`) and older than this belongs to a
+ * crashed request: the next create cancels it and reserves a new one (S18).
+ */
+export const QR_CHARGE_RESERVATION_STALE_MS = 2 * 60 * 1000;
+
 const EXTERNAL_REFERENCE_MAX = 64;
 
 /**

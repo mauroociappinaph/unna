@@ -84,9 +84,20 @@ export class InMemoryQrCharges implements QrChargeRepositoryPort {
   async findPendingByOrder(businessId: string, orderId: string) {
     return [...this.charges.values()].filter((c) => c.businessId === businessId && c.orderId === orderId && c.status === 'pending').map((c) => ({ ...c }));
   }
+  async findCreatingByOrder(businessId: string, orderId: string) {
+    const charge = [...this.charges.values()].find((c) => c.businessId === businessId && c.orderId === orderId && c.status === 'creating');
+    return charge ? { ...charge } : null;
+  }
   async create(charge: QrChargeRecord) {
-    if ([...this.charges.values()].some((c) => c.mpOrderId === charge.mpOrderId)) throw Object.assign(new Error('Unique'), { code: 'P2002' });
+    if (charge.mpOrderId && [...this.charges.values()].some((c) => c.mpOrderId === charge.mpOrderId)) throw Object.assign(new Error('Unique'), { code: 'P2002' });
     this.charges.set(charge.id, { ...charge });
+  }
+  async complete(charge: QrChargeRecord) {
+    if (charge.mpOrderId && [...this.charges.values()].some((c) => c.id !== charge.id && c.mpOrderId === charge.mpOrderId)) {
+      throw Object.assign(new Error('Unique'), { code: 'P2002' });
+    }
+    const { status, mpOrderId, qrData, expiresAt } = charge;
+    this.charges.set(charge.id, { ...this.charges.get(charge.id)!, status, mpOrderId, qrData, expiresAt });
   }
   async update(charge: QrChargeRecord) {
     if (charge.paymentId && [...this.charges.values()].some((c) => c.id !== charge.id && c.paymentId === charge.paymentId)) {
@@ -108,6 +119,10 @@ export class QrWorld {
   readonly cipher = testCipher();
   locks: Array<[string, string]> = [];
   private held = false;
+  /** True while some work runs under the (fake) order lock. */
+  get lockHeld() {
+    return this.held;
+  }
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor() {

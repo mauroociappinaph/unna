@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PublicOrderRoute from '@/app/pedido/[slug]/page';
 import { formatMoney } from '@/lib/api-types';
@@ -229,6 +229,26 @@ describe('Public order page: checkout', () => {
     expect(headerOf(init, 'Content-Type')).toBe('application/json');
     expect(headerOf(init, 'Authorization')).toBeNull();
     expect(init?.credentials).toBe('omit');
+  });
+
+  it('lets the customer pay again after coming back from Mercado Pago with the back button', async () => {
+    const user = setup();
+    await fillCart(user);
+    await user.type(screen.getByLabelText('Tu nombre'), 'Martina');
+    await user.click(screen.getByRole('button', { name: /Pagar con Mercado Pago/ }));
+    await waitFor(() => expect(redirectTo).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: /Pagar con Mercado Pago/ })).toBeDisabled();
+
+    // The browser restores the page from its back-forward cache.
+    const restored = new Event('pageshow');
+    Object.defineProperty(restored, 'persisted', { value: true });
+    act(() => {
+      window.dispatchEvent(restored);
+    });
+
+    expect(screen.getByRole('button', { name: /Pagar con Mercado Pago/ })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: /Pagar con Mercado Pago/ }));
+    await waitFor(() => expect(redirectTo).toHaveBeenCalledTimes(2));
   });
 
   it('asks for the name and does not post without it', async () => {

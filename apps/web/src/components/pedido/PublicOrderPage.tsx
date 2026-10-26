@@ -33,6 +33,15 @@ export function PublicOrderPage({ slug }: { slug: string }) {
     };
   }, [slug]);
 
+  // Back from Mercado Pago, the browser may restore this page as it was left: "submitting". Let the customer pay again.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setSubmitting(false);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
+
   const handleAdd = (product: PublicProduct) => {
     if (product.modifierGroups.length > 0) setSheetProduct(product);
     else cart.add(product, []);

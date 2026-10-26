@@ -88,6 +88,31 @@ Reglas de diseño (orquestador):
 - Barra: por sucursal, solo pedidos cobrados y no cerrados de hoy, en columnas Nuevos / En preparación / Listos, con acciones que usan los estados existentes; se actualiza sola.
 - Pantalla pública: sin sesión, con un token secreto por sucursal que el dueño genera y puede regenerar; muestra solo número corto del pedido, primer nombre del cliente y estado (en preparación / listo), de hoy y cobrados. Endpoint público: riesgo de seguridad.
 
+### S18: Llamadas externas fuera del lock + detalles de listas
+Usuario: "Soluciona estos dos errores: 1. Sacar las llamadas a Mercado Pago y ARCA del lock del pedido. Es el riesgo de performance más importante que queda; toca cobros y facturación, así que va como tarea propia. 2. Dos detalles de la web: el \"Ver más\" de caja si cambiás de sucursal en el medio, y un error de stock que queda visible después de reintentar." → "Primero eso, después lo nuevo (Recomendado)".
+Reglas (orquestador):
+- Crear un cobro QR no llama a Mercado Pago con el lock del pedido tomado: se valida y reserva el cobro en una transacción corta, se llama a Mercado Pago sin lock y se guarda el resultado en otra transacción corta. Siguen valiendo: un solo cobro pendiente por pedido, idempotencia con Mercado Pago, un solo pago por orden.
+- Emitir un comprobante no llama a ARCA con locks tomados: se reserva el número en una transacción corta, se autoriza en ARCA sin lock y se confirma (o se libera / deja reintentable) en otra transacción corta. Siguen valiendo: numeración correlativa sin huecos ni duplicados, un solo comprobante aprobado por pedido, rechazos y timeouts dejan borrador reintentable.
+- Caja: "Ver más" nunca mezcla cajas de otra sucursal; al cambiar de sucursal el historial y su cursor se reinician y una respuesta tardía de la sucursal anterior se descarta.
+- Stock: un error de "Ver más" desaparece al reintentar con éxito o al cambiar de producto.
+
+### S19: Landing al día, footer sin links rotos y contraste
+Usuario: "La landing está desactualizada: todavía muestra como \"Próximamente\" ARCA, caja, QR y modo hora pico, que ya están hechos." y "Footer y contraste: hay links del footer a páginas que no existen y badges con texto blanco sobre el verde claro, que no pasan contraste."
+Reglas (orquestador):
+- "Disponible hoy" incluye facturación ARCA, caja y turnos, cobro con QR de Mercado Pago, modo hora pico y pantalla de pedidos; "Próximamente" solo lo que falta (tarjeta de sellos, costo por taza; pedido anticipado hasta que S20 esté mergeado).
+- Ningún link del footer apunta a una página que no existe (se quitan o apuntan a secciones reales).
+- Texto blanco nunca sobre #16a34a: usar #15803d (unna-green-dark) u otro par con contraste AA, verificado por test.
+
+### S20: Pedido anticipado
+Usuario: "Hace la numero 6" (pedido anticipado). Respuestas: "Online con Mercado Pago al pedir (Recomendado)", "Página de seguimiento (Recomendado)", "Lo antes posible (Recomendado)".
+Reglas (orquestador):
+- Cada sucursal puede activar el pedido anticipado; tiene un link público (y su QR para imprimir) con el menú de productos activos.
+- El cliente arma el pedido (con opciones del café), deja su nombre, y paga online con Mercado Pago desde el celular en la cuenta del café; sin pago aprobado el pedido no llega a la barra.
+- Pagado, el pedido entra a la barra con el nombre del cliente y tipo "retiro", y cuenta como venta de la caja abierta de la sucursal.
+- El cliente queda en una página de seguimiento que se actualiza sola: recibido → en preparación → listo para retirar, con tiempo estimado.
+- Solo se aceptan pedidos con la sucursal abierta (horario) y con caja abierta; si no, el link lo explica.
+- Endpoints públicos con límite por IP; precios siempre del servidor; el cliente no ve datos de otros pedidos.
+
 ### S17: Mejoras rápidas de performance
 Usuario: "ANaliza toda la performance de la app y rendimiento" → informe; "ok hacelo" a la recomendación: "hacer 1, 2, 3 y 6, más los índices" (el 4, locks con Mercado Pago/ARCA, queda como tarea propia).
 Reglas (orquestador), con lo medido: GET orders 73 ms y 1 MB sin comprimir con ~750 pedidos; barra p95 253 ms con 10 pantallas.
@@ -228,6 +253,13 @@ unna/
 | T35a | S17 | worker | API: paginación, open=true, compresión, guard liviano, índices + migración, health, Swagger, guía | 50c534f, e67791b |
 | T35b | S17 | worker | Web: pausar polling con pestaña oculta; POS pide abiertos de hoy; caja y stock con "Ver más" | 564037b, 891a657 |
 | T35c | S17 | inline | Integración, medición antes/después, smoke, revisión, PR | see L44 |
+| T36a | S18 | worker | API: cobro QR y emisión ARCA sin llamadas externas dentro del lock | |
+| T36b | S18 | inline | Web: "Ver más" de caja al cambiar de sucursal; error de stock al reintentar | |
+| T37 | S19 | inline | Landing, footer y contraste | |
+| T38a | S20 | explore | Investigar pago online de Mercado Pago (Orders API online / Checkout) con OAuth | |
+| T38b | S20 | worker | API: menú público, pedido anticipado, pago online, webhook, seguimiento | |
+| T38c | S20 | worker | Web: página pública de pedido y de seguimiento; activar y QR en el panel | |
+| T38d | S20 | inline | Integración, smoke, revisión, PRs | |
 
 ## Log
 
@@ -274,3 +306,4 @@ unna/
 **L42**: S16 listo para desplegar. Los tres workers se colgaron (T34a y T34c tras un comando de shell; T34b generando argumentos): T34a dejó la migración, verificada inline en schema aislado (base vacía con migrate deploy = schema; baseline de base con db push = sin diferencias); T34b dejó el modo staging casi completo, completado inline (.env.example) y verificado (API 465, web 246, lint OK); T34c sin cambios → usuario: "Relanzá el worker" → relanzado con límites duros (perl alarm) → Dockerfiles multi-stage, render.yaml (validado contra el schema oficial), guía docs/deploy/README.md; imágenes construidas y API aplicando las 3 migraciones en Postgres descartable. Integración: lint/build/tsc OK; tests domain 189, shared 9, api 465, web 246; smoke 82/82 y QR 25/25 sobre una base creada solo con migrate deploy (s16_tmp, puerto 3098). Revisión nativa 2 cortes aprobados (9 observaciones). Hallazgos: docker compose up de desarrollo ya estaba roto antes (no resuelve @unna/domain); RESEND_API_KEY obligatoria para arrancar; uploads de imágenes se pierden en Render free (disco efímero); un fallo de migración al arrancar deja el servicio reiniciando. Pendiente: crear cuentas Supabase y Render (usuario).
 **L43**: Análisis de performance (medido: GET orders 5→73 ms y 1 MB sin gzip con ~750 pedidos; barra p95 253 ms con 10 pantallas; venta 26 ms; bundles 88–144 kB). Usuario: "ok hacelo" → S17.
 **L44**: S17 completo. Medición con ~730 pedidos (misma suite antes/después): GET orders 73 ms y 1 MB sin comprimir → 4,5 ms y 28 KB por página con gzip; barra 10 pantallas p95 253 → 143 ms; venta 26 → 16 ms; 10 cajeros 118 → 187 ventas/s; más vendidos 10 → 6 ms. Verificado: páginas sin solapamiento, limit=201 → 400, X-Next-Cursor expuesto por CORS, /api/v1/health 200. Tests sin caché domain 201, shared 9, api 547, web 257; smoke 82/82 y QR 25/25 sobre base creada con las 4 migraciones. Desvío aceptado del worker: cursor buscado dentro del negocio en vez de Prisma cursor+skip (no saltea filas si el pedido del cursor cambió de estado). Revisión nativa 3 cortes aprobados. Observaciones pendientes: "Ver más" de caja si se cambia de sucursal en medio, error del "Ver más" de stock que queda pegado, open=true sin fecha recorre todo el historial (el POS manda from), índices sin CONCURRENTLY. Queda fuera (tarea propia): llamadas a Mercado Pago y ARCA con el lock tomado.
+**L45**: Usuario pide S18 (locks MP/ARCA + detalles de listas), S19 (landing/footer/contraste) y S20 (pedido anticipado: pago online MP, página de seguimiento, lo antes posible); orden: primero S18. Cambio de cuenta gh a mciappina-hismia: pendiente de que el usuario inicie sesión (no se puede hacer sin su autorización en el navegador).

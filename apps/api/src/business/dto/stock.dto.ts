@@ -1,5 +1,6 @@
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import type { StockMovementType } from '@unna/domain';
+import { INVALID_DATE } from '../../common/date-query';
 import { PageQuery } from '../../common/pagination';
 
 /** Exit movement types; 'in' only goes through the entry endpoint. */
@@ -41,6 +42,6 @@ export class AdjustThresholdsDto {
 /** Filters of the movements list; each one applies on its own or together (S17). */
 export class ListStockMovementsQuery extends PageQuery {
   @IsOptional() @IsString() @MaxLength(100) productId?: string;
-  @IsOptional() @IsDateString() from?: string;
-  @IsOptional() @IsDateString() to?: string;
+  @IsOptional() @IsDateString({}, { message: INVALID_DATE }) from?: string;
+  @IsOptional() @IsDateString({}, { message: INVALID_DATE }) to?: string;
 }

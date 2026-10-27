@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import { formatMoney } from '@/lib/api-types';
 import { redirectTo } from '@/lib/navigation';
 import { createCheckout, getPublicMenu, PublicOrderError, type PublicMenu, type PublicProduct } from '@/lib/public-order-api';
@@ -21,17 +22,20 @@ export function PublicOrderPage({ slug }: { slug: string }) {
   const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Bumped by "Reintentar" to fetch the menu again (S21).
+  const [menuAttempt, setMenuAttempt] = useState(0);
   const cart = useCart();
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(null);
     getPublicMenu(slug)
       .then((loaded) => !cancelled && setMenu(loaded))
       .catch((err) => !cancelled && setLoadError(errorText(err)));
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, menuAttempt]);
 
   // Back from Mercado Pago, the browser may restore this page as it was left: "submitting". Let the customer pay again.
   useEffect(() => {
@@ -72,6 +76,11 @@ export function PublicOrderPage({ slug }: { slug: string }) {
         <PublicOrderHeader />
         <main className="mx-auto max-w-2xl px-4 py-12 text-center">
           <p className={loadError ? 'text-lg font-semibold text-gray-900' : 'text-gray-600'}>{loadError ?? 'Cargando el menú…'}</p>
+          {loadError && (
+            <Button variant="outline" className="mt-6" onClick={() => setMenuAttempt((attempt) => attempt + 1)}>
+              Reintentar
+            </Button>
+          )}
         </main>
       </div>
     );

@@ -274,6 +274,10 @@ export class Order {
   private recalculate(items: OrderItem[]): Order {
     const subtotal = items.reduce((sum, item) => sum.add(item.totalPrice), Money.zero('ARS'));
     const taxAmount = items.reduce((sum, item) => sum.add(item.taxAmount), Money.zero('ARS'));
+    // Same rule as applyDiscount: a discount above the subtotal could never be invoiced.
+    if (this.discountAmount.amount > subtotal.amount) {
+      throw new Error('El descuento supera el subtotal. Ajustá el descuento antes de quitar productos.');
+    }
     const totalAmount = subtotal.add(taxAmount).subtract(this.discountAmount);
     return new Order({
       ...this.toProps(),

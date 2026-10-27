@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserRepositoryPort, JwtPort, HashingPort } from '@unna/domain';
+import { UserRepositoryPort, JwtPort, HashingPort, RefreshSessionRepositoryPort, ResetTokenPayload } from '@unna/domain';
 import { Password } from '@unna/domain';
 import { NotFoundError, Result, ok, err } from '@unna/domain';
+import { passwordFingerprint } from '../session-token';
+
+const RESET_LINK_SPENT = 'El link ya se usó o venció. Pedí uno nuevo.';
 
 export interface ResetPasswordCommand {
   token: string;
@@ -18,6 +21,8 @@ export class ResetPasswordUseCase {
     private readonly jwtPort: JwtPort,
     @Inject('HashingPort')
     private readonly hashingPort: HashingPort,
+    @Inject('RefreshSessionRepositoryPort')
+    private readonly refreshSessions: RefreshSessionRepositoryPort,
   ) {}
 
   async execute(command: ResetPasswordCommand): Promise<Result<void, Error>> {
@@ -25,7 +30,7 @@ export class ResetPasswordUseCase {
       return err(new Error('Las contraseñas no coinciden.'));
     }
 
-    let payload: { sub: string; email: string; type: string };
+    let payload: ResetTokenPayload;
     try {
       payload = this.jwtPort.verifyResetToken(command.token);
     } catch {
@@ -45,12 +50,20 @@ export class ResetPasswordUseCase {
       return err(new Error('Token inválido.'));
     }
 
+    // The link carries the fingerprint of the password it was issued for: once the password
+    // changed (with this link or another one) every earlier link is spent.
+    if (payload.pwd !== passwordFingerprint(user.password.hash)) {
+      return err(new Error(RESET_LINK_SPENT));
+    }
+
     const password = Password.create(command.password);
     const hashedPassword = await this.hashingPort.hash(password.value);
     const passwordWithHash = password.setHashed(hashedPassword);
 
     user.changePassword(passwordWithHash);
     await this.userRepository.save(user);
+    // The new password fingerprint already ends every session; revoking the families also records it (S21).
+    await this.refreshSessions.revokeAllOfUser(user.id, new Date());
 
     return ok(undefined);
   }

@@ -6,6 +6,8 @@ import { startVisiblePolling } from '@/lib/visible-polling';
 
 /** The POS asks the API (which syncs with Mercado Pago) for the charge status this often. */
 export const QR_POLL_INTERVAL_MS = 3000;
+/** A charge without a QR after this long is given up so the cashier can try again (S21). */
+export const QR_CREATING_TIMEOUT_MS = 30000;
 
 interface Options {
   businessId: string | undefined;
@@ -25,6 +27,8 @@ export function useQrCharge({ businessId, orderId, onPaid }: Options) {
   const chargeId = charge?.id;
   // A charge still being created is polled like a pending one until its QR arrives (S18).
   const pending = charge?.status === 'pending' || charge?.status === 'creating';
+  // No QR to show yet: Mercado Pago has not answered (S21).
+  const awaitingQr = pending && !charge?.qrData;
 
   useEffect(() => {
     if (!businessId || !chargeId || !pending) return;
@@ -35,7 +39,8 @@ export function useQrCharge({ businessId, orderId, onPaid }: Options) {
         try {
           const next = await api.getQrCharge(businessId, chargeId);
           if (!active) return;
-          setCharge(next);
+          // A charge dropped meanwhile (cancelled locally or given up) stays dropped (S21).
+          setCharge((current) => (current?.id === next.id ? next : current));
           if (next.status === 'paid') onPaidRef.current();
         } catch (err) {
           if (active) setError(apiErrorMessage(err, 'No se pudo consultar el cobro QR'));
@@ -49,6 +54,15 @@ export function useQrCharge({ businessId, orderId, onPaid }: Options) {
       stop();
     };
   }, [businessId, chargeId, pending]);
+
+  useEffect(() => {
+    if (!chargeId || !awaitingQr) return;
+    const timer = setTimeout(() => {
+      setCharge(null);
+      setError('No se pudo generar el QR. Probá de nuevo.');
+    }, QR_CREATING_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [chargeId, awaitingQr]);
 
   const run = async (task: (id: string) => Promise<void>, fallback: string) => {
     if (!businessId) return;
@@ -72,6 +86,12 @@ export function useQrCharge({ businessId, orderId, onPaid }: Options) {
 
   const cancel = () => {
     if (!chargeId) return;
+    // Without a QR there is nothing the customer can pay yet: drop it here and stop polling (S21).
+    if (awaitingQr) {
+      setCharge(null);
+      setError(null);
+      return;
+    }
     run(async (id) => {
       await api.cancelQrCharge(id, chargeId);
       setCharge(null);

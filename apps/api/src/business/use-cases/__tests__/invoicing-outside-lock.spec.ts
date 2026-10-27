@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+import { Receipt } from '@unna/domain';
 import { FiscalAuthorizerUnavailableError } from '../invoicing.use-case';
 import { paidOrder, setup } from './invoicing-fakes';
 
@@ -152,5 +154,133 @@ describe('InvoicingUseCase.issueReceipt calls ARCA without locks (S18)', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  describe('never leaves the sequence lease held by mistake', () => {
+    const DB_DOWN = new Error('db down');
+    const NOT_SAVED = 'ARCA aprobó el comprobante pero no se pudo guardar. No lo vuelvas a emitir; contactá a soporte.';
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      jest.useRealTimers();
+    });
+
+    /** Under fake timers, steps the clock until the issue settles (ARCA's double answers on real setImmediate ticks). */
+    const settle = async <T>(pending: Promise<T>): Promise<T> => {
+      let done = false;
+      pending.then(() => { done = true; }, () => { done = true; });
+      for (let step = 0; step < 100 && !done; step++) {
+        await new Promise((resolve) => setImmediate(resolve));
+        await jest.advanceTimersByTimeAsync(100);
+      }
+      return pending;
+    };
+
+    it('frees the lease when something throws between the reservation and ARCA, so the draft is retriable at once', async () => {
+      const ctx = setup();
+      jest.spyOn(Receipt.prototype, 'setCaeRequest').mockImplementationOnce(() => {
+        throw new Error('boom');
+      });
+
+      await expect(ctx.invoicing.issueReceipt('biz-A', ctx.orders[0].id, { type: 'B' })).rejects.toThrow('boom');
+
+      expect(ctx.store.leases.size).toBe(0);
+      expect(ctx.arca.requests).toHaveLength(0);
+      expect((await ctx.invoicing.issueReceipt('biz-A', ctx.orders[0].id, { type: 'B' })).value).toMatchObject({ status: 'issued', invoiceNumber: 1 });
+    });
+
+    it('frees the lease when saving a rejection fails', async () => {
+      const ctx = setup();
+      ctx.arca.behavior.next = 'reject';
+      ctx.store.withSequenceLock.mockRejectedValueOnce(DB_DOWN);
+
+      await expect(ctx.invoicing.issueReceipt('biz-A', ctx.orders[0].id, { type: 'B' })).rejects.toThrow('db down');
+
+      expect(ctx.store.leases.size).toBe(0);
+      expect(ctx.sequenceOf('B')).toBe(0);
+    });
+
+    it('retries saving an approved receipt, so a brief database failure does not lose it', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+      const ctx = setup();
+      ctx.store.withSequenceLock.mockRejectedValueOnce(DB_DOWN).mockRejectedValueOnce(DB_DOWN);
+
+      const result = await settle(ctx.invoicing.issueReceipt('biz-A', ctx.orders[0].id, { type: 'B' }));
+
+      expect(result.value).toMatchObject({ status: 'issued', invoiceNumber: 1 });
+      expect(ctx.store.withSequenceLock).toHaveBeenCalledTimes(3);
+      expect(ctx.arca.requests).toHaveLength(1);
+      expect(ctx.sequenceOf('B')).toBe(1);
+      expect(ctx.store.leases.size).toBe(0);
+    });
+
+    it('keeps the lease and asks not to issue again when the approved receipt still cannot be saved', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+      const ctx = setup();
+      ctx.store.withSequenceLock.mockRejectedValue(DB_DOWN);
+      const logged = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+      const result = await settle(ctx.invoicing.issueReceipt('biz-A', ctx.orders[0].id, { type: 'B' }));
+
+      expect(result).toEqual({ ok: false, error: new Error(NOT_SAVED) });
+      expect(ctx.store.withSequenceLock).toHaveBeenCalledTimes(3);
+      expect(ctx.arca.requests).toHaveLength(1);
+      // No second number is asked for while the approved one is unconfirmed.
+      expect(ctx.store.leases.get(B_SEQUENCE)?.receiptId).toBe(ctx.store.receipts[0].id);
+      expect(ctx.store.receipts[0]).toMatchObject({ status: 'draft' });
+      // Support can find the approved number and CAE in the logs.
+      expect(logged).toHaveBeenCalledWith(expect.stringContaining('(número 1, CAE 70000000000001)'));
+    });
+
+    it('keeps the lease and asks not to issue again when something throws after ARCA approved, before saving', async () => {
+      const ctx = setup();
+      jest.spyOn(Receipt.prototype, 'authorize').mockImplementationOnce(() => {
+        throw new Error('boom');
+      });
+      const logged = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+      const result = await ctx.invoicing.issueReceipt('biz-A', ctx.orders[0].id, { type: 'B' });
+
+      expect(result).toEqual({ ok: false, error: new Error(NOT_SAVED) });
+      expect(ctx.arca.requests).toHaveLength(1);
+      expect(ctx.store.leases.get(B_SEQUENCE)?.receiptId).toBe(ctx.store.receipts[0].id);
+      expect(ctx.store.receipts[0]).toMatchObject({ status: 'draft' });
+      expect(ctx.sequenceOf('B')).toBe(0);
+      expect(logged).toHaveBeenCalledWith(expect.stringContaining('(número 1, CAE 70000000000001)'));
+    });
+
+    it('keeps the lease when even logging the unsaved approval fails', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+      const ctx = setup();
+      ctx.store.withSequenceLock.mockRejectedValue(DB_DOWN);
+      jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {
+        throw new Error('log down');
+      });
+
+      const result = await settle(ctx.invoicing.issueReceipt('biz-A', ctx.orders[0].id, { type: 'B' }));
+
+      expect(result).toEqual({ ok: false, error: new Error(NOT_SAVED) });
+      expect(ctx.arca.requests).toHaveLength(1);
+      expect(ctx.store.leases.get(B_SEQUENCE)?.receiptId).toBe(ctx.store.receipts[0].id);
+    });
+
+    it('confirms an approval once when the first save committed but reported a failure', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+      const ctx = setup();
+      const commitThenFail = ctx.store.withSequenceLock.getMockImplementation()!;
+      ctx.store.withSequenceLock.mockImplementationOnce(async (scope, work) => {
+        await commitThenFail(scope, work);
+        throw DB_DOWN;
+      });
+
+      const result = await settle(ctx.invoicing.issueReceipt('biz-A', ctx.orders[0].id, { type: 'B' }));
+
+      expect(result.value).toMatchObject({ status: 'issued', invoiceNumber: 1, cae: '70000000000001' });
+      expect(ctx.store.withSequenceLock).toHaveBeenCalledTimes(2);
+      expect(ctx.store.receipts).toEqual([expect.objectContaining({ id: result.value!.id, status: 'issued', invoiceNumber: 1, cae: '70000000000001' })]);
+      expect(ctx.sequenceOf('B')).toBe(1);
+      expect(ctx.store.leases.size).toBe(0);
+      expect(ctx.arca.requests).toHaveLength(1);
+    });
   });
 });

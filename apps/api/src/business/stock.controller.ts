@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
+import { dateQuery } from '../common/date-query';
 import { unwrap } from '../common/use-case-result';
 import { pageRequest, sendPage } from '../common/pagination';
 import { StockUseCase } from './use-cases/stock.use-case';
@@ -44,8 +45,8 @@ export class StockController {
   async listMovements(@Param('businessId') businessId: string, @Query() query: ListStockMovementsQuery, @Res({ passthrough: true }) res: Response) {
     const filters = {
       productId: query.productId,
-      from: query.from ? new Date(query.from) : undefined,
-      to: query.to ? new Date(query.to) : undefined,
+      from: dateQuery(query.from),
+      to: dateQuery(query.to),
     };
     return sendPage(res, unwrap(this.stockUseCase.listMovements(businessId, filters, pageRequest(query))));
   }

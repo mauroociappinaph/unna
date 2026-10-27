@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   buildArcaQrUrl,
   FiscalAuthorizationRequest,
@@ -34,6 +35,11 @@ export interface Issuer {
 
 const ALREADY_ISSUED = 'El pedido ya tiene un comprobante';
 const SEQUENCE_BUSY = 'Se está emitiendo otro comprobante en este punto de venta. Probá de nuevo en unos segundos';
+const APPROVED_NOT_SAVED = 'ARCA aprobó el comprobante pero no se pudo guardar. No lo vuelvas a emitir; contactá a soporte.';
+
+/** Saving an approved receipt is retried this many times, waiting CONFIRM_RETRY_MS × attempt in between. */
+const CONFIRM_ATTEMPTS = 3;
+const CONFIRM_RETRY_MS = 200;
 
 /** A concurrent issue waits this long for the issue holding its sequence or its order. */
 const LEASE_WAIT_MS = 30_000;
@@ -56,7 +62,10 @@ const fail = (message: string): IssueResult => ({ ok: false, error: new Error(me
  * 2. ARCA (last authorized number, then the authorization) without any transaction open.
  * 3. Confirm, in a short transaction with only the sequence row locked: the approved number
  *    advances the sequence and the receipt is issued; a rejection or a failure keeps the draft
- *    retriable without consuming the number. The lease is freed in every case.
+ *    retriable without consuming the number. The lease is freed in every case, also when anything
+ *    throws on the way, except when ARCA approved and anything after it fails (building the
+ *    receipt, saving it, logging): then the lease stays held until it expires, so no other number
+ *    is asked for while the approved one is unconfirmed.
  *
  * ARCA only approves the next number of a sequence, so the lease lets one authorization per
  * sequence run at a time: numbers stay consecutive, without gaps nor duplicates. Concurrent issues
@@ -65,6 +74,8 @@ const fail = (message: string): IssueResult => ({ ok: false, error: new Error(me
  * never wait for ARCA, since its row is locked only during step 1.
  */
 export class ReceiptIssueLease {
+  private readonly logger = new Logger(ReceiptIssueLease.name);
+
   constructor(
     private readonly unitOfWork: ReceiptIssueUnitOfWorkPort,
     private readonly authorizer: FiscalAuthorizerPort,
@@ -76,7 +87,7 @@ export class ReceiptIssueLease {
     for (;;) {
       const reservation = await this.unitOfWork.withIssueLock(scope, (locked) => this.reserve(locked, scope, buildDraft));
       if (reservation.kind === 'done') return reservation.result;
-      if (reservation.kind === 'leased') return this.authorize(scope, reservation.draft, reservation.lastNumber, issuer);
+      if (reservation.kind === 'leased') return this.authorizeUnderLease(scope, reservation.draft, reservation.lastNumber, issuer);
       if (Date.now() + LEASE_POLL_MS > deadline) return fail(SEQUENCE_BUSY);
       await new Promise((resolve) => setTimeout(resolve, LEASE_POLL_MS));
     }
@@ -103,6 +114,19 @@ export class ReceiptIssueLease {
     await locked.sequence.claimLease(draft.id, new Date(now.getTime() + RECEIPT_ISSUE_LEASE_MS));
     await locked.receipts.save(draft);
     return { kind: 'leased', draft, lastNumber: await locked.sequence.lastNumber() };
+  }
+
+  /** Every outcome of `authorize` frees the lease itself; a throw on the way frees it here (best effort). */
+  private async authorizeUnderLease(scope: ReceiptIssueScope, draft: Receipt, lastNumber: number, issuer: Issuer): Promise<IssueResult> {
+    try {
+      return await this.authorize(scope, draft, lastNumber, issuer);
+    } catch (error) {
+      const { businessId, pointOfSale, receiptType } = scope;
+      await this.unitOfWork
+        .withSequenceLock({ businessId, pointOfSale, receiptType }, ({ sequence }) => sequence.releaseLease(draft.id))
+        .catch(() => undefined);
+      throw error;
+    }
   }
 
   /** Step 2, without locks. `lastNumber` stays valid: only the lease holder advances a fiscal sequence. */
@@ -148,25 +172,53 @@ export class ReceiptIssueLease {
       return fail(message);
     }
 
-    const issued = requested.authorize({
-      number: result.number,
-      cae: result.cae,
-      caeExpiration: result.caeExpiration,
-      caeResponse: result.raw,
-      qrCode: buildArcaQrUrl({
-        issueDate: request.issueDate,
-        issuerCuit: issuer.cuit,
-        pointOfSale,
-        receiptType: type,
+    try {
+      const issued = requested.authorize({
         number: result.number,
-        totalAmount: request.totalAmount,
-        docType: request.docType,
-        docNumber: request.docNumber,
         cae: result.cae,
-      }),
-    });
-    await this.confirm(scope, issued, result.number);
-    return ok(issued);
+        caeExpiration: result.caeExpiration,
+        caeResponse: result.raw,
+        qrCode: buildArcaQrUrl({
+          issueDate: request.issueDate,
+          issuerCuit: issuer.cuit,
+          pointOfSale,
+          receiptType: type,
+          number: result.number,
+          totalAmount: request.totalAmount,
+          docType: request.docType,
+          docNumber: request.docNumber,
+          cae: result.cae,
+        }),
+      });
+      await this.confirmApproved(scope, issued, result.number);
+      return ok(issued);
+    } catch (error) {
+      // ARCA already used the number: never throw from here, so the lease stays held until it expires.
+      this.reportUnsavedApproval(requested.id, result.number, result.cae, error);
+      return fail(APPROVED_NOT_SAVED);
+    }
+  }
+
+  /** Retries saving an approval; `confirm` is idempotent, so a save that committed but threw is harmless to repeat. */
+  private async confirmApproved(scope: ReceiptIssueScope, issued: Receipt, number: number): Promise<void> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await this.confirm(scope, issued, number);
+        return;
+      } catch (error) {
+        if (attempt >= CONFIRM_ATTEMPTS) throw error;
+        await new Promise((resolve) => setTimeout(resolve, CONFIRM_RETRY_MS * attempt));
+      }
+    }
+  }
+
+  /** Support finds the approved number and CAE in the logs; a failing logger must not free the lease either. */
+  private reportUnsavedApproval(receiptId: string, number: number, cae: string, error: unknown): void {
+    try {
+      this.logger.error(`ARCA aprobó el comprobante ${receiptId} (número ${number}, CAE ${cae}) pero no se pudo guardar: ${(error as Error)?.message}`);
+    } catch {
+      // Nothing else can report it; the error returned to the cashier still says not to issue again.
+    }
   }
 
   /** ARCA did not answer (timeout, outage): keep the draft without a number so the cashier can retry. */

@@ -24,5 +24,15 @@ export function createAuthApi(client: AxiosInstance) {
       const response = await client.post('/auth/refresh', { refreshToken });
       return response.data;
     },
+
+    async forgotPassword(data: { email: string }): Promise<{ message: string }> {
+      const response = await client.post('/auth/forgot-password', data);
+      return response.data;
+    },
+
+    async resetPassword(data: { token: string; password: string; confirmPassword: string }): Promise<{ message: string }> {
+      const response = await client.post('/auth/reset-password', data);
+      return response.data;
+    },
   };
 }

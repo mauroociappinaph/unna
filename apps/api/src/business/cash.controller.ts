@@ -6,6 +6,7 @@ import { IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min
 import { CASH_MOVEMENT_TYPES, CashMovementType, CashSessionStatus } from '@unna/domain';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
+import { dateQuery, INVALID_DATE } from '../common/date-query';
 import { unwrap } from '../common/use-case-result';
 import { PageQuery, pageRequest, sendPage } from '../common/pagination';
 import { AuthenticatedRequest } from './authenticated-request';
@@ -25,8 +26,8 @@ class CurrentCashSessionQuery {
 class ListCashSessionsQuery extends PageQuery {
   @IsOptional() @IsUUID() sucursalId?: string;
   @IsOptional() @IsIn(SESSION_STATUSES) status?: CashSessionStatus;
-  @IsOptional() @IsDateString() from?: string;
-  @IsOptional() @IsDateString() to?: string;
+  @IsOptional() @IsDateString({}, { message: INVALID_DATE }) from?: string;
+  @IsOptional() @IsDateString({}, { message: INVALID_DATE }) to?: string;
 }
 
 class CashMovementDto {
@@ -74,8 +75,8 @@ export class CashController {
     const filters = {
       sucursalId: query.sucursalId,
       status: query.status,
-      from: query.from ? new Date(query.from) : undefined,
-      to: query.to ? new Date(query.to) : undefined,
+      from: dateQuery(query.from),
+      to: dateQuery(query.to),
     };
     return sendPage(res, unwrap(this.cash.list(businessId, filters, pageRequest(query))));
   }

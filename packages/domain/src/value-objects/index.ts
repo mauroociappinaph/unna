@@ -10,7 +10,7 @@ export { BusinessSettings } from './business-settings';
 export { Category } from './category';
 export { ModifierOption, ModifierGroup } from './modifier';
 export { Product, type ProductType, type ProductStatus } from './product';
-export { StockMovement, StockLevel, type StockMovementType } from './stock';
+export { StockMovement, StockLevel, type StockMovementType, type StockCount } from './stock';
 export { PriceList, PriceListEntry, type PriceListType } from './price-list';
 export { Order, type OrderStatus, type OrderType, OrderItem, CLOSED_ORDER_STATUSES, isOrderClosed } from './order';
 export type { OrderSummary } from './order-summary';

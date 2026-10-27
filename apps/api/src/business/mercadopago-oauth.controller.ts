@@ -1,11 +1,11 @@
 import { Controller, Get, Header, Query, Redirect } from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
+import { frontendUrl } from '../common/frontend-url';
 import { MercadoPagoAuthorizationUseCase, MercadoPagoCallbackOutcome } from './use-cases/mercadopago-authorization.use-case';
 
 /** Dashboard page the owner returns to; only the outcome travels, never the code or the state. */
 export function mercadoPagoReturnUrl(status: MercadoPagoCallbackOutcome, env: NodeJS.ProcessEnv = process.env): string {
-  const frontend = (env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
-  return `${frontend}/dashboard/mercadopago?status=${status}`;
+  return `${frontendUrl(env)}/dashboard/mercadopago?status=${status}`;
 }
 
 /**

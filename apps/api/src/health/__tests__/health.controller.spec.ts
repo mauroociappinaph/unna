@@ -14,7 +14,7 @@ describe('GET /api/v1/health (S17)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ controllers: [HealthController] }).compile();
     app = moduleRef.createNestApplication<NestExpressApplication>();
-    configureApp(app as NestExpressApplication, { NODE_ENV: 'production' });
+    configureApp(app as NestExpressApplication, { NODE_ENV: 'production', FRONTEND_URL: 'https://web.test' });
     await app.init();
   });
 

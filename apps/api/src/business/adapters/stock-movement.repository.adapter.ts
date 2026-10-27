@@ -3,10 +3,11 @@ import { Prisma, StockMovement as StockMovementRecord } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Page, PageRequest, StockMovementListFilters, StockMovementRepositoryPort, StockMovement } from '@unna/domain';
 import { cursorFields, keysetPage, mapPage, NEWEST_FIRST, withinDates } from './keyset-page';
+import type { Db } from './sales.repository.adapter';
 
-@Injectable()
-export class PrismaStockMovementRepositoryAdapter implements StockMovementRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+/** Stock movements on the root client or on an open transaction (the stock unit of work). */
+export class PrismaStockMovementRepository implements StockMovementRepositoryPort {
+  constructor(private readonly prisma: Db) {}
 
   async save(m: StockMovement): Promise<void> {
     await this.prisma.stockMovement.create({
@@ -57,5 +58,12 @@ export class PrismaStockMovementRepositoryAdapter implements StockMovementReposi
       performedBy: r.performedBy,
       createdAt: r.createdAt,
     });
+  }
+}
+
+@Injectable()
+export class PrismaStockMovementRepositoryAdapter extends PrismaStockMovementRepository {
+  constructor(prisma: PrismaService) {
+    super(prisma);
   }
 }

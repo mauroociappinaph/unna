@@ -1,11 +1,15 @@
 import { RegisterUseCase } from '../register.use-case';
+import { ConfigService } from '@nestjs/config';
 import { isOk, isErr, UserRepositoryPort, HashingPort, JwtPort } from '@unna/domain';
+import { SessionIssuer } from '../../session-issuer';
+import { InMemoryRefreshSessions } from '../../__tests__/in-memory-refresh-sessions';
 
 describe('RegisterUseCase', () => {
   let useCase: RegisterUseCase;
   let mockUserRepository: Record<keyof UserRepositoryPort, jest.Mock>;
   let mockHashingPort: Record<keyof HashingPort, jest.Mock>;
   let mockJwtPort: Record<keyof JwtPort, jest.Mock>;
+  let sessions: InMemoryRefreshSessions;
 
   beforeEach(() => {
     mockUserRepository = {
@@ -29,10 +33,11 @@ describe('RegisterUseCase', () => {
       generateResetToken: jest.fn(),
       verifyResetToken: jest.fn(),
     };
+    sessions = new InMemoryRefreshSessions();
     useCase = new RegisterUseCase(
       mockUserRepository,
       mockHashingPort,
-      mockJwtPort,
+      new SessionIssuer(mockJwtPort, sessions, { get: () => undefined } as unknown as ConfigService),
     );
   });
 
@@ -66,6 +71,19 @@ describe('RegisterUseCase', () => {
     expect(mockJwtPort.generateTokenPair).toHaveBeenCalled();
   });
 
+  // S21: registering signs in, so it starts a family of single-use refresh sessions.
+  it('stores the first refresh session of a new family for the new user', async () => {
+    mockUserRepository.existsByEmail.mockResolvedValue(false);
+    mockHashingPort.hash.mockResolvedValue('$2b$10$hashedpassword');
+    mockJwtPort.generateTokenPair.mockReturnValue({ accessToken: 'a', refreshToken: 'r', expiresIn: 900 });
+
+    const result = await useCase.execute(validCommand);
+
+    const { jti, fam } = mockJwtPort.generateTokenPair.mock.calls[0][0];
+    const userId = isOk(result) ? result.value.user.id : '';
+    expect(sessions.family(fam)).toEqual([expect.objectContaining({ id: jti, familyId: jti, userId })]);
+  });
+
   it('should fail if email already exists', async () => {
     mockUserRepository.existsByEmail.mockResolvedValue(true);
 
@@ -76,6 +94,7 @@ describe('RegisterUseCase', () => {
       expect(result.error.message).toBe('El email ya está registrado');
     }
     expect(mockUserRepository.save).not.toHaveBeenCalled();
+    expect(sessions.byId.size).toBe(0);
   });
 
   it('should hash password before saving', async () => {

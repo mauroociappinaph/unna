@@ -1,6 +1,5 @@
 // Public links of the pedido anticipado (S20), on the web (FRONTEND_URL).
-
-const frontendUrl = (env: NodeJS.ProcessEnv): string => (env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+import { frontendUrl } from '../../common/frontend-url';
 
 /** The menu link of a sucursal, printed as a QR. */
 export function preorderMenuUrl(slug: string, env: NodeJS.ProcessEnv = process.env): string {

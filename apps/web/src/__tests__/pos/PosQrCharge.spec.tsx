@@ -276,4 +276,54 @@ describe('POS QR charge', () => {
     await advance(3000);
     expect(await within(qrRegion()).findByRole('img', { name: 'QR de Mercado Pago para pagar el pedido' })).toBeInTheDocument();
   });
+
+  it.each<[string, QrCharge]>([
+    ['creating', { ...pending, status: 'creating', qrData: null }],
+    ['pending without a QR', { ...pending, qrData: null }],
+  ])('cancels locally a charge still %s: stops polling and offers a new QR (S21)', async (_, stuck) => {
+    mocked.createQrCharge.mockResolvedValue(stuck);
+    mocked.getQrCharge.mockResolvedValue(stuck);
+    const { user } = await openCheckout();
+    await user.click(screen.getByRole('button', { name: 'Cobrar con QR' }));
+    expect(await within(qrRegion()).findByText('Generando QR…')).toBeInTheDocument();
+    await advance(3000);
+    expect(mocked.getQrCharge).toHaveBeenCalledTimes(1);
+
+    await user.click(within(qrRegion()).getByRole('button', { name: 'Cancelar' }));
+
+    expect(await screen.findByRole('button', { name: 'Cobrar con QR' })).toBeEnabled();
+    expect(within(qrRegion()).queryByText('Generando QR…')).not.toBeInTheDocument();
+    expect(within(qrRegion()).queryByRole('alert')).not.toBeInTheDocument();
+    expect(mocked.cancelQrCharge).not.toHaveBeenCalled();
+    await advance(30000);
+    expect(mocked.getQrCharge).toHaveBeenCalledTimes(1);
+    expect(within(qrRegion()).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('gives up on a charge still creating after 30 seconds and lets the cashier try again (S21)', async () => {
+    const creating: QrCharge = { ...pending, status: 'creating', qrData: null };
+    mocked.createQrCharge.mockResolvedValue(creating);
+    mocked.getQrCharge.mockResolvedValue(creating);
+    const { user } = await openCheckout();
+    await user.click(screen.getByRole('button', { name: 'Cobrar con QR' }));
+    expect(await within(qrRegion()).findByText('Generando QR…')).toBeInTheDocument();
+
+    await advance(29000);
+    expect(within(qrRegion()).getByText('Generando QR…')).toBeInTheDocument();
+    expect(within(qrRegion()).queryByRole('alert')).not.toBeInTheDocument();
+
+    await advance(1000);
+    expect(await within(qrRegion()).findByRole('alert')).toHaveTextContent('No se pudo generar el QR. Probá de nuevo.');
+    expect(within(qrRegion()).queryByText('Generando QR…')).not.toBeInTheDocument();
+    const polled = mocked.getQrCharge.mock.calls.length;
+    await advance(9000);
+    expect(mocked.getQrCharge).toHaveBeenCalledTimes(polled);
+
+    mocked.createQrCharge.mockResolvedValue({ ...pending, id: 'qr-2' });
+    await user.click(within(qrRegion()).getByRole('button', { name: 'Cobrar con QR' }));
+
+    expect(await screen.findByRole('img', { name: 'QR de Mercado Pago para pagar el pedido' })).toBeInTheDocument();
+    expect(mocked.createQrCharge).toHaveBeenCalledTimes(2);
+    expect(within(qrRegion()).queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

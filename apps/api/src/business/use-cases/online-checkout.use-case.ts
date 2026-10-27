@@ -139,11 +139,22 @@ export class OnlineCheckoutUseCase {
         idempotencyKey: stableIdempotencyKey(`online-checkout:${checkout.id}`),
       });
     } catch {
-      await this.checkouts.update({ ...checkout, status: 'cancelled' }).catch(() => undefined);
-      return fail(PAYMENT_NOT_STARTED);
+      return this.abandon(checkout);
     }
-    await this.checkouts.attachMercadoPagoOrder(checkout.id, order.id, order.checkoutUrl);
+    try {
+      await this.checkouts.attachMercadoPagoOrder(checkout.id, order.id, order.checkoutUrl);
+    } catch {
+      // Unstored, a payment on this order could never be matched to the checkout: it must not stay payable.
+      await this.gateway.cancelOrder(accessToken, order.id, stableIdempotencyKey(`online-checkout-cancel:${checkout.id}`)).catch(() => undefined);
+      return this.abandon(checkout);
+    }
     return { ok: true, value: { trackingToken, checkoutUrl: order.checkoutUrl, total: checkout.total } };
+  }
+
+  /** Best effort: the checkout is cancelled so nobody can pay it, and the client may simply try again. */
+  private async abandon(checkout: OnlineCheckoutRecord): Promise<UseCaseResult<CreatedCheckout>> {
+    await this.checkouts.update({ ...checkout, status: 'cancelled' }).catch(() => undefined);
+    return fail(PAYMENT_NOT_STARTED);
   }
 }
 

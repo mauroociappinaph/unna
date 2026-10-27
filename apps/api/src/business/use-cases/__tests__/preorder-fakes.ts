@@ -171,8 +171,8 @@ export class PreorderWorld {
   }
 
   gateway(): MercadoPagoGatewayPort {
-    const { createOnlineOrder, getOrder } = this.mercadoPago;
-    return { ...fakeGateway(), createOnlineOrder, getOrder };
+    const { createOnlineOrder, getOrder, cancelOrder } = this.mercadoPago;
+    return { ...fakeGateway(), createOnlineOrder, getOrder, cancelOrder };
   }
 
   build() {
@@ -206,6 +206,7 @@ export class FakeOnlineOrders {
   orders = new Map<string, MercadoPagoOrder>();
   requests: CreateMercadoPagoOnlineOrderRequest[] = [];
   failNextCreate = false;
+  failNextCancel = false;
   private next = 1;
 
   constructor(private readonly world: { lockHeld: boolean }) {}
@@ -227,6 +228,16 @@ export class FakeOnlineOrders {
     const order = this.orders.get(id);
     if (!order) throw new Error('Mercado Pago respondió 404 (order_not_found)');
     return { ...order };
+  });
+
+  cancelOrder = jest.fn<Promise<MercadoPagoOrder>, [token: string, id: string, idempotencyKey: string]>(async (_token, id) => {
+    if (this.world.lockHeld) throw new Error('Mercado Pago called inside a transaction');
+    if (this.failNextCancel) {
+      this.failNextCancel = false;
+      throw new Error('Mercado Pago respondió 500');
+    }
+    this.set(id, 'canceled');
+    return { ...this.orders.get(id)! };
   });
 
   set(id: string, status: MercadoPagoOrderStatus, patch: Partial<MercadoPagoOrder> = {}) {

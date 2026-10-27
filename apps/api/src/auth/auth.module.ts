@@ -8,10 +8,13 @@ import { LoginUseCase } from './use-cases/login.use-case';
 import { ForgotPasswordUseCase } from './use-cases/forgot-password.use-case';
 import { ResetPasswordUseCase } from './use-cases/reset-password.use-case';
 import { VerifyEmailUseCase } from './use-cases/verify-email.use-case';
+import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { AuthController } from './auth.controller';
 import { JwtAdapter } from './adapters/jwt.adapter';
 import { BcryptHashingAdapter } from './adapters/hashing.adapter';
 import { PrismaUserRepositoryAdapter } from './adapters/user.repository.adapter';
+import { PrismaRefreshSessionRepository } from './adapters/refresh-session.repository.adapter';
+import { SessionIssuer } from './session-issuer';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtStrategy } from '../common/strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
@@ -36,11 +39,17 @@ import { RolesGuard } from './guards/roles.guard';
     ForgotPasswordUseCase,
     ResetPasswordUseCase,
     VerifyEmailUseCase,
+    RefreshSessionUseCase,
+    SessionIssuer,
     JwtStrategy,
     RolesGuard,
     {
       provide: 'UserRepositoryPort',
       useClass: PrismaUserRepositoryAdapter,
+    },
+    {
+      provide: 'RefreshSessionRepositoryPort',
+      useClass: PrismaRefreshSessionRepository,
     },
     {
       provide: 'HashingPort',

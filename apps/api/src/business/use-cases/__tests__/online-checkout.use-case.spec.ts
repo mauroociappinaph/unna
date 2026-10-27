@@ -109,6 +109,50 @@ describe('OnlineCheckoutUseCase: checkout of the pedido anticipado (S20)', () =>
     expect([...world.checkouts.rows.values()].map((c) => c.status)).toEqual(['cancelled']);
   });
 
+  describe('when the Mercado Pago order cannot be stored after creating it', () => {
+    const failAttach = () =>
+      jest.spyOn(world.checkouts, 'attachMercadoPagoOrder').mockRejectedValueOnce(new Error('Can\'t reach database server at db:5432'));
+
+    it('cancels the Mercado Pago order and the checkout, so nobody pays an order UNNA cannot match', async () => {
+      failAttach();
+
+      const result = await world.build().checkout.create(SLUG, CART, NOW);
+
+      expect(result.ok).toBe(false);
+      expect(result.value).toBeUndefined();
+      expect(result.error!.message).toBe('No se pudo iniciar el pago con Mercado Pago. Probá de nuevo');
+      expect(world.mercadoPago.cancelOrder).toHaveBeenCalledTimes(1);
+      const [token, mpOrderId, idempotencyKey] = world.mercadoPago.cancelOrder.mock.calls[0];
+      expect(token).toBe('APP_USR-access-1');
+      expect(mpOrderId).toBe('ORD01ONLINE');
+      expect(idempotencyKey).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-a[0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect(world.mercadoPago.orders.get('ORD01ONLINE')!.status).toBe('canceled');
+      expect([...world.checkouts.rows.values()].map((c) => c.status)).toEqual(['cancelled']);
+    });
+
+    it('still answers the same Spanish error when cancelling in Mercado Pago also fails', async () => {
+      failAttach();
+      world.mercadoPago.failNextCancel = true;
+
+      const result = await world.build().checkout.create(SLUG, CART, NOW);
+
+      expect(result.ok).toBe(false);
+      expect(result.error!.message).toBe('No se pudo iniciar el pago con Mercado Pago. Probá de nuevo');
+      expect(world.mercadoPago.cancelOrder).toHaveBeenCalledTimes(1);
+      expect([...world.checkouts.rows.values()].map((c) => c.status)).toEqual(['cancelled']);
+    });
+
+    it('still answers the same Spanish error when cancelling the checkout also fails', async () => {
+      failAttach();
+      jest.spyOn(world.checkouts, 'update').mockRejectedValueOnce(new Error('db down'));
+
+      const result = await world.build().checkout.create(SLUG, CART, NOW);
+
+      expect(result.error!.message).toBe('No se pudo iniciar el pago con Mercado Pago. Probá de nuevo');
+      expect(world.mercadoPago.cancelOrder).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('rejects without storing anything nor calling Mercado Pago', () => {
     const rejects = async (cart: typeof CART | Record<string, unknown>, message: string) => {
       const result = await world.build().checkout.create(SLUG, cart as typeof CART, NOW);

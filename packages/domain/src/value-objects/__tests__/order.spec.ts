@@ -80,6 +80,52 @@ describe('Order', () => {
     it('rejects a discount larger than the subtotal', () => {
       expect(() => newOrder().applyDiscount(Money.fromCents(2001))).toThrow('El descuento no puede ser mayor al subtotal');
     });
+
+    describe('keeps the discount within the subtotal when items change', () => {
+      const LEFT_OVER = 'El descuento supera el subtotal. Ajustá el descuento antes de quitar productos.';
+      const withItems = (lines: ReturnType<typeof item>[], discountCents: number) =>
+        Order.create({ businessId: 'b', sucursalId: 's', sucursalName: 'P', type: 'dine_in', items: lines }).applyDiscount(Money.fromCents(discountCents));
+      const snapshot = (o: Order) => ({ items: o.items.map((i) => [i.id, i.quantity]), subtotal: o.subtotal.toCents(), total: o.totalAmount.toCents(), discount: o.discountAmount.toCents() });
+
+      it('rejects removing an item that leaves the discount above the subtotal, and the order stays unchanged', () => {
+        const order = withItems([item({ quantity: 1, unitCents: 1000, taxRate: 0 }), item({ productId: 'prod-2', quantity: 1, unitCents: 100, taxRate: 0 })], 1000);
+        const before = snapshot(order);
+
+        expect(() => order.removeItem(order.items[0].id)).toThrow(LEFT_OVER);
+        expect(snapshot(order)).toEqual(before);
+        expect(before).toMatchObject({ subtotal: 1100, total: 100, discount: 1000 });
+      });
+
+      it('rejects it even when the IVA would keep the total positive (the receipt could never be issued)', () => {
+        // 10.00 + 2.00 with 21% IVA and an 11.00 discount: without the 2.00 item, 10.00 + 2.10 - 11.00 = 1.10.
+        const order = withItems([item({ quantity: 1, unitCents: 1000 }), item({ productId: 'prod-2', quantity: 1, unitCents: 200 })], 1100);
+        const before = snapshot(order);
+
+        expect(() => order.removeItem(order.items[1].id)).toThrow(LEFT_OVER);
+        expect(snapshot(order)).toEqual(before);
+      });
+
+      it('rejects lowering a quantity that leaves the discount above the subtotal, and the order stays unchanged', () => {
+        const order = withItems([item({ quantity: 3, unitCents: 1000, taxRate: 0 })], 2500);
+        const before = snapshot(order);
+
+        expect(() => order.updateItemQuantity(order.items[0].id, 2)).toThrow(LEFT_OVER);
+        expect(snapshot(order)).toEqual(before);
+        // Down to exactly the discount is still allowed.
+        const lowered = order.applyDiscount(Money.fromCents(2000)).updateItemQuantity(order.items[0].id, 2);
+        expect(lowered.totalAmount.toCents()).toBe(0);
+      });
+
+      it('still removes an item when the discount stays within the new subtotal', () => {
+        const order = withItems([item({ quantity: 1, unitCents: 1000, taxRate: 0 }), item({ productId: 'prod-2', quantity: 1, unitCents: 100, taxRate: 0 })], 1000);
+        const removed = order.removeItem(order.items[1].id);
+
+        expect(removed.items.map((i) => i.id)).toEqual([order.items[0].id]);
+        expect(removed.subtotal.toCents()).toBe(1000);
+        expect(removed.discountAmount.toCents()).toBe(1000);
+        expect(removed.totalAmount.toCents()).toBe(0);
+      });
+    });
   });
 
   describe('status lifecycle', () => {

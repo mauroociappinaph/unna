@@ -46,6 +46,7 @@ import { QrChargeUseCase } from './use-cases/qr-charge.use-case';
 import { QrChargeSync } from './use-cases/qr-charge-sync';
 import { PrismaQrChargeRepositoryAdapter } from './adapters/qr-charge.repository.adapter';
 import { PrismaQrChargeUnitOfWorkAdapter } from './adapters/qr-charge-unit-of-work.adapter';
+import { PrismaStockUnitOfWorkAdapter } from './adapters/stock-unit-of-work.adapter';
 import { simulatorsAllowed } from '../common/runtime-env';
 import { PreorderController } from './preorder.controller';
 import { PublicPreorderController } from './public-preorder.controller';
@@ -171,6 +172,7 @@ import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
       provide: 'StockMovementRepositoryPort',
       useClass: PrismaStockMovementRepositoryAdapter,
     },
+    { provide: 'StockUnitOfWorkPort', useClass: PrismaStockUnitOfWorkAdapter },
   ],
   exports: [
     OnboardBusinessUseCase, 

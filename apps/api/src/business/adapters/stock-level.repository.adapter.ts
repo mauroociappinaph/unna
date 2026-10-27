@@ -2,23 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { StockLevel as StockLevelRecord } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StockLevelRepositoryPort, StockLevel } from '@unna/domain';
+import type { Db } from './sales.repository.adapter';
 
-@Injectable()
-export class PrismaStockLevelRepositoryAdapter implements StockLevelRepositoryPort {
-  constructor(private readonly prisma: PrismaService) {}
+/** Stock levels on the root client or on an open transaction (the stock unit of work). */
+export class PrismaStockLevelRepository implements StockLevelRepositoryPort {
+  constructor(private readonly prisma: Db) {}
 
   async save(level: StockLevel): Promise<void> {
-    const data = {
-      businessId: level.businessId,
-      currentQuantity: level.currentQuantity,
-      reservedQuantity: level.reservedQuantity,
-      minThreshold: level.minThreshold,
-      maxThreshold: level.maxThreshold ?? null,
-      reorderPoint: level.reorderPoint,
-      reorderQuantity: level.reorderQuantity,
-      lastCountedAt: level.lastCountedAt ?? null,
-      lastMovementAt: level.lastMovementAt ?? null,
-    };
+    const data = this.toRecord(level);
     await this.prisma.stockLevel.upsert({
       where: { productId: level.productId },
       create: { productId: level.productId, ...data },
@@ -41,8 +32,31 @@ export class PrismaStockLevelRepositoryAdapter implements StockLevelRepositoryPo
     return levels.filter((l) => l.isLowStock());
   }
 
+  /** Inserts the level unless the product already has one; a concurrent insert waits for the first and skips. */
+  async createIfMissing(level: StockLevel): Promise<boolean> {
+    const { count } = await this.prisma.stockLevel.createMany({
+      data: [{ productId: level.productId, ...this.toRecord(level) }],
+      skipDuplicates: true,
+    });
+    return count === 1;
+  }
+
   async delete(productId: string): Promise<void> {
     await this.prisma.stockLevel.delete({ where: { productId } });
+  }
+
+  private toRecord(level: StockLevel) {
+    return {
+      businessId: level.businessId,
+      currentQuantity: level.currentQuantity,
+      reservedQuantity: level.reservedQuantity,
+      minThreshold: level.minThreshold,
+      maxThreshold: level.maxThreshold ?? null,
+      reorderPoint: level.reorderPoint,
+      reorderQuantity: level.reorderQuantity,
+      lastCountedAt: level.lastCountedAt ?? null,
+      lastMovementAt: level.lastMovementAt ?? null,
+    };
   }
 
   private toDomain(r: StockLevelRecord): StockLevel {
@@ -59,5 +73,12 @@ export class PrismaStockLevelRepositoryAdapter implements StockLevelRepositoryPo
       lastMovementAt: r.lastMovementAt ?? undefined,
       updatedAt: r.updatedAt,
     });
+  }
+}
+
+@Injectable()
+export class PrismaStockLevelRepositoryAdapter extends PrismaStockLevelRepository {
+  constructor(prisma: PrismaService) {
+    super(prisma);
   }
 }

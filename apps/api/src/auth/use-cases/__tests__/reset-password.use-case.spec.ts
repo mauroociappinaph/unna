@@ -1,5 +1,6 @@
 import { ResetPasswordUseCase } from '../reset-password.use-case';
 import { isOk, isErr } from '@unna/domain';
+import { passwordFingerprint } from '../../session-token';
 
 const mockUserRepository = {
   existsByEmail: jest.fn(),
@@ -25,6 +26,12 @@ const mockHashingPort = {
   verify: jest.fn(),
 };
 
+const mockRefreshSessions = {
+  create: jest.fn(),
+  revokeAllOfUser: jest.fn(),
+  withFamilyLock: jest.fn(),
+};
+
 describe('ResetPasswordUseCase', () => {
   let useCase: ResetPasswordUseCase;
 
@@ -34,6 +41,7 @@ describe('ResetPasswordUseCase', () => {
       mockUserRepository,
       mockJwtPort,
       mockHashingPort,
+      mockRefreshSessions,
     );
   });
 
@@ -176,6 +184,7 @@ describe('ResetPasswordUseCase', () => {
       sub: 'user-id',
       email: 'test@example.com',
       type: 'password_reset',
+      pwd: passwordFingerprint('$2b$10$oldhashed'),
     });
     mockUserRepository.findById.mockResolvedValue(mockUser);
     mockHashingPort.hash.mockResolvedValue('$2b$10$newhashed');
@@ -191,5 +200,26 @@ describe('ResetPasswordUseCase', () => {
     expect(mockHashingPort.hash).toHaveBeenCalledWith('NewPass123');
     expect(mockUser.changePassword).toHaveBeenCalled();
     expect(mockUserRepository.save).toHaveBeenCalledWith(mockUser);
+    // S21: the reset also revokes every refresh session family of the user, after the new password is saved.
+    expect(mockRefreshSessions.revokeAllOfUser).toHaveBeenCalledWith('user-id', expect.any(Date));
+    expect(mockRefreshSessions.revokeAllOfUser.mock.invocationCallOrder[0]).toBeGreaterThan(mockUserRepository.save.mock.invocationCallOrder[0]);
+  });
+
+  // S21: a reset link works once; after the password changed (by this or another link) it is spent.
+  it.each([
+    ['the password already changed', passwordFingerprint('$2b$10$previoushash')],
+    ['the link has no fingerprint (issued before S21)', undefined],
+  ])('rejects the link when %s', async (_case, pwd) => {
+    const user = { id: 'user-id', email: { value: 'test@example.com' }, password: { hash: '$2b$10$currenthash' }, changePassword: jest.fn() };
+    mockJwtPort.verifyResetToken.mockReturnValue({ sub: 'user-id', email: 'test@example.com', type: 'password_reset', pwd });
+    mockUserRepository.findById.mockResolvedValue(user);
+
+    const result = await useCase.execute({ token: 'used-token', password: 'NewPass123', confirmPassword: 'NewPass123' });
+
+    expect(isErr(result) && result.error.message).toBe('El link ya se usó o venció. Pedí uno nuevo.');
+    expect(user.changePassword).not.toHaveBeenCalled();
+    expect(mockUserRepository.save).not.toHaveBeenCalled();
+    expect(mockHashingPort.hash).not.toHaveBeenCalled();
+    expect(mockRefreshSessions.revokeAllOfUser).not.toHaveBeenCalled();
   });
 });

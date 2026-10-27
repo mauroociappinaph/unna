@@ -88,6 +88,11 @@ export interface StockLevelProps {
   updatedAt: Date;
 }
 
+export interface StockCount {
+  level: StockLevel;
+  movement: StockMovement | null;
+}
+
 export class StockLevel {
   public readonly productId: string;
   public readonly businessId: string;
@@ -201,23 +206,26 @@ export class StockLevel {
     });
   }
 
-  public recordCount(countedQuantity: number): StockLevel {
+  /** The counted level and the adjustment movement for the difference; a count that matches moves nothing. */
+  public recordCount(countedQuantity: number, performedBy: string): StockCount {
     if (countedQuantity < 0) throw new Error('Cantidad contada no puede ser negativa');
-    const movement = StockMovement.create({
+    const difference = countedQuantity - this.currentQuantity;
+    const movement = difference === 0 ? null : StockMovement.create({
       productId: this.productId,
       businessId: this.businessId,
-      type: countedQuantity > this.currentQuantity ? 'adjustment' : 'adjustment',
-      quantity: countedQuantity - this.currentQuantity,
+      type: 'adjustment',
+      quantity: difference,
       reason: 'Conteo físico de inventario',
-      performedBy: 'system',
+      performedBy,
     });
-    return new StockLevel({
+    const level = new StockLevel({
       ...this.toProps(),
       currentQuantity: countedQuantity,
       lastCountedAt: new Date(),
-      lastMovementAt: movement.createdAt,
+      lastMovementAt: movement?.createdAt ?? this.lastMovementAt,
       updatedAt: new Date(),
     });
+    return { level, movement };
   }
 
   public adjustThresholds(minThreshold?: number, maxThreshold?: number, reorderPoint?: number, reorderQuantity?: number): StockLevel {

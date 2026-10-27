@@ -64,6 +64,8 @@ No tenés que correr nada a mano: **la API aplica las migraciones cada vez que a
 - Sin migraciones pendientes: no hace nada.
 - Si falla, la API no arranca y el error queda en los logs de Render.
 
+La migración `20261028000000_s21_refresh_sessions` crea la tabla `refresh_sessions` (sesiones de un solo uso, ver más abajo). Al desplegarla, quien tenga la sesión abierta va a tener que **iniciar sesión una vez más**: los refresh tokens emitidos antes no tienen sesión guardada y la API los rechaza con «Sesión vencida. Iniciá sesión de nuevo.».
+
 Si en cambio apuntás a una base **que ya existía** (creada con `prisma db push`), hacé primero el baseline que explica [migraciones.md](./migraciones.md). Si no, la migración intenta crear tablas que ya existen.
 
 ---
@@ -92,6 +94,8 @@ Cada servicio queda en `https://<nombre>.onrender.com`. Si el nombre ya está to
 
 Corré esto en tu terminal. Cada comando da un valor distinto; **no reutilices el mismo valor para dos variables**.
 
+En producción la API no arranca si falta alguno de los tres secretos de token (`JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_RESET_SECRET`), si dos son iguales o si alguno tiene menos de 32 caracteres. `JWT_RESET_SECRET` lo genera Render solo (`generateValue` en el blueprint).
+
 ```bash
 openssl rand -base64 48   # JWT_SECRET
 openssl rand -base64 48   # JWT_REFRESH_SECRET
@@ -109,8 +113,9 @@ Pegalos directo en Render. No los guardes en el repo, ni en un `.env` commiteado
 | `DATABASE_URL` | La URL del Session pooler del paso 1.6, con `?sslmode=require&connection_limit=5&pool_timeout=10` |
 | `JWT_SECRET` | Generado con `openssl rand -base64 48` |
 | `JWT_REFRESH_SECRET` | Otro generado con `openssl rand -base64 48` |
+| `JWT_RESET_SECRET` | Lo genera Render al aplicar el blueprint. Si no aparece en **Environment** (por ejemplo, en un servicio creado antes), agregalo a mano con otro `openssl rand -base64 48` |
 | `MP_TOKEN_ENCRYPTION_KEY` | Generado con `openssl rand -base64 32` |
-| `FRONTEND_URL` | URL de la web, sin barra final: `https://unna-web.onrender.com` |
+| `FRONTEND_URL` | URL de la web: `https://unna-web.onrender.com`. Obligatoria: sin ella la API no arranca |
 | `RESEND_API_KEY` | Tu API key de Resend (`re_...`) |
 
 **Servicio `unna-web`**
@@ -123,7 +128,11 @@ Ya vienen fijas en el blueprint, no las toques: `NODE_ENV=production`, `UNNA_ENV
 
 Sobre `RESEND_API_KEY`: la API no arranca sin un valor. Con una key real de Resend se mandan los mails (por ejemplo, recuperar contraseña). Con un valor de relleno que empiece con `re_`, la API arranca pero esos mails fallan.
 
-Variables opcionales (agregalas a mano en **Environment** si las necesitás): `EMAIL_FROM` y `EMAIL_REPLY_TO` (remitente de Resend, que tiene que ser un dominio verificado), `JWT_EXPIRES_IN` (por defecto `15m`), `JWT_REFRESH_EXPIRES_IN` (`7d`), `JWT_RESET_SECRET` (si no está, usa `JWT_SECRET`) y `PUBLIC_BOARD_RATE_LIMIT` (`120`). La lista completa con comentarios está en [`.env.example`](../../.env.example).
+Variables opcionales (agregalas a mano en **Environment** si las necesitás): `EMAIL_FROM` y `EMAIL_REPLY_TO` (remitente de Resend, que tiene que ser un dominio verificado), `JWT_EXPIRES_IN` (por defecto `15m`), `JWT_REFRESH_EXPIRES_IN` (`7d`), `SESSION_MAX_DAYS` (`30`: días que dura como máximo una sesión desde que se inició, aunque se renueve; tiene que ser un número mayor a 0 o la API no arranca), `PUBLIC_BOARD_RATE_LIMIT` (`120`) y `AUTH_RATE_LIMIT` (`10`: intentos de inicio de sesión y de renovación de sesión por minuto e IP; recuperar y restablecer la contraseña permiten la mitad). La lista completa con comentarios está en [`.env.example`](../../.env.example).
+
+### Sesiones: refresh token de un solo uso
+
+Cada refresh token sirve **una sola vez**: al renovar la sesión, la API lo marca como usado y entrega uno nuevo de la misma sesión (se guarda solo su identificador, nunca el token). Si alguien vuelve a presentar un token ya usado, la API lo toma como robado y **cierra esa sesión en todos lados** (el usuario tiene que iniciar sesión de nuevo). Excepción: si el token se usó hace menos de 10 segundos (dos pestañas renovando a la vez), solo responde 401 sin cerrar la sesión. Además, ninguna sesión dura más de `SESSION_MAX_DAYS` días desde el inicio de sesión, y restablecer la contraseña cierra todas las sesiones del usuario.
 
 ### Si una URL salió distinta
 
@@ -198,6 +207,7 @@ docker build -f apps/web/Dockerfile \
 | `P1001: Can't reach database server` | URL mal copiada o Supabase pausado | Revisá host y puerto del Session pooler; reactivá el proyecto. |
 | `MP_TOKEN_ENCRYPTION_KEY es obligatoria en producción` o `... inválida: debe ser 32 bytes en base64` | Falta la clave o no tiene 32 bytes | Generala con `openssl rand -base64 32`. |
 | `... el simulador ... no puede usarse en producción` | Falta `UNNA_ENV=staging` | Cargá `UNNA_ENV` con el valor exacto `staging`. |
+| `Falta FRONTEND_URL: en producción es obligatoria la URL de la web ...` | Falta `FRONTEND_URL` en `unna-api` | Cargala con la URL de la web (paso 3). |
 | La web carga pero el login falla (CORS en la consola) | `FRONTEND_URL` no coincide con la URL de la web | Corregila, sin barra final. |
 | La web llama a `localhost:3001` | `NEXT_PUBLIC_API_URL` vacía al compilar | Cargala y usá **Save, rebuild, and deploy**. |
 | La primera carga tarda ~1 minuto | El servicio gratis estaba dormido | Es normal en el plan gratis. |

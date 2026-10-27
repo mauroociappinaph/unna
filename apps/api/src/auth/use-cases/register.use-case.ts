@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserRepositoryPort, HashingPort, JwtPort, TokenPair } from '@unna/domain';
+import { UserRepositoryPort, HashingPort, TokenPair } from '@unna/domain';
 import { User } from '@unna/domain';
 import { Email, Password, PersonName, Phone, BusinessName } from '@unna/domain';
 import { Result, ok, err } from '@unna/domain';
+import { SessionIssuer } from '../session-issuer';
 
 export interface RegisterCommand {
   email: string;
@@ -19,8 +20,7 @@ export class RegisterUseCase {
     private readonly userRepository: UserRepositoryPort,
     @Inject('HashingPort')
     private readonly hashingPort: HashingPort,
-    @Inject('JwtPort')
-    private readonly jwtPort: JwtPort,
+    private readonly sessionIssuer: SessionIssuer,
   ) {}
 
   async execute(command: RegisterCommand): Promise<Result<{ user: User; tokens: TokenPair }, Error>> {
@@ -44,12 +44,7 @@ export class RegisterUseCase {
 
     await this.userRepository.save(user);
 
-    const tokens = this.jwtPort.generateTokenPair({
-      sub: user.id,
-      email: user.email.value,
-      role: user.roles[0],
-      businessId: undefined,
-    });
+    const tokens = await this.sessionIssuer.start(user);
 
     return ok({ user, tokens });
   }

@@ -91,7 +91,7 @@ function TrackingDetails({ tracking }: { tracking: OrderTracking }) {
 
 /** Tracking page of a pedido anticipado (S20): updates itself until the order reaches a final state. */
 export function OrderTrackingView({ token }: { token: string }) {
-  const { tracking, notFound } = useOrderTracking(token);
+  const { tracking, notFound, loadError } = useOrderTracking(token);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -102,6 +102,10 @@ export function OrderTrackingView({ token }: { token: string }) {
           <p className="py-12 text-center text-lg font-semibold text-gray-900">{notFound}</p>
         ) : tracking ? (
           <TrackingDetails tracking={tracking} />
+        ) : loadError ? (
+          <p role="alert" className="py-12 text-center text-lg font-semibold text-gray-900">
+            No pudimos cargar tu pedido. Reintentamos en unos segundos.
+          </p>
         ) : (
           <p className="py-12 text-center text-gray-600">Cargando tu pedido…</p>
         )}

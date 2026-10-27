@@ -61,7 +61,12 @@ export function QrChargePanel({ businessId, orderId, remaining, disabled, onPaid
         <Button variant="secondary" disabled={busy || disabled} onClick={start}>Cobrar con QR</Button>
       )}
 
-      {charge && creating && <p role="status" className="text-gray-700">Generando QR…</p>}
+      {charge && (creating || (pending && !charge.qrData)) && (
+        <div className="flex items-center justify-between gap-2">
+          <p role="status" className="text-gray-700">Generando QR…</p>
+          <Button variant="outline" size="sm" onClick={cancel}>Cancelar</Button>
+        </div>
+      )}
 
       {charge && pending && charge.qrData && (
         <div className="flex flex-col items-center gap-2 text-center">

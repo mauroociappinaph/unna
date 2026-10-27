@@ -40,6 +40,8 @@ export default function CajaPage() {
   // Cursor of the next history page; null on the last one (S17).
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
   const [closing, setClosing] = useState<CashSession | null>(null);
+  // Sucursal whose "Ver más" page is loading; a request of another sucursal never blocks the current one (S21).
+  const [loadingMoreFor, setLoadingMoreFor] = useState<string | null>(null);
 
   const loadBusiness = useCallback(async () => {
     try {
@@ -89,6 +91,7 @@ export default function CajaPage() {
     setClosing(null);
     setHistory([]);
     setHistoryCursor(null);
+    setLoadingMoreFor(null);
     Promise.all([api.getCurrentCashSession(businessId, sucursalId), api.listCashSessions(businessId, { sucursalId })])
       .then(([current, page]) => {
         if (cancelled) return;
@@ -141,15 +144,22 @@ export default function CajaPage() {
     }, 'No se pudo cerrar la caja');
   };
 
-  const handleLoadMoreHistory = () => {
+  // Only the reply (page or error) for the sucursal still on screen is shown (S18, S21).
+  const handleLoadMoreHistory = async () => {
     if (!businessId || !historyCursor) return;
     const requested = sucursalId;
-    run(async () => {
+    setLoadingMoreFor(requested);
+    setError(null);
+    try {
       const page = await api.listCashSessions(businessId, { sucursalId: requested, cursor: historyCursor });
       if (historySucursal.current !== requested) return;
       setHistory((current) => [...current, ...page.items]);
       setHistoryCursor(page.nextCursor);
-    }, 'No se pudieron cargar más cajas');
+    } catch (err) {
+      if (historySucursal.current === requested) setError(apiErrorMessage(err, 'No se pudieron cargar más cajas'));
+    } finally {
+      if (historySucursal.current === requested) setLoadingMoreFor(null);
+    }
   };
 
   const handleSelectPast = (past: CashSessionListItem) => {
@@ -239,7 +249,7 @@ export default function CajaPage() {
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <CashHistory
               sessions={history}
-              busy={busy}
+              busy={busy || loadingMoreFor === sucursalId}
               hasMore={historyCursor !== null}
               onSelect={handleSelectPast}
               onLoadMore={handleLoadMoreHistory}

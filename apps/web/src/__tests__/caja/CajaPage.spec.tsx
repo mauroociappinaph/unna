@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CajaPage from '@/app/dashboard/caja/page';
 import { api } from '@/lib/api';
@@ -249,6 +249,34 @@ describe('Caja page', () => {
     expect(rows).toHaveLength(otherHistory.filter((s) => s.status === 'closed').length);
     expect(screen.queryByText(/19\/10/)).not.toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Historial de cajas' })).queryByRole('button', { name: 'Ver más' })).not.toBeInTheDocument();
+  });
+
+  it('ignores a "Ver más" of the previous sucursal that fails after switching and keeps the new one usable (S21)', async () => {
+    const otherHistory: CashSession[] = [{ ...history[0], id: 'session-suc2', sucursalId: 'suc-2' }];
+    let failStale!: (error: unknown) => void;
+    mocked.listCashSessions
+      .mockResolvedValueOnce(pageOf(history, history[history.length - 1].id))
+      .mockReturnValueOnce(new Promise((_, reject) => { failStale = reject; }))
+      .mockResolvedValueOnce(pageOf(otherHistory));
+    const user = await renderCaja();
+    const list = await screen.findByRole('region', { name: 'Historial de cajas' });
+    await within(list).findAllByRole('button', { name: /Ver detalle/ });
+
+    await user.click(within(list).getByRole('button', { name: 'Ver más' }));
+    await user.selectOptions(screen.getByLabelText('Sucursal'), 'suc-2');
+    await waitFor(() => expect(mocked.listCashSessions).toHaveBeenLastCalledWith('biz-1', { sucursalId: 'suc-2' }));
+    const openButton = await screen.findByRole('button', { name: 'Abrir caja' });
+    const detail = await within(screen.getByRole('region', { name: 'Historial de cajas' })).findByRole('button', { name: /Ver detalle/ });
+    expect(openButton).toBeEnabled();
+    expect(detail).toBeEnabled();
+
+    failStale(apiError('Error de red'));
+    await act(async () => {});
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText('Error de red')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Abrir caja' })).toBeEnabled();
+    expect(within(screen.getByRole('region', { name: 'Historial de cajas' })).getByRole('button', { name: /Ver detalle/ })).toBeEnabled();
   });
 
   it('shows no "Ver más" when the history fits in one page (S17)', async () => {

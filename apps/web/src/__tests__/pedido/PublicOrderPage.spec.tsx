@@ -77,6 +77,20 @@ describe('Public order page: menu', () => {
     expect(screen.queryByRole('button', { name: 'Pagar con Mercado Pago' })).not.toBeInTheDocument();
   });
 
+  it('retries loading the menu after a failure (S21)', async () => {
+    const user = setup({ status: 500, body: { statusCode: 500, message: 'Internal server error' } });
+    expect(await screen.findByText('Internal server error')).toBeInTheDocument();
+    expect(menuCalls()).toHaveLength(1);
+
+    fetchMock.mockImplementation(async () => jsonResponse({ status: 200, body: menu }));
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('heading', { name: 'Café Lunes' })).toBeInTheDocument();
+    expect(menuCalls()).toHaveLength(2);
+    expect(screen.queryByText('Internal server error')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+  });
+
   it('calls the menu endpoint without an Authorization header or credentials', async () => {
     setup();
     await screen.findByRole('heading', { name: 'Café Lunes' });

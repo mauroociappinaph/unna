@@ -177,6 +177,24 @@ describe('Tracking page', () => {
       expect(trackingCalls()).toHaveLength(3);
     });
 
+    it('explains a failed first load, keeps polling and shows the order once it loads (S21)', async () => {
+      fetchMock.mockImplementationOnce(async () => jsonResponse({ status: 500, body: { statusCode: 500, message: 'Internal server error' } }));
+      renderPage();
+
+      expect(await screen.findByText('No pudimos cargar tu pedido. Reintentamos en unos segundos.')).toBeInTheDocument();
+      expect(screen.queryByText('Cargando tu pedido…')).not.toBeInTheDocument();
+
+      await tick();
+      expect(trackingCalls()).toHaveLength(2);
+      expect(await screen.findByText('042')).toBeInTheDocument();
+      expect(screen.queryByText('No pudimos cargar tu pedido. Reintentamos en unos segundos.')).not.toBeInTheDocument();
+
+      fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+      await tick();
+      expect(screen.getByText('042')).toBeInTheDocument();
+      expect(screen.queryByText('No pudimos cargar tu pedido. Reintentamos en unos segundos.')).not.toBeInTheDocument();
+    });
+
     it('pauses while the tab is hidden and refreshes when it is visible again', async () => {
       renderPage();
       await screen.findByText('042');

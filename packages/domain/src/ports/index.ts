@@ -23,3 +23,9 @@ export type { EmailPort, EmailConfig } from './email.port';
 export * from './fiscal.port';
 export * from './cash.port';
 export type { LockedStockWrites, StockUnitOfWorkPort } from './stock.port';
+export type {
+  RefreshSessionRecord,
+  LockedRefreshFamily,
+  LockedRefreshSessionWrites,
+  RefreshSessionRepositoryPort,
+} from './refresh-session.port';

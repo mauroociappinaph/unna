@@ -5,6 +5,10 @@ export interface JwtPayload {
   businessId?: string;
   /** Fingerprint of the password hash at sign-in; a password change ends the session. */
   pwd?: string;
+  /** Refresh tokens only: id of the stored session; a refresh token works once (S21). */
+  jti?: string;
+  /** Refresh tokens only: the login (family of sessions) the token belongs to. */
+  fam?: string;
 }
 
 export interface ResetTokenPayload {

@@ -22,8 +22,29 @@ model User {
   updatedAt     DateTime @updatedAt
 
   businesses    Business[]
+  refreshSessions RefreshSession[]
 
   @@map("users")
+}
+
+// Single-use refresh tokens (S21): one row per refresh token, keyed by its jti (the token itself is
+// never stored). familyId is the id of the login's first session; expiresAt is the family deadline
+// (SESSION_MAX_DAYS after the login). A second use of a spent row revokes the whole family.
+model RefreshSession {
+  id           String    @id
+  userId       String
+  familyId     String
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  usedAt       DateTime?
+  revokedAt    DateTime?
+  replacedById String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_sessions")
 }
 
 model Business {

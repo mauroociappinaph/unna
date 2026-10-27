@@ -1,5 +1,7 @@
 import { SalesUseCase } from '../sales.use-case';
 import { CashSessionRepositoryPort, LockedOrderRepositories, Money, Order, PaymentRecord, SalesUnitOfWorkPort } from '@unna/domain';
+import { BadRequestException } from '@nestjs/common';
+import { unwrap } from '../../../common/use-case-result';
 import { fake } from './test-doubles';
 
 const m = (cents: number) => Money.fromCents(cents);
@@ -299,6 +301,19 @@ describe('SalesUseCase', () => {
 
       expect(withOrderLock).toHaveBeenCalledTimes(4);
       expect(state.order.status).toBe('delivered');
+    });
+
+    it('answers 400 and writes nothing when removing an item would leave the discount above the subtotal', async () => {
+      const state = { order: twoItemOrder().applyDiscount(m(1500)), payments: [] as PaymentRecord[] };
+      const original = state.order;
+      const { sales } = paymentSales(state);
+
+      const error = await unwrap(sales.removeItem({ businessId: 'biz-A', orderId: original.id, itemId: original.items[0].id })).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).getStatus()).toBe(400);
+      expect((error as BadRequestException).message).toBe('El descuento supera el subtotal. Ajustá el descuento antes de quitar productos.');
+      expect(state.order).toBe(original);
     });
 
     it('reports a missing order or item with the not-found messages', async () => {

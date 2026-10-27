@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserRepositoryPort, JwtPort, HashingPort } from '@unna/domain';
+import { UserRepositoryPort, JwtPort, HashingPort, ResetTokenPayload } from '@unna/domain';
 import { Password } from '@unna/domain';
 import { NotFoundError, Result, ok, err } from '@unna/domain';
+import { passwordFingerprint } from '../session-token';
+
+const RESET_LINK_SPENT = 'El link ya se usó o venció. Pedí uno nuevo.';
 
 export interface ResetPasswordCommand {
   token: string;
@@ -25,7 +28,7 @@ export class ResetPasswordUseCase {
       return err(new Error('Las contraseñas no coinciden.'));
     }
 
-    let payload: { sub: string; email: string; type: string };
+    let payload: ResetTokenPayload;
     try {
       payload = this.jwtPort.verifyResetToken(command.token);
     } catch {
@@ -43,6 +46,12 @@ export class ResetPasswordUseCase {
 
     if (user.email.value !== payload.email) {
       return err(new Error('Token inválido.'));
+    }
+
+    // The link carries the fingerprint of the password it was issued for: once the password
+    // changed (with this link or another one) every earlier link is spent.
+    if (payload.pwd !== passwordFingerprint(user.password.hash)) {
+      return err(new Error(RESET_LINK_SPENT));
     }
 
     const password = Password.create(command.password);

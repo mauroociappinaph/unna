@@ -3,12 +3,16 @@ export interface JwtPayload {
   email: string;
   role: string;
   businessId?: string;
+  /** Fingerprint of the password hash at sign-in; a password change ends the session. */
+  pwd?: string;
 }
 
 export interface ResetTokenPayload {
   sub: string;
   email: string;
   type: 'password_reset' | 'email_verification';
+  /** Fingerprint of the password hash when the link was issued; a reset link works once. */
+  pwd?: string;
 }
 
 export interface TokenPair {

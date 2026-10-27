@@ -106,6 +106,7 @@ describe('LoginUseCase', () => {
     const mockUser = createMockUser({ isActive: false });
 
     mockUserRepository.findByEmail.mockResolvedValue(mockUser);
+    mockHashingPort.verify.mockResolvedValue(true);
 
     const result = await useCase.execute(validCommand);
 
@@ -129,5 +130,43 @@ describe('LoginUseCase', () => {
     await useCase.execute(validCommand);
 
     expect(mockHashingPort.verify).toHaveBeenCalledWith('SecurePass123', '$2b$10$hashedpassword');
+  });
+
+  // S21: the answer must not reveal whether an account exists or is deactivated without its password.
+  it('answers Credenciales inválidas for a deactivated account when the password is wrong', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(createMockUser({ isActive: false }));
+    mockHashingPort.verify.mockResolvedValue(false);
+
+    const result = await useCase.execute(validCommand);
+
+    expect(isErr(result) && result.error.message).toBe('Credenciales inválidas');
+    expect(mockJwtPort.generateTokenPair).not.toHaveBeenCalled();
+  });
+
+  it('compares the password against a dummy bcrypt hash when the user does not exist, so timing is similar', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(null);
+    mockHashingPort.verify.mockResolvedValue(true);
+
+    const result = await useCase.execute(validCommand);
+
+    expect(isErr(result) && result.error.message).toBe('Credenciales inválidas');
+    expect(mockHashingPort.verify).toHaveBeenCalledTimes(1);
+    expect(mockHashingPort.verify).toHaveBeenCalledWith('SecurePass123', expect.stringMatching(/^\$2[aby]\$12\$.{53}$/));
+  });
+
+  it('puts the password fingerprint and the access/refresh claims in the session', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(createMockUser());
+    mockHashingPort.verify.mockResolvedValue(true);
+    mockJwtPort.generateTokenPair.mockReturnValue({ accessToken: 'a', refreshToken: 'r', expiresIn: 900 });
+
+    await useCase.execute(validCommand);
+
+    expect(mockJwtPort.generateTokenPair).toHaveBeenCalledWith({
+      sub: 'user-id',
+      email: 'test@example.com',
+      role: 'owner',
+      businessId: undefined,
+      pwd: expect.stringMatching(/^[0-9a-f]{16}$/),
+    });
   });
 });

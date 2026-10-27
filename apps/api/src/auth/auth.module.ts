@@ -8,6 +8,7 @@ import { LoginUseCase } from './use-cases/login.use-case';
 import { ForgotPasswordUseCase } from './use-cases/forgot-password.use-case';
 import { ResetPasswordUseCase } from './use-cases/reset-password.use-case';
 import { VerifyEmailUseCase } from './use-cases/verify-email.use-case';
+import { RefreshSessionUseCase } from './use-cases/refresh-session.use-case';
 import { AuthController } from './auth.controller';
 import { JwtAdapter } from './adapters/jwt.adapter';
 import { BcryptHashingAdapter } from './adapters/hashing.adapter';
@@ -36,6 +37,7 @@ import { RolesGuard } from './guards/roles.guard';
     ForgotPasswordUseCase,
     ResetPasswordUseCase,
     VerifyEmailUseCase,
+    RefreshSessionUseCase,
     JwtStrategy,
     RolesGuard,
     {

@@ -3,6 +3,7 @@ import { UserRepositoryPort, HashingPort, JwtPort, TokenPair } from '@unna/domai
 import { User } from '@unna/domain';
 import { Email, Password, PersonName, Phone, BusinessName } from '@unna/domain';
 import { Result, ok, err } from '@unna/domain';
+import { sessionClaims } from '../session-token';
 
 export interface RegisterCommand {
   email: string;
@@ -44,12 +45,7 @@ export class RegisterUseCase {
 
     await this.userRepository.save(user);
 
-    const tokens = this.jwtPort.generateTokenPair({
-      sub: user.id,
-      email: user.email.value,
-      role: user.roles[0],
-      businessId: undefined,
-    });
+    const tokens = this.jwtPort.generateTokenPair(sessionClaims(user));
 
     return ok({ user, tokens });
   }

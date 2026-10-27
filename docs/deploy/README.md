@@ -92,6 +92,8 @@ Cada servicio queda en `https://<nombre>.onrender.com`. Si el nombre ya está to
 
 Corré esto en tu terminal. Cada comando da un valor distinto; **no reutilices el mismo valor para dos variables**.
 
+En producción la API no arranca si falta alguno de los tres secretos de token (`JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_RESET_SECRET`), si dos son iguales o si alguno tiene menos de 32 caracteres. `JWT_RESET_SECRET` lo genera Render solo (`generateValue` en el blueprint).
+
 ```bash
 openssl rand -base64 48   # JWT_SECRET
 openssl rand -base64 48   # JWT_REFRESH_SECRET
@@ -109,6 +111,7 @@ Pegalos directo en Render. No los guardes en el repo, ni en un `.env` commiteado
 | `DATABASE_URL` | La URL del Session pooler del paso 1.6, con `?sslmode=require&connection_limit=5&pool_timeout=10` |
 | `JWT_SECRET` | Generado con `openssl rand -base64 48` |
 | `JWT_REFRESH_SECRET` | Otro generado con `openssl rand -base64 48` |
+| `JWT_RESET_SECRET` | Lo genera Render al aplicar el blueprint. Si no aparece en **Environment** (por ejemplo, en un servicio creado antes), agregalo a mano con otro `openssl rand -base64 48` |
 | `MP_TOKEN_ENCRYPTION_KEY` | Generado con `openssl rand -base64 32` |
 | `FRONTEND_URL` | URL de la web: `https://unna-web.onrender.com`. Obligatoria: sin ella la API no arranca |
 | `RESEND_API_KEY` | Tu API key de Resend (`re_...`) |
@@ -123,7 +126,7 @@ Ya vienen fijas en el blueprint, no las toques: `NODE_ENV=production`, `UNNA_ENV
 
 Sobre `RESEND_API_KEY`: la API no arranca sin un valor. Con una key real de Resend se mandan los mails (por ejemplo, recuperar contraseña). Con un valor de relleno que empiece con `re_`, la API arranca pero esos mails fallan.
 
-Variables opcionales (agregalas a mano en **Environment** si las necesitás): `EMAIL_FROM` y `EMAIL_REPLY_TO` (remitente de Resend, que tiene que ser un dominio verificado), `JWT_EXPIRES_IN` (por defecto `15m`), `JWT_REFRESH_EXPIRES_IN` (`7d`), `JWT_RESET_SECRET` (si no está, usa `JWT_SECRET`) y `PUBLIC_BOARD_RATE_LIMIT` (`120`). La lista completa con comentarios está en [`.env.example`](../../.env.example).
+Variables opcionales (agregalas a mano en **Environment** si las necesitás): `EMAIL_FROM` y `EMAIL_REPLY_TO` (remitente de Resend, que tiene que ser un dominio verificado), `JWT_EXPIRES_IN` (por defecto `15m`), `JWT_REFRESH_EXPIRES_IN` (`7d`), `PUBLIC_BOARD_RATE_LIMIT` (`120`) y `AUTH_RATE_LIMIT` (`10`: intentos de inicio de sesión y de renovación de sesión por minuto e IP; recuperar y restablecer la contraseña permiten la mitad). La lista completa con comentarios está en [`.env.example`](../../.env.example).
 
 ### Si una URL salió distinta
 

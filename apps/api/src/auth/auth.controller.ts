@@ -5,6 +5,8 @@ import { LoginUseCase, LoginCommand } from './use-cases/login.use-case';
 import { ForgotPasswordUseCase, ForgotPasswordCommand } from './use-cases/forgot-password.use-case';
 import { ResetPasswordUseCase, ResetPasswordCommand } from './use-cases/reset-password.use-case';
 import { VerifyEmailUseCase, VerifyEmailCommand } from './use-cases/verify-email.use-case';
+import { RefreshSessionUseCase, RefreshSessionCommand } from './use-cases/refresh-session.use-case';
+import { ThrottleAuth, ThrottleAuthRecovery } from './auth-throttle';
 import { Result, isOk, isErr, User, TokenPair } from '@unna/domain';
 import { IsString, IsEmail, MinLength, MaxLength, Matches, IsBoolean, Validate, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
 
@@ -100,6 +102,12 @@ export class VerifyEmailDto implements VerifyEmailCommand {
   token!: string;
 }
 
+export class RefreshSessionDto implements RefreshSessionCommand {
+  @IsString()
+  @MinLength(1, { message: 'Token es obligatorio' })
+  refreshToken!: string;
+}
+
 export class AuthResponseDto {
   accessToken!: string;
   refreshToken!: string;
@@ -116,6 +124,9 @@ export class MessageResponseDto {
   message!: string;
 }
 
+/** Error with a JSON `message`, the shape the web reads (a bare string body is not shown). */
+const authError = (message: string, status: HttpStatus) => new HttpException({ statusCode: status, message }, status);
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -125,6 +136,7 @@ export class AuthController {
     private readonly forgotPasswordUseCase: ForgotPasswordUseCase,
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
     private readonly verifyEmailUseCase: VerifyEmailUseCase,
+    private readonly refreshSessionUseCase: RefreshSessionUseCase,
   ) {}
 
   @Post('register')
@@ -140,6 +152,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @ThrottleAuth()
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @ApiOperation({ summary: 'Iniciar sesión' })
@@ -150,7 +163,23 @@ export class AuthController {
     return this.handleResult(result);
   }
 
+  @Post('refresh')
+  @ThrottleAuth()
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ApiOperation({ summary: 'Renovar la sesión con el refresh token' })
+  @ApiResponse({ status: 200, type: AuthResponseDto })
+  @ApiResponse({ status: 401, description: 'Sesión vencida' })
+  async refresh(@Body() dto: RefreshSessionDto): Promise<AuthResponseDto> {
+    const result = await this.refreshSessionUseCase.execute(dto);
+    if (isErr(result)) {
+      throw authError(result.error.message, HttpStatus.UNAUTHORIZED);
+    }
+    return this.handleResult(result);
+  }
+
   @Post('forgot-password')
+  @ThrottleAuthRecovery()
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @ApiOperation({ summary: 'Solicitar recuperación de contraseña' })
@@ -158,12 +187,13 @@ export class AuthController {
   async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<MessageResponseDto> {
     const result = await this.forgotPasswordUseCase.execute(dto);
     if (isErr(result)) {
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+      throw authError(result.error.message, HttpStatus.BAD_REQUEST);
     }
     return { message: 'Si el email existe, recibirás un link para restablecer tu contraseña.' };
   }
 
   @Post('reset-password')
+  @ThrottleAuthRecovery()
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @ApiOperation({ summary: 'Restablecer contraseña con token' })
@@ -172,7 +202,7 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<MessageResponseDto> {
     const result = await this.resetPasswordUseCase.execute(dto);
     if (isErr(result)) {
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+      throw authError(result.error.message, HttpStatus.BAD_REQUEST);
     }
     return { message: 'Contraseña actualizada correctamente. Ya podés iniciar sesión.' };
   }
@@ -186,7 +216,7 @@ export class AuthController {
   async verifyEmail(@Body() dto: VerifyEmailDto): Promise<MessageResponseDto> {
     const result = await this.verifyEmailUseCase.execute(dto);
     if (isErr(result)) {
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
+      throw authError(result.error.message, HttpStatus.BAD_REQUEST);
     }
     return { message: 'Email verificado correctamente. Ya podés iniciar sesión.' };
   }
@@ -211,6 +241,6 @@ export class AuthController {
                        error.message.includes('inválidas') || error.message.includes('desactivada') ? HttpStatus.UNAUTHORIZED :
                        HttpStatus.BAD_REQUEST;
 
-    throw new HttpException(error.message, statusCode);
+    throw authError(error.message, statusCode);
   }
 }

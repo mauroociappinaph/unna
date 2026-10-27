@@ -38,6 +38,24 @@ interface SucursalInput {
   isActive?: boolean;
 }
 
+/**
+ * ManageSucursalDto takes the fields at the top level and rejects unknown ones, so only the editable
+ * fields are sent: an edit form carries the listed sucursal (id, timestamps, formatted address).
+ */
+function toSucursalBody(action: 'create' | 'update', { name, address, phone, email, schedule, isMain, isActive }: SucursalInput) {
+  const { street, number, floor, apartment, neighborhood, city, province, postalCode, country } = address;
+  return {
+    action,
+    name,
+    address: { street, number, floor, apartment, neighborhood, city, province, postalCode, country },
+    phone,
+    email,
+    schedule,
+    isMain,
+    isActive,
+  };
+}
+
 export function createBusinessApi(client: AxiosInstance) {
   return {
     async getBusinesses() {
@@ -78,18 +96,13 @@ export function createBusinessApi(client: AxiosInstance) {
 
     // --- Sucursal Management ---
     async createSucursal(businessId: string, sucursal: SucursalInput) {
-      const response = await client.post(`/businesses/${businessId}/sucursales`, {
-        action: 'create',
-        sucursal,
-      });
+      const response = await client.post(`/businesses/${businessId}/sucursales`, toSucursalBody('create', sucursal));
       return response.data;
     },
 
     async updateSucursal(businessId: string, sucursalId: string, sucursal: SucursalInput) {
-      const response = await client.put(`/businesses/${businessId}/sucursales/${sucursalId}`, {
-        action: 'update',
-        sucursal: { ...sucursal, id: sucursalId },
-      });
+      // The sucursal is the one of the path; the API takes its id from there.
+      const response = await client.put(`/businesses/${businessId}/sucursales/${sucursalId}`, toSucursalBody('update', sucursal));
       return response.data;
     },
 

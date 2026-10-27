@@ -22,3 +22,31 @@ describe('business API client: schedules (S21)', () => {
     expect(patch).toHaveBeenCalledWith('/businesses/biz-A/schedule', week);
   });
 });
+
+// S21: ManageSucursalDto takes the fields at the top level and rejects unknown ones (forbidNonWhitelisted).
+describe('business API client: sucursales (S21)', () => {
+  const address = { street: 'Corrientes', number: '1234', floor: '', apartment: '', neighborhood: '', city: 'CABA', province: 'Buenos Aires', postalCode: '1043', country: 'Argentina' };
+  const fields = { name: 'Palermo', address, phone: '1145678901', email: 'palermo@unna.test', schedule: week, isMain: false, isActive: true };
+  const post = jest.fn();
+  const put = jest.fn();
+  const businessApi = createBusinessApi({ post, put } as unknown as AxiosInstance);
+
+  beforeEach(() => {
+    post.mockReset().mockResolvedValue({ data: { id: 'biz-A' } });
+    put.mockReset().mockResolvedValue({ data: { id: 'biz-A' } });
+  });
+
+  it('creates a sucursal with its fields at the top level of the body', async () => {
+    await businessApi.createSucursal('biz-A', fields);
+
+    expect(post).toHaveBeenCalledWith('/businesses/biz-A/sucursales', { action: 'create', ...fields });
+  });
+
+  it('updates a sucursal with only the editable fields, even when the form carries the listed sucursal', async () => {
+    const listed = { ...fields, id: 'suc-2', address: { ...address, formatted: 'Corrientes 1234, CABA' }, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
+
+    await businessApi.updateSucursal('biz-A', 'suc-2', listed);
+
+    expect(put).toHaveBeenCalledWith('/businesses/biz-A/sucursales/suc-2', { action: 'update', ...fields });
+  });
+});

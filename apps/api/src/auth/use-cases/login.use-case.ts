@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserRepositoryPort, HashingPort, JwtPort, TokenPair, User } from '@unna/domain';
+import { UserRepositoryPort, HashingPort, TokenPair, User } from '@unna/domain';
 import { Email } from '@unna/domain';
 import { Result, ok, err } from '@unna/domain';
-import { sessionClaims } from '../session-token';
+import { SessionIssuer } from '../session-issuer';
 
 /** bcrypt hash (cost 12, like BcryptHashingAdapter) of a random password nobody uses. */
 const DUMMY_PASSWORD_HASH = '$2b$12$zVTwEOg5y0FX3TqxpPX.Pu2K0PlxkMcAh9xS72cgztDkGHOmoRAGe';
@@ -19,8 +19,7 @@ export class LoginUseCase {
     private readonly userRepository: UserRepositoryPort,
     @Inject('HashingPort')
     private readonly hashingPort: HashingPort,
-    @Inject('JwtPort')
-    private readonly jwtPort: JwtPort,
+    private readonly sessionIssuer: SessionIssuer,
   ) {}
 
   async execute(command: LoginCommand): Promise<Result<{ user: User; tokens: TokenPair }, Error>> {
@@ -43,7 +42,7 @@ export class LoginUseCase {
     user.recordLogin();
     await this.userRepository.save(user);
 
-    const tokens = this.jwtPort.generateTokenPair(sessionClaims(user));
+    const tokens = await this.sessionIssuer.start(user);
 
     return ok({ user, tokens });
   }

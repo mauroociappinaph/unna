@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserRepositoryPort, JwtPort, HashingPort, ResetTokenPayload } from '@unna/domain';
+import { UserRepositoryPort, JwtPort, HashingPort, RefreshSessionRepositoryPort, ResetTokenPayload } from '@unna/domain';
 import { Password } from '@unna/domain';
 import { NotFoundError, Result, ok, err } from '@unna/domain';
 import { passwordFingerprint } from '../session-token';
@@ -21,6 +21,8 @@ export class ResetPasswordUseCase {
     private readonly jwtPort: JwtPort,
     @Inject('HashingPort')
     private readonly hashingPort: HashingPort,
+    @Inject('RefreshSessionRepositoryPort')
+    private readonly refreshSessions: RefreshSessionRepositoryPort,
   ) {}
 
   async execute(command: ResetPasswordCommand): Promise<Result<void, Error>> {
@@ -60,6 +62,8 @@ export class ResetPasswordUseCase {
 
     user.changePassword(passwordWithHash);
     await this.userRepository.save(user);
+    // The new password fingerprint already ends every session; revoking the families also records it (S21).
+    await this.refreshSessions.revokeAllOfUser(user.id, new Date());
 
     return ok(undefined);
   }

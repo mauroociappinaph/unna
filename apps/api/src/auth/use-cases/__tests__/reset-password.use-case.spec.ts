@@ -26,6 +26,12 @@ const mockHashingPort = {
   verify: jest.fn(),
 };
 
+const mockRefreshSessions = {
+  create: jest.fn(),
+  revokeAllOfUser: jest.fn(),
+  withFamilyLock: jest.fn(),
+};
+
 describe('ResetPasswordUseCase', () => {
   let useCase: ResetPasswordUseCase;
 
@@ -35,6 +41,7 @@ describe('ResetPasswordUseCase', () => {
       mockUserRepository,
       mockJwtPort,
       mockHashingPort,
+      mockRefreshSessions,
     );
   });
 
@@ -193,6 +200,9 @@ describe('ResetPasswordUseCase', () => {
     expect(mockHashingPort.hash).toHaveBeenCalledWith('NewPass123');
     expect(mockUser.changePassword).toHaveBeenCalled();
     expect(mockUserRepository.save).toHaveBeenCalledWith(mockUser);
+    // S21: the reset also revokes every refresh session family of the user, after the new password is saved.
+    expect(mockRefreshSessions.revokeAllOfUser).toHaveBeenCalledWith('user-id', expect.any(Date));
+    expect(mockRefreshSessions.revokeAllOfUser.mock.invocationCallOrder[0]).toBeGreaterThan(mockUserRepository.save.mock.invocationCallOrder[0]);
   });
 
   // S21: a reset link works once; after the password changed (by this or another link) it is spent.
@@ -210,5 +220,6 @@ describe('ResetPasswordUseCase', () => {
     expect(user.changePassword).not.toHaveBeenCalled();
     expect(mockUserRepository.save).not.toHaveBeenCalled();
     expect(mockHashingPort.hash).not.toHaveBeenCalled();
+    expect(mockRefreshSessions.revokeAllOfUser).not.toHaveBeenCalled();
   });
 });

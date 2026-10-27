@@ -35,7 +35,11 @@ export class JwtAdapter implements JwtPort {
   }
 
   generateTokenPair(payload: JwtPayload): TokenPair {
-    const accessToken = this.generateAccessToken(payload);
+    // The session (`jti`) and family (`fam`) of a single-use refresh token stay out of the access token.
+    const accessClaims: JwtPayload = { ...payload };
+    delete accessClaims.jti;
+    delete accessClaims.fam;
+    const accessToken = this.generateAccessToken(accessClaims);
     const refreshToken = this.generateRefreshToken(payload);
     const decoded = this.jwtService.decode(accessToken) as JwtPayload & { exp: number };
     const expiresIn = decoded.exp * 1000 - Date.now();

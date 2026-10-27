@@ -13,6 +13,8 @@ import { AuthController } from './auth.controller';
 import { JwtAdapter } from './adapters/jwt.adapter';
 import { BcryptHashingAdapter } from './adapters/hashing.adapter';
 import { PrismaUserRepositoryAdapter } from './adapters/user.repository.adapter';
+import { PrismaRefreshSessionRepository } from './adapters/refresh-session.repository.adapter';
+import { SessionIssuer } from './session-issuer';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtStrategy } from '../common/strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
@@ -38,11 +40,16 @@ import { RolesGuard } from './guards/roles.guard';
     ResetPasswordUseCase,
     VerifyEmailUseCase,
     RefreshSessionUseCase,
+    SessionIssuer,
     JwtStrategy,
     RolesGuard,
     {
       provide: 'UserRepositoryPort',
       useClass: PrismaUserRepositoryAdapter,
+    },
+    {
+      provide: 'RefreshSessionRepositoryPort',
+      useClass: PrismaRefreshSessionRepository,
     },
     {
       provide: 'HashingPort',

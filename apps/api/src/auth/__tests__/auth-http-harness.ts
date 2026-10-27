@@ -17,6 +17,8 @@ import { VerifyEmailUseCase } from '../use-cases/verify-email.use-case';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { JwtStrategy } from '../../common/strategies/jwt.strategy';
 import { configureApp } from '../../app-setup';
+import { SessionIssuer } from '../session-issuer';
+import { InMemoryRefreshSessions } from './in-memory-refresh-sessions';
 
 export const SECRETS = {
   JWT_SECRET: 'access-secret-for-tests-0123456789abcdef',
@@ -82,6 +84,7 @@ export interface AuthApp {
   app: INestApplication;
   users: InMemoryUsers;
   emails: CapturedEmails;
+  sessions: InMemoryRefreshSessions;
   jwt: JwtAdapter;
 }
 
@@ -89,6 +92,7 @@ export interface AuthApp {
 export async function startAuthApp(env: NodeJS.ProcessEnv = { NODE_ENV: 'test', ...SECRETS }): Promise<AuthApp> {
   const users = new InMemoryUsers();
   const emails = new CapturedEmails();
+  const sessions = new InMemoryRefreshSessions();
   const moduleRef = await Test.createTestingModule({
     imports: [PassportModule.register({ defaultStrategy: 'jwt' }), JwtModule.register({})],
     controllers: [AuthController, MeController],
@@ -99,18 +103,20 @@ export async function startAuthApp(env: NodeJS.ProcessEnv = { NODE_ENV: 'test', 
       ResetPasswordUseCase,
       VerifyEmailUseCase,
       RefreshSessionUseCase,
+      SessionIssuer,
       JwtStrategy,
       { provide: ConfigService, useValue: { get: (key: string) => env[key] } },
       { provide: 'UserRepositoryPort', useValue: users },
       { provide: 'HashingPort', useValue: fakeHashing },
       { provide: 'EmailPort', useValue: emails },
+      { provide: 'RefreshSessionRepositoryPort', useValue: sessions },
       { provide: 'JwtPort', useClass: JwtAdapter },
     ],
   }).compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app, env);
   await app.init();
-  return { app, users, emails, jwt: moduleRef.get('JwtPort') };
+  return { app, users, emails, sessions, jwt: moduleRef.get('JwtPort') };
 }
 
 export const tokenFromLink = (link: string): string => new URL(link).searchParams.get('token') ?? '';

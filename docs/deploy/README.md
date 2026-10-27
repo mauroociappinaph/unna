@@ -64,6 +64,8 @@ No tenés que correr nada a mano: **la API aplica las migraciones cada vez que a
 - Sin migraciones pendientes: no hace nada.
 - Si falla, la API no arranca y el error queda en los logs de Render.
 
+La migración `20261028000000_s21_refresh_sessions` crea la tabla `refresh_sessions` (sesiones de un solo uso, ver más abajo). Al desplegarla, quien tenga la sesión abierta va a tener que **iniciar sesión una vez más**: los refresh tokens emitidos antes no tienen sesión guardada y la API los rechaza con «Sesión vencida. Iniciá sesión de nuevo.».
+
 Si en cambio apuntás a una base **que ya existía** (creada con `prisma db push`), hacé primero el baseline que explica [migraciones.md](./migraciones.md). Si no, la migración intenta crear tablas que ya existen.
 
 ---
@@ -126,7 +128,11 @@ Ya vienen fijas en el blueprint, no las toques: `NODE_ENV=production`, `UNNA_ENV
 
 Sobre `RESEND_API_KEY`: la API no arranca sin un valor. Con una key real de Resend se mandan los mails (por ejemplo, recuperar contraseña). Con un valor de relleno que empiece con `re_`, la API arranca pero esos mails fallan.
 
-Variables opcionales (agregalas a mano en **Environment** si las necesitás): `EMAIL_FROM` y `EMAIL_REPLY_TO` (remitente de Resend, que tiene que ser un dominio verificado), `JWT_EXPIRES_IN` (por defecto `15m`), `JWT_REFRESH_EXPIRES_IN` (`7d`), `PUBLIC_BOARD_RATE_LIMIT` (`120`) y `AUTH_RATE_LIMIT` (`10`: intentos de inicio de sesión y de renovación de sesión por minuto e IP; recuperar y restablecer la contraseña permiten la mitad). La lista completa con comentarios está en [`.env.example`](../../.env.example).
+Variables opcionales (agregalas a mano en **Environment** si las necesitás): `EMAIL_FROM` y `EMAIL_REPLY_TO` (remitente de Resend, que tiene que ser un dominio verificado), `JWT_EXPIRES_IN` (por defecto `15m`), `JWT_REFRESH_EXPIRES_IN` (`7d`), `SESSION_MAX_DAYS` (`30`: días que dura como máximo una sesión desde que se inició, aunque se renueve; tiene que ser un número mayor a 0 o la API no arranca), `PUBLIC_BOARD_RATE_LIMIT` (`120`) y `AUTH_RATE_LIMIT` (`10`: intentos de inicio de sesión y de renovación de sesión por minuto e IP; recuperar y restablecer la contraseña permiten la mitad). La lista completa con comentarios está en [`.env.example`](../../.env.example).
+
+### Sesiones: refresh token de un solo uso
+
+Cada refresh token sirve **una sola vez**: al renovar la sesión, la API lo marca como usado y entrega uno nuevo de la misma sesión (se guarda solo su identificador, nunca el token). Si alguien vuelve a presentar un token ya usado, la API lo toma como robado y **cierra esa sesión en todos lados** (el usuario tiene que iniciar sesión de nuevo). Excepción: si el token se usó hace menos de 10 segundos (dos pestañas renovando a la vez), solo responde 401 sin cerrar la sesión. Además, ninguna sesión dura más de `SESSION_MAX_DAYS` días desde el inicio de sesión, y restablecer la contraseña cierra todas las sesiones del usuario.
 
 ### Si una URL salió distinta
 

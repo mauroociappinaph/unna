@@ -1,11 +1,15 @@
 import { LoginUseCase } from '../login.use-case';
+import { ConfigService } from '@nestjs/config';
 import { isOk, isErr, UserRepositoryPort, HashingPort, JwtPort } from '@unna/domain';
+import { SessionIssuer } from '../../session-issuer';
+import { InMemoryRefreshSessions } from '../../__tests__/in-memory-refresh-sessions';
 
 describe('LoginUseCase', () => {
   let useCase: LoginUseCase;
   let mockUserRepository: Record<keyof UserRepositoryPort, jest.Mock>;
   let mockHashingPort: Record<keyof HashingPort, jest.Mock>;
   let mockJwtPort: Record<keyof JwtPort, jest.Mock>;
+  let sessions: InMemoryRefreshSessions;
 
   beforeEach(() => {
     mockUserRepository = {
@@ -29,10 +33,11 @@ describe('LoginUseCase', () => {
       generateResetToken: jest.fn(),
       verifyResetToken: jest.fn(),
     };
+    sessions = new InMemoryRefreshSessions();
     useCase = new LoginUseCase(
       mockUserRepository,
       mockHashingPort,
-      mockJwtPort,
+      new SessionIssuer(mockJwtPort, sessions, { get: () => undefined } as unknown as ConfigService),
     );
   });
 
@@ -167,6 +172,30 @@ describe('LoginUseCase', () => {
       role: 'owner',
       businessId: undefined,
       pwd: expect.stringMatching(/^[0-9a-f]{16}$/),
+      jti: expect.any(String),
+      fam: expect.any(String),
     });
+  });
+
+  // S21: every login starts a new family of single-use refresh sessions.
+  it('stores the first refresh session of a new family, named by the token claims', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(createMockUser());
+    mockHashingPort.verify.mockResolvedValue(true);
+    mockJwtPort.generateTokenPair.mockReturnValue({ accessToken: 'a', refreshToken: 'r', expiresIn: 900 });
+
+    await useCase.execute(validCommand);
+
+    const { jti, fam } = mockJwtPort.generateTokenPair.mock.calls[0][0];
+    expect(fam).toBe(jti);
+    expect(sessions.family(fam)).toEqual([expect.objectContaining({ id: jti, userId: 'user-id', usedAt: null, revokedAt: null, replacedById: null })]);
+  });
+
+  it('stores no session when the credentials are wrong', async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(createMockUser());
+    mockHashingPort.verify.mockResolvedValue(false);
+
+    await useCase.execute(validCommand);
+
+    expect(sessions.byId.size).toBe(0);
   });
 });

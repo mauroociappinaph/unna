@@ -117,11 +117,11 @@ describe('SalesUseCase', () => {
 
   describe('modifier prices', () => {
     const option = (priceDelta: number) => ({ id: 'opt', name: 'Sin guarnición', priceDelta, isActive: true });
-    const salesWith = (basePrice: number, priceDelta: number) => {
+    const salesWith = (basePrice: number, priceDelta: number, rules: { minSelection?: number; maxSelection?: number } = {}, save = jest.fn(async () => undefined)) => {
       const withGroup = { ...product, basePrice: m(basePrice), modifierGroupIds: ['grp'] };
-      const group = { id: 'grp', name: 'Guarnición', isActive: true, isRequired: false, minSelection: 0, maxSelection: 1, options: [option(priceDelta)] };
+      const group = { id: 'grp', name: 'Guarnición', isActive: true, isRequired: false, minSelection: 0, maxSelection: 1, ...rules, options: [option(priceDelta)] };
       return new SalesUseCase(
-        fake({ save: async () => undefined }),
+        fake({ save }),
         fake({}),
         fake({ findByIdAndBusinessId: async () => withGroup }),
         fake({ findByIdAndBusinessId: async () => group }),
@@ -139,6 +139,20 @@ describe('SalesUseCase', () => {
       expect(result.ok).toBe(true);
       expect(result.value!.items[0].unitPrice.amount).toBe(134950);
       expect(result.value!.items[0].totalPrice.amount).toBe(269900);
+    });
+
+    it('rejects an option chosen twice, so repeats neither lower the price nor fill the group minimum, and saves nothing', async () => {
+      const twice = [{ modifierGroupId: 'grp', optionId: 'opt' }, { modifierGroupId: 'grp', optionId: 'opt' }];
+      for (const rules of [{ maxSelection: 0 }, { minSelection: 2, maxSelection: 2 }]) {
+        const save = jest.fn(async () => undefined);
+        const result = await salesWith(100000, -50000, rules, save).createOrder({
+          businessId: 'biz-A', sucursalId: 'suc-1', type: 'takeaway', items: [{ productId: 'p', quantity: 1, modifiers: twice }],
+        });
+
+        expect(result.ok).toBe(false);
+        expect(result.error!.message).toBe('La opción "Sin guarnición" está repetida en "Guarnición"');
+        expect(save).not.toHaveBeenCalled();
+      }
     });
 
     it('rejects a line whose modifiers make the price negative', async () => {

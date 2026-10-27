@@ -16,6 +16,7 @@ class BigController {
 }
 
 const WEB = 'https://web.unna.test';
+const PROD = { NODE_ENV: 'production', FRONTEND_URL: WEB };
 
 const start = async (env: NodeJS.ProcessEnv): Promise<INestApplication> => {
   const moduleRef = await Test.createTestingModule({ controllers: [BigController, HealthController] }).compile();
@@ -91,6 +92,48 @@ describe('configureApp (S17)', () => {
       try {
         const res = await request(app.getHttpServer()).get('/api/v1/health').set('Origin', 'http://localhost:3000');
         expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000');
+      } finally {
+        await app.close();
+      }
+    });
+  });
+
+  describe('security headers (S21)', () => {
+    const headersOf = async (env: NodeJS.ProcessEnv) => {
+      const app = await start(env);
+      try {
+        return (await request(app.getHttpServer()).get('/api/v1/health')).headers;
+      } finally {
+        await app.close();
+      }
+    };
+
+    it('sends the hardening headers and hides X-Powered-By', async () => {
+      const headers = await headersOf(PROD);
+
+      expect(headers['x-content-type-options']).toBe('nosniff');
+      expect(headers['x-frame-options']).toBe('DENY');
+      expect(headers['referrer-policy']).toBe('no-referrer');
+      expect(headers['cross-origin-resource-policy']).toBe('same-site');
+      expect(headers['strict-transport-security']).toBe('max-age=31536000; includeSubDomains');
+      expect(headers['x-powered-by']).toBeUndefined();
+    });
+
+    it('sends HSTS only in production', async () => {
+      const headers = await headersOf({ NODE_ENV: 'development' });
+
+      expect(headers['strict-transport-security']).toBeUndefined();
+      expect(headers['x-content-type-options']).toBe('nosniff');
+      expect(headers['x-powered-by']).toBeUndefined();
+    });
+
+    it('keeps them on errors and on the Swagger docs', async () => {
+      const app = await start({ ...PROD, UNNA_ENV: 'staging' });
+      try {
+        for (const path of ['/api/v1/missing', '/api/docs']) {
+          const res = await request(app.getHttpServer()).get(path);
+          expect(res.headers['x-frame-options']).toBe('DENY');
+        }
       } finally {
         await app.close();
       }

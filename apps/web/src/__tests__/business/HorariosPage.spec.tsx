@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import HorariosPage from '@/app/dashboard/horarios/page';
 import { api } from '@/lib/api';
 
@@ -13,7 +14,9 @@ jest.mock('next/navigation', () => ({
     return paramsByQuery.get(query);
   },
 }));
-jest.mock('@/lib/api', () => ({ api: { getBusinesses: jest.fn() } }));
+jest.mock('@/lib/api', () => ({
+  api: { getBusinesses: jest.fn(), updateBusinessSchedule: jest.fn(), updateSucursalSchedule: jest.fn() },
+}));
 
 const week = (open: string) => {
   const day = { open, close: '23:00', isClosed: false };
@@ -62,5 +65,22 @@ describe('Horarios page', () => {
 
     await screen.findAllByDisplayValue('11:30');
     expect((await mondayOpen()).value).toBe('11:30');
+  });
+
+  it.each([
+    ['a sucursal', 'sucursal=suc-2', '11:30', () => expect(api.updateSucursalSchedule).toHaveBeenCalledWith('biz-A', 'suc-2', week('11:30'))],
+    ['the business', '', '08:00', () => expect(api.updateBusinessSchedule).toHaveBeenCalledWith('biz-A', week('08:00'))],
+  ])('saves the schedule of %s', async (_target, search, open, expectSaved) => {
+    jest.spyOn(window, 'alert').mockImplementation(() => undefined);
+    (api.updateSucursalSchedule as jest.Mock).mockResolvedValue({});
+    (api.updateBusinessSchedule as jest.Mock).mockResolvedValue({});
+    query = search;
+    render(<HorariosPage />);
+    await screen.findAllByDisplayValue(open);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar horarios' }));
+
+    expectSaved();
+    expect(window.alert).toHaveBeenCalledWith('Horarios guardados correctamente');
   });
 });

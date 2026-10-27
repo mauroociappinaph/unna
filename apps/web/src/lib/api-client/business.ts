@@ -100,10 +100,7 @@ export function createBusinessApi(client: AxiosInstance) {
 
     // --- Schedule Management ---
     async updateSucursalSchedule(businessId: string, sucursalId: string, schedule: WeekSchedule) {
-      const response = await client.patch(`/businesses/${businessId}/schedule`, {
-        sucursalId,
-        schedule,
-      });
+      const response = await client.patch(`/businesses/${businessId}/sucursales/${sucursalId}/schedule`, schedule);
       return response.data;
     },
   };

@@ -92,11 +92,6 @@ export class ManageSucursalDto {
   @IsOptional() isActive?: boolean;
 }
 
-export class ManageHorariosDto {
-  @IsString() @IsNotEmpty() sucursalId!: string; // 'main' or sucursal UUID
-  @ValidateNested() @Type(() => WeekScheduleDto) schedule!: WeekScheduleDto;
-}
-
 @ApiTags('Business')
 @Controller('businesses')
 @UseGuards(JwtAuthGuard)
@@ -257,22 +252,24 @@ export class BusinessController {
     return result.value;
   }
 
-  // --- Schedule Management (business or sucursal) ---
-  @Patch(':id/schedule')
-  @ApiOperation({ summary: 'Actualizar horario (business o sucursal)' })
-  async manageHorarios(
+  // The business schedule is PATCH :id/schedule (updateSchedule); a sucursal has its own path.
+  @Patch(':id/sucursales/:sucursalId/schedule')
+  @ApiOperation({ summary: 'Actualizar horario de una sucursal' })
+  async updateSucursalSchedule(
     @Param('id') id: string,
+    @Param('sucursalId') sucursalId: string,
     @Request() req: AuthenticatedRequest,
-    @Body() dto: ManageHorariosDto,
+    @Body() dto: WeekScheduleDto,
   ) {
     const result = await this.businessManagementUseCase.manageHorarios({
       businessId: id,
       ownerId: req.user.sub,
-      sucursalId: dto.sucursalId,
-      schedule: dto.schedule,
+      sucursalId,
+      schedule: dto,
     });
 
     if (!result.ok) {
+      if (result.error instanceof NotFoundError) throw new NotFoundException(result.error.message);
       throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
     }
 

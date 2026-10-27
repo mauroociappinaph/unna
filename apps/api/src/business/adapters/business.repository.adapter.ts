@@ -29,26 +29,45 @@ export function scheduleFromJson(json: Prisma.JsonValue): Schedule {
 export class PrismaBusinessRepositoryAdapter implements BusinessRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
+  async save(business: Business): Promise<void> {
+    await this.prisma.$transaction(this.writes(this.prisma, business));
+  }
+
+  withBusinessLock<T>(
+    businessId: string,
+    work: (business: Business | null, save: (business: Business) => Promise<void>) => Promise<T>,
+  ): Promise<T> {
+    return this.prisma.$transaction(async (tx) => {
+      // Held until the transaction ends; a missing business locks nothing and the work reports it.
+      await tx.$queryRaw`SELECT id FROM businesses WHERE id = ${businessId} FOR UPDATE`;
+      const record = await tx.business.findUnique({ where: { id: businessId }, include: { sucursales: true } });
+      return work(record ? this.toDomain(record) : null, async (business) => {
+        // Prisma queries are lazy: each one runs here, in order, on the transaction.
+        for (const write of this.writes(tx, business)) await write;
+      });
+    });
+  }
+
   // Sucursales are upserted one by one and only removed ones are deleted: recreating them
   // would cascade or block on orders and receipts that reference a sucursal.
-  async save(business: Business): Promise<void> {
+  private writes(client: Prisma.TransactionClient, business: Business) {
     const { sucursales, ...props } = this.toPrisma(business);
     const keepIds = business.sucursales.map((s) => s.id);
-    await this.prisma.$transaction([
-      this.prisma.business.upsert({
+    return [
+      client.business.upsert({
         where: { id: business.id },
         create: props,
         update: props,
       }),
-      this.prisma.sucursal.deleteMany({ where: { businessId: business.id, id: { notIn: keepIds } } }),
+      client.sucursal.deleteMany({ where: { businessId: business.id, id: { notIn: keepIds } } }),
       ...sucursales.map((s) =>
-        this.prisma.sucursal.upsert({
+        client.sucursal.upsert({
           where: { id: s.id },
           create: { ...s, businessId: business.id },
           update: s,
         }),
       ),
-    ]);
+    ];
   }
 
   async findById(id: string): Promise<Business | null> {

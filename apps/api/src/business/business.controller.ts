@@ -2,9 +2,9 @@ import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Requ
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OnboardBusinessUseCase, OnboardBusinessCommand } from './use-cases/onboard-business.use-case';
 import { BusinessManagementUseCase } from './use-cases/business-management.use-case';
-import { NotFoundError } from '@unna/domain';
 import { BusinessView, toBusinessView } from './business.presenter';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { unwrap } from '../common/use-case-result';
 import { IsString, IsNotEmpty, ValidateNested, IsArray, ArrayMinSize, IsOptional, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { AuthenticatedRequest } from './authenticated-request';
@@ -133,17 +133,11 @@ export class BusinessController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: UpdateSettingsDto,
   ) {
-    const result = await this.businessManagementUseCase.updateSettings({
+    return unwrap(this.businessManagementUseCase.updateSettings({
       businessId: id,
       ownerId: req.user.sub,
       settings: dto,
-    });
-
-    if (!result.ok) {
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
-    }
-
-    return result.value;
+    }));
   }
 
   @Patch(':id/address')
@@ -153,17 +147,11 @@ export class BusinessController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: AddressDto,
   ) {
-    const result = await this.businessManagementUseCase.updateAddress({
+    return unwrap(this.businessManagementUseCase.updateAddress({
       businessId: id,
       ownerId: req.user.sub,
       address: dto,
-    });
-
-    if (!result.ok) {
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
-    }
-
-    return result.value;
+    }));
   }
 
   @Patch(':id/schedule')
@@ -173,17 +161,11 @@ export class BusinessController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: WeekScheduleDto,
   ) {
-    const result = await this.businessManagementUseCase.updateSchedule({
+    return unwrap(this.businessManagementUseCase.updateSchedule({
       businessId: id,
       ownerId: req.user.sub,
       schedule: dto,
-    });
-
-    if (!result.ok) {
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
-    }
-
-    return result.value;
+    }));
   }
 
   // --- Sucursal Management ---
@@ -194,18 +176,12 @@ export class BusinessController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: ManageSucursalDto,
   ) {
-    const result = await this.businessManagementUseCase.manageSucursal({
+    return unwrap(this.businessManagementUseCase.manageSucursal({
       businessId: id,
       ownerId: req.user.sub,
       action: 'create',
       sucursal: dto,
-    });
-
-    if (!result.ok) {
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
-    }
-
-    return result.value;
+    }));
   }
 
   @Put(':id/sucursales/:sucursalId')
@@ -216,18 +192,12 @@ export class BusinessController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: ManageSucursalDto,
   ) {
-    const result = await this.businessManagementUseCase.manageSucursal({
+    return unwrap(this.businessManagementUseCase.manageSucursal({
       businessId: id,
       ownerId: req.user.sub,
       action: 'update',
       sucursal: { ...dto, id: sucursalId },
-    });
-
-    if (!result.ok) {
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
-    }
-
-    return result.value;
+    }));
   }
 
   @Delete(':id/sucursales/:sucursalId')
@@ -237,19 +207,12 @@ export class BusinessController {
     @Param('sucursalId') sucursalId: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    const result = await this.businessManagementUseCase.manageSucursal({
+    return unwrap(this.businessManagementUseCase.manageSucursal({
       businessId: id,
       ownerId: req.user.sub,
       action: 'delete',
       sucursal: { id: sucursalId, name: '', address: { street: '', number: '', city: '', province: '', postalCode: '', country: '' }, phone: '', email: '' },
-    });
-
-    if (!result.ok) {
-      if (result.error instanceof NotFoundError) throw new NotFoundException(result.error.message);
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
-    }
-
-    return result.value;
+    }));
   }
 
   // The business schedule is PATCH :id/schedule (updateSchedule); a sucursal has its own path.
@@ -261,19 +224,12 @@ export class BusinessController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: WeekScheduleDto,
   ) {
-    const result = await this.businessManagementUseCase.manageHorarios({
+    return unwrap(this.businessManagementUseCase.manageHorarios({
       businessId: id,
       ownerId: req.user.sub,
       sucursalId,
       schedule: dto,
-    });
-
-    if (!result.ok) {
-      if (result.error instanceof NotFoundError) throw new NotFoundException(result.error.message);
-      throw new HttpException(result.error.message, HttpStatus.BAD_REQUEST);
-    }
-
-    return result.value;
+    }));
   }
 
   // --- Getters ---

@@ -28,6 +28,14 @@ export interface BusinessRepositoryPort extends RepositoryPort<Business> {
   findByOwnerId(ownerId: string): Promise<Business[]>;
   existsByName(name: string): Promise<boolean>;
   existsByCuit(cuit: string): Promise<boolean>;
+  /**
+   * Runs work holding a row lock on the business, so concurrent edits apply one after another over
+   * fresh data; the save it hands out writes inside that lock. The business is null when missing.
+   */
+  withBusinessLock<T>(
+    businessId: string,
+    work: (business: Business | null, save: (business: Business) => Promise<void>) => Promise<T>,
+  ): Promise<T>;
 }
 
 // ============ T23: Catalog ============

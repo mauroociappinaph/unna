@@ -45,6 +45,10 @@ export async function priceOrderLine(catalog: OrderLineCatalog, businessId: stri
     if (!group) return unavailable(new Error(`El modificador ${choice.modifierGroupId} no aplica a "${product.name}"`));
     const option = group.options.find((o) => o.id === choice.optionId && o.isActive);
     if (!option) return unavailable(new NotFoundError(`Opción ${choice.optionId} no encontrada en "${group.name}"`));
+    // A repeated option would add its delta again and count twice toward the group's min/max.
+    if (modifiers.some((m) => m.modifierGroupId === group.id && m.optionId === option.id)) {
+      return invalid(`La opción "${option.name}" está repetida en "${group.name}"`);
+    }
     modifiers.push({ modifierGroupId: group.id, optionId: option.id, name: option.name, priceDelta: option.priceDelta });
   }
 

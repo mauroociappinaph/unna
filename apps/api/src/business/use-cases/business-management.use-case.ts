@@ -105,43 +105,35 @@ export class BusinessManagementUseCase {
 
   // Update business-level settings
   async updateSettings(command: UpdateBusinessSettingsCommand): Promise<Result<Business, Error>> {
-    const business = await this.businessRepository.findById(command.businessId);
-    if (!business) {
-      return err(new NotFoundError('Negocio no encontrado'));
-    }
-    if (business.ownerId !== command.ownerId) {
-      return err(new Error('No tenés permisos para modificar este negocio'));
-    }
+    return this.edit(command, (business) => {
+      const currentSettings = business.settings;
+      const updates: Partial<SettingsInput> = command.settings;
 
-    const currentSettings = business.settings;
-    const updates: Partial<SettingsInput> = command.settings;
+      const updatedSettings = currentSettings.update({
+        tradeName: updates.tradeName,
+        legalName: updates.legalName,
+        ivaCondition: updates.ivaCondition,
+        iibbNumber: updates.iibbNumber,
+        salePoint: updates.salePoint,
+        currency: updates.currency,
+        timezone: updates.timezone,
+        language: updates.language,
+        logoUrl: updates.logoUrl,
+      });
 
-    const updatedSettings = currentSettings.update({
-      tradeName: updates.tradeName,
-      legalName: updates.legalName,
-      ivaCondition: updates.ivaCondition,
-      iibbNumber: updates.iibbNumber,
-      salePoint: updates.salePoint,
-      currency: updates.currency,
-      timezone: updates.timezone,
-      language: updates.language,
-      logoUrl: updates.logoUrl,
+      business.updateSettings({
+        tradeName: updatedSettings.tradeName,
+        legalName: updatedSettings.legalName,
+        ivaCondition: updatedSettings.ivaCondition,
+        iibbNumber: updatedSettings.iibbNumber,
+        salePoint: updatedSettings.salePoint,
+        currency: updatedSettings.currency,
+        timezone: updatedSettings.timezone,
+        language: updatedSettings.language,
+        logoUrl: updatedSettings.logoUrl,
+      });
+      return ok(business);
     });
-
-    business.updateSettings({
-      tradeName: updatedSettings.tradeName,
-      legalName: updatedSettings.legalName,
-      ivaCondition: updatedSettings.ivaCondition,
-      iibbNumber: updatedSettings.iibbNumber,
-      salePoint: updatedSettings.salePoint,
-      currency: updatedSettings.currency,
-      timezone: updatedSettings.timezone,
-      language: updatedSettings.language,
-      logoUrl: updatedSettings.logoUrl,
-    });
-
-    await this.businessRepository.save(business);
-    return ok(business);
   }
 
   // Update business-level address
@@ -150,14 +142,10 @@ export class BusinessManagementUseCase {
     ownerId: string;
     address: AddressInput;
   }): Promise<Result<Business, Error>> {
-    const business = await this.businessRepository.findById(command.businessId);
-    if (!business) return err(new NotFoundError('Negocio no encontrado'));
-    if (business.ownerId !== command.ownerId) return err(new Error('Sin permisos'));
-
-    const address = Address.create(command.address);
-    business.updateAddress(address);
-    await this.businessRepository.save(business);
-    return ok(business);
+    return this.edit(command, (business) => {
+      business.updateAddress(Address.create(command.address));
+      return ok(business);
+    });
   }
 
   // Update business-level schedule
@@ -166,86 +154,92 @@ export class BusinessManagementUseCase {
     ownerId: string;
     schedule: WeekScheduleInput;
   }): Promise<Result<Business, Error>> {
-    const business = await this.businessRepository.findById(command.businessId);
-    if (!business) return err(new NotFoundError('Negocio no encontrado'));
-    if (business.ownerId !== command.ownerId) return err(new Error('Sin permisos'));
-
-    const schedule = Schedule.create(command.schedule);
-    business.updateSchedule(schedule);
-    await this.businessRepository.save(business);
-    return ok(business);
+    return this.edit(command, (business) => {
+      business.updateSchedule(Schedule.create(command.schedule));
+      return ok(business);
+    });
   }
 
   // Sucursal management
   async manageSucursal(command: ManageSucursalCommand): Promise<Result<Business, Error>> {
-    const business = await this.businessRepository.findById(command.businessId);
-    if (!business) return err(new NotFoundError('Negocio no encontrado'));
-    if (business.ownerId !== command.ownerId) return err(new Error('Sin permisos'));
+    return this.edit(command, (business) => {
+      const { action, sucursal } = command;
 
-    const { action, sucursal } = command;
-
-    if (action === 'create') {
-      const createInput = sucursal as SucursalInput;
-      const newSucursal = Sucursal.create({
-        name: createInput.name,
-        address: Address.create(createInput.address),
-        phone: createInput.phone,
-        email: createInput.email,
-        schedule: createInput.schedule ? Schedule.create(createInput.schedule) : Schedule.createClosed(),
-        isMain: createInput.isMain ?? false,
-        isActive: true,
-      });
-      business.addSucursal(newSucursal);
-    } else if (action === 'update') {
-      const updateInput = sucursal as UpdateSucursalInput;
-      if (!updateInput.id) {
-        return err(new Error('ID de sucursal requerido para actualizar'));
-      }
-      business.updateSucursal(updateInput.id, (s) => {
-        if (updateInput.name !== undefined) s = s.updateName(updateInput.name);
-        if (updateInput.address !== undefined) s = s.updateAddress(Address.create(updateInput.address));
-        if (updateInput.phone !== undefined) s = s.updatePhone(updateInput.phone);
-        if (updateInput.email !== undefined) s = s.updateEmail(updateInput.email);
-        if (updateInput.schedule !== undefined) s = s.updateSchedule(Schedule.create(updateInput.schedule));
-        if (updateInput.isMain !== undefined && updateInput.isMain) s = s.setAsMain();
-        if (updateInput.isMain !== undefined && !updateInput.isMain) s = s.unsetAsMain();
-        if (updateInput.isActive !== undefined) {
-          s = updateInput.isActive ? s.activate() : s.deactivate();
+      if (action === 'create') {
+        const createInput = sucursal as SucursalInput;
+        const newSucursal = Sucursal.create({
+          name: createInput.name,
+          address: Address.create(createInput.address),
+          phone: createInput.phone,
+          email: createInput.email,
+          schedule: createInput.schedule ? Schedule.create(createInput.schedule) : Schedule.createClosed(),
+          isMain: createInput.isMain ?? false,
+          isActive: true,
+        });
+        business.addSucursal(newSucursal);
+      } else if (action === 'update') {
+        const updateInput = sucursal as UpdateSucursalInput;
+        if (!updateInput.id) {
+          return err(new Error('ID de sucursal requerido para actualizar'));
         }
-        return s;
-      });
-    } else if (action === 'delete') {
-      const deleteInput = sucursal as UpdateSucursalInput;
-      if (!deleteInput.id) {
-        return err(new Error('ID de sucursal requerido para eliminar'));
+        business.updateSucursal(updateInput.id, (s) => {
+          if (updateInput.name !== undefined) s = s.updateName(updateInput.name);
+          if (updateInput.address !== undefined) s = s.updateAddress(Address.create(updateInput.address));
+          if (updateInput.phone !== undefined) s = s.updatePhone(updateInput.phone);
+          if (updateInput.email !== undefined) s = s.updateEmail(updateInput.email);
+          if (updateInput.schedule !== undefined) s = s.updateSchedule(Schedule.create(updateInput.schedule));
+          if (updateInput.isMain !== undefined && updateInput.isMain) s = s.setAsMain();
+          if (updateInput.isMain !== undefined && !updateInput.isMain) s = s.unsetAsMain();
+          if (updateInput.isActive !== undefined) {
+            s = updateInput.isActive ? s.activate() : s.deactivate();
+          }
+          return s;
+        });
+      } else if (action === 'delete') {
+        const deleteInput = sucursal as UpdateSucursalInput;
+        if (!deleteInput.id) {
+          return err(new Error('ID de sucursal requerido para eliminar'));
+        }
+        if (!business.sucursales.some((s) => s.id === deleteInput.id)) {
+          return err(new NotFoundError(SUCURSAL_NOT_FOUND));
+        }
+        business.removeSucursal(deleteInput.id);
       }
-      if (!business.sucursales.some((s) => s.id === deleteInput.id)) {
-        return err(new NotFoundError(SUCURSAL_NOT_FOUND));
-      }
-      business.removeSucursal(deleteInput.id);
-    }
 
-    await this.businessRepository.save(business);
-    return ok(business);
+      return ok(business);
+    });
   }
 
   // Schedule management (business or sucursal level)
   async manageHorarios(command: ManageHorariosCommand): Promise<Result<Business, Error>> {
-    const business = await this.businessRepository.findById(command.businessId);
-    if (!business) return err(new NotFoundError('Negocio no encontrado'));
-    if (business.ownerId !== command.ownerId) return err(new Error('Sin permisos'));
+    return this.edit(command, (business) => {
+      const schedule = Schedule.create(command.schedule);
 
-    const schedule = Schedule.create(command.schedule);
+      if (command.sucursalId === 'main') {
+        business.updateSchedule(schedule);
+      } else {
+        const sucursal = business.sucursales.find(s => s.id === command.sucursalId);
+        if (!sucursal) return err(new NotFoundError('Sucursal no encontrada'));
+        business.updateSucursal(command.sucursalId, (s) => s.updateSchedule(schedule));
+      }
 
-    if (command.sucursalId === 'main') {
-      business.updateSchedule(schedule);
-    } else {
-      const sucursal = business.sucursales.find(s => s.id === command.sucursalId);
-      if (!sucursal) return err(new NotFoundError('Sucursal no encontrada'));
-      business.updateSucursal(command.sucursalId, (s) => s.updateSchedule(schedule));
-    }
+      return ok(business);
+    });
+  }
 
-    await this.businessRepository.save(business);
-    return ok(business);
+  /**
+   * Applies an edit under the business lock, so concurrent edits do not overwrite each other, and
+   * saves only when it succeeds. Another owner's business is reported as not found, as in getMine.
+   */
+  private edit(
+    target: { businessId: string; ownerId: string },
+    apply: (business: Business) => Result<Business, Error>,
+  ): Promise<Result<Business, Error>> {
+    return this.businessRepository.withBusinessLock(target.businessId, async (business, save) => {
+      if (!business || business.ownerId !== target.ownerId) return err(new NotFoundError('Negocio no encontrado'));
+      const result = apply(business);
+      if (result.ok) await save(business);
+      return result;
+    });
   }
 }

@@ -34,15 +34,10 @@ afterEach(() => {
 describe('OnboardingWizard - E2E full flow', () => {
   it('completes full onboarding: fiscal -> sucursales -> horarios -> confirm', async () => {
     jest.useFakeTimers();
-    mockFetch(
-      {
-        id: 'biz-123',
-        businessName: 'Mi Restaurante',
-        accessToken: 'access-token-123',
-        refreshToken: 'refresh-token-123',
-      },
-      201
-    );
+    localStorage.setItem('auth_token', 'access-token-123');
+    localStorage.setItem('refresh_token', 'refresh-token-123');
+    // POST /businesses answers the created business, never tokens.
+    mockFetch({ id: 'biz-123', businessName: 'Mi Restaurante' }, 201);
 
     render(<OnboardingWizard />);
 
@@ -118,8 +113,9 @@ describe('OnboardingWizard - E2E full flow', () => {
       jest.advanceTimersByTime(3000);
     });
 
-    // Now check success state
+    // Now check success state; the session of the logged-in owner survives the onboarding
     expect(screen.getByTestId('success-state')).toBeInTheDocument();
+    expect(mockFetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer access-token-123');
     expect(localStorage.getItem('auth_token')).toBe('access-token-123');
     expect(localStorage.getItem('refresh_token')).toBe('refresh-token-123');
     

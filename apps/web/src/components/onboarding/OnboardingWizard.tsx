@@ -179,9 +179,8 @@ export function OnboardingWizard() {
         throw new Error(result.message || 'Error al crear el negocio');
       }
 
+      // The API answers the created business, not tokens; the owner's current session stays valid.
       setSubmitSuccess(true);
-      localStorage.setItem('auth_token', result.accessToken);
-      localStorage.setItem('refresh_token', result.refreshToken);
 
       setTimeout(() => {
         window.location.href = '/dashboard';

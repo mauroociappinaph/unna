@@ -15,7 +15,8 @@ export const registerRequestSchema = z.object({
   phone: z
     .string()
     .min(1, 'Este campo es obligatorio')
-    .regex(/^(\+?54)?9?\d{2}\d{4}\d{4}$/, 'Ingresá un teléfono válido. Ej.: 11 1234 5678'),
+    // The sign-up form shows the phone grouped with spaces ("11 1234 5678"); only the digits are checked.
+    .refine((phone) => /^(\+?54)?9?\d{2}\d{4}\d{4}$/.test(phone.replace(/\s/g, '')), 'Ingresá un teléfono válido. Ej.: 11 1234 5678'),
   email: z
     .string()
     .min(1, 'Este campo es obligatorio')

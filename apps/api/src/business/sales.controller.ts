@@ -18,6 +18,7 @@ import {
 } from 'class-validator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BusinessOwnerGuard } from '../common/guards/business-owner.guard';
+import { dateQuery, INVALID_DATE } from '../common/date-query';
 import { unwrap } from '../common/use-case-result';
 import { PageQuery, pageRequest, sendPage } from '../common/pagination';
 import { ORDER_ACTIONS, ORDER_TYPES, PAYMENT_METHODS, SalesUseCase } from './use-cases/sales.use-case';
@@ -73,8 +74,8 @@ class ListOrdersQuery extends PageQuery {
   /** "true": only orders that are not closed (delivered, cancelled, refunded). */
   @IsOptional() @IsIn(['true', 'false']) open?: string;
   @IsOptional() @IsUUID() sucursalId?: string;
-  @IsOptional() @IsDateString() from?: string;
-  @IsOptional() @IsDateString() to?: string;
+  @IsOptional() @IsDateString({}, { message: INVALID_DATE }) from?: string;
+  @IsOptional() @IsDateString({}, { message: INVALID_DATE }) to?: string;
 }
 
 @ApiTags('Ventas / POS')
@@ -100,8 +101,8 @@ export class SalesController {
       status: query.status,
       open: query.open === 'true',
       sucursalId: query.sucursalId,
-      from: query.from ? new Date(query.from) : undefined,
-      to: query.to ? new Date(query.to) : undefined,
+      from: dateQuery(query.from),
+      to: dateQuery(query.to),
     };
     return sendPage(res, unwrap(this.sales.listOrders(businessId, filters, pageRequest(query))));
   }

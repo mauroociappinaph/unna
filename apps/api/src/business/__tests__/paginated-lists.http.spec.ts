@@ -156,4 +156,28 @@ describe('paginated lists over HTTP (S17)', () => {
       { limit: 10 },
     );
   });
+
+  describe.each([
+    ['orders', listOrders],
+    ['cash-sessions', listCash],
+    ['stock/movements', listMovements],
+  ] as const)('GET %s date filters', (path, list) => {
+    // ISO 8601 forms the validator accepts but Date cannot parse (week, ordinal, basic, hour only).
+    it.each(['from', 'to'])('answers 400 "Fecha inválida" for an unparsable %s, without listing', async (field) => {
+      for (const value of ['2026-W43', '2026-300', '20261026', '2026-10-26T10']) {
+        const res = await request(app.getHttpServer()).get(`${BASE}/${path}`).query({ [field]: value });
+
+        expect({ value, status: res.status, message: res.body.message }).toEqual({ value, status: 400, message: 'Fecha inválida' });
+      }
+      expect(list).not.toHaveBeenCalled();
+    });
+
+    it('answers 400 "Fecha inválida" for text that is not a date', async () => {
+      const res = await request(app.getHttpServer()).get(`${BASE}/${path}`).query({ from: 'ayer' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toEqual(['Fecha inválida']);
+      expect(list).not.toHaveBeenCalled();
+    });
+  });
 });

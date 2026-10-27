@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
 import { trustProxyHops } from './business/public-board-throttle';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
+import { frontendUrl } from './common/frontend-url';
 import { NEXT_CURSOR_HEADER } from './common/pagination';
 import { swaggerEnabled } from './common/runtime-env';
 
@@ -18,7 +19,8 @@ export function configureApp(app: NestExpressApplication, env: NodeJS.ProcessEnv
 
   app.setGlobalPrefix('api/v1');
   app.enableCors({
-    origin: env.FRONTEND_URL || 'http://localhost:3000',
+    // Throws without FRONTEND_URL in production, so the API does not start misconfigured.
+    origin: frontendUrl(env),
     credentials: true,
     // Paginated lists send the next page cursor in a header the browser must be allowed to read.
     exposedHeaders: [NEXT_CURSOR_HEADER],

@@ -110,7 +110,7 @@ Pegalos directo en Render. No los guardes en el repo, ni en un `.env` commiteado
 | `JWT_SECRET` | Generado con `openssl rand -base64 48` |
 | `JWT_REFRESH_SECRET` | Otro generado con `openssl rand -base64 48` |
 | `MP_TOKEN_ENCRYPTION_KEY` | Generado con `openssl rand -base64 32` |
-| `FRONTEND_URL` | URL de la web, sin barra final: `https://unna-web.onrender.com` |
+| `FRONTEND_URL` | URL de la web: `https://unna-web.onrender.com`. Obligatoria: sin ella la API no arranca |
 | `RESEND_API_KEY` | Tu API key de Resend (`re_...`) |
 
 **Servicio `unna-web`**
@@ -198,6 +198,7 @@ docker build -f apps/web/Dockerfile \
 | `P1001: Can't reach database server` | URL mal copiada o Supabase pausado | Revisá host y puerto del Session pooler; reactivá el proyecto. |
 | `MP_TOKEN_ENCRYPTION_KEY es obligatoria en producción` o `... inválida: debe ser 32 bytes en base64` | Falta la clave o no tiene 32 bytes | Generala con `openssl rand -base64 32`. |
 | `... el simulador ... no puede usarse en producción` | Falta `UNNA_ENV=staging` | Cargá `UNNA_ENV` con el valor exacto `staging`. |
+| `Falta FRONTEND_URL: en producción es obligatoria la URL de la web ...` | Falta `FRONTEND_URL` en `unna-api` | Cargala con la URL de la web (paso 3). |
 | La web carga pero el login falla (CORS en la consola) | `FRONTEND_URL` no coincide con la URL de la web | Corregila, sin barra final. |
 | La web llama a `localhost:3001` | `NEXT_PUBLIC_API_URL` vacía al compilar | Cargala y usá **Save, rebuild, and deploy**. |
 | La primera carga tarda ~1 minuto | El servicio gratis estaba dormido | Es normal en el plan gratis. |

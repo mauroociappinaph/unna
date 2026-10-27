@@ -86,4 +86,20 @@ describe('ForgotPasswordUseCase', () => {
       expect.stringContaining('reset-token-123')
     );
   });
+
+  it('links to the recovery page of FRONTEND_URL', async () => {
+    const old = process.env.FRONTEND_URL;
+    process.env.FRONTEND_URL = 'https://app.unna.test/';
+    try {
+      mockUserRepository.findByEmail.mockResolvedValue({ id: 'user-id', email: { value: 'test@example.com' } });
+      mockJwtPort.generateResetToken.mockReturnValue('reset-token-123');
+
+      await useCase.execute({ email: 'test@example.com' });
+
+      expect(mockEmailPort.sendPasswordResetEmail).toHaveBeenCalledWith('test@example.com', 'https://app.unna.test/recuperar-contrasena?token=reset-token-123');
+    } finally {
+      if (old === undefined) delete process.env.FRONTEND_URL;
+      else process.env.FRONTEND_URL = old;
+    }
+  });
 });

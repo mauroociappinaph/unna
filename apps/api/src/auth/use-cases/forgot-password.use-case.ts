@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { UserRepositoryPort, JwtPort, EmailPort } from '@unna/domain';
 import { Email } from '@unna/domain';
 import { Result, ok } from '@unna/domain';
+import { frontendUrl } from '../../common/frontend-url';
 
 export interface ForgotPasswordCommand {
   email: string;
@@ -32,8 +33,7 @@ export class ForgotPasswordUseCase {
       type: 'password_reset',
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const resetLink = `${frontendUrl}/recuperar-contrasena?token=${resetToken}`;
+    const resetLink = `${frontendUrl()}/recuperar-contrasena?token=${resetToken}`;
 
     await this.emailPort.sendPasswordResetEmail(user.email.value, resetLink);
 

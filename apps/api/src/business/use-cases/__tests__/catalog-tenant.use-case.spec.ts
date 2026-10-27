@@ -54,6 +54,7 @@ describe('Catalog tenant isolation', () => {
         fake({ findByProductId: async () => foreignLevel(), save: async (l: unknown) => saved.push(l) }),
         fake({ findByProductId: async () => [{ businessId: FOREIGN }], save: jest.fn() }),
         fake(productsRepo()),
+        fake({ withStockLock: jest.fn(), initialize: jest.fn() }),
       );
     });
 

@@ -22,3 +22,4 @@ export type { HashingPort } from './hashing.port';
 export type { EmailPort, EmailConfig } from './email.port';
 export * from './fiscal.port';
 export * from './cash.port';
+export type { LockedStockWrites, StockUnitOfWorkPort } from './stock.port';

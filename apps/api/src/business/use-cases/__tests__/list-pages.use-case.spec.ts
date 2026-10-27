@@ -17,7 +17,7 @@ const invoicing = (findPageByBusinessId: jest.Mock) =>
   new InvoicingUseCase(fake({}), fake({ findPageByBusinessId }), fake({}), fake({}), fake({}));
 const cash = (findPageByBusiness: jest.Mock) => new CashUseCase(fake({ findPageByBusiness }), fake({}), fake({}));
 const stock = (findPageByBusinessId: jest.Mock, product: unknown = { id: 'p1' }) =>
-  new StockUseCase(fake({}), fake({ findPageByBusinessId }), fake({ findByIdAndBusinessId: async () => product }));
+  new StockUseCase(fake({}), fake({ findPageByBusinessId }), fake({ findByIdAndBusinessId: async () => product }), fake({}));
 
 describe('list use cases (S17)', () => {
   it('listOrders passes the filters and the page and returns the page', async () => {

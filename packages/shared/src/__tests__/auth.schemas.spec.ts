@@ -60,6 +60,7 @@ describe('Shared Auth Schemas', () => {
       };
 
       expect(registerRequestSchema.safeParse({ ...data, businessName: 'Café Ñandú' }).success).toBe(true);
+      expect(registerRequestSchema.safeParse({ ...data, businessName: 'Cafe\u0301 N\u0303andu\u0301' }).success).toBe(true);
       const rejected = registerRequestSchema.safeParse({ ...data, businessName: 'Café@Ñandú' });
       expect(rejected.success).toBe(false);
       expect(rejected.error?.issues.map((i) => i.message)).toEqual(['Solamente caracteres alfanuméricos y los símbolos: &, - y _.']);

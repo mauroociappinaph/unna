@@ -3,7 +3,8 @@ export class BusinessName {
 
   private static readonly MIN_LENGTH = 3;
   private static readonly MAX_LENGTH = 45;
-  private static readonly ALLOWED_PATTERN = /^[\p{L}\p{N}\s&_-]+$/u;
+  // Accent marks are allowed only after a letter, so "é" typed as "e" + U+0301 is accepted.
+  private static readonly ALLOWED_PATTERN = /^(?:\p{L}\p{M}*|[\p{N}\s&_-])+$/u;
 
   private constructor(value: string) {
     this.value = value.trim();
@@ -14,7 +15,8 @@ export class BusinessName {
       throw new Error('Este campo es obligatorio');
     }
 
-    const trimmed = value.trim();
+    // Stored composed (NFC), so the same name typed with separate accent marks is equal.
+    const trimmed = value.trim().normalize('NFC');
 
     if (trimmed.length < this.MIN_LENGTH) {
       throw new Error(`El nombre del negocio debe tener más de ${this.MIN_LENGTH} caracteres.`);

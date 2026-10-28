@@ -30,6 +30,10 @@ describe('auth sessions (S21)', () => {
       await http().post('/api/v1/auth/register').send({ ...other, businessName: 'Café Ñandú' }).expect(201);
     });
 
+    it('accepts the same name with its accents typed as separate marks', async () => {
+      await http().post('/api/v1/auth/register').send({ ...other, businessName: 'Cafe\u0301 N\u0303andu\u0301' }).expect(201);
+    });
+
     it('still rejects other symbols with the same message', async () => {
       const res = await http().post('/api/v1/auth/register').send({ ...other, businessName: 'Café@Ñandú' });
 

@@ -36,7 +36,7 @@ export class Business extends AggregateRoot<BusinessProps> {
     ownerId: string
   ): Business {
     const now = new Date();
-    const slug = Business.generateSlug(name.value);
+    const slug = Business.generateSlug(name.value, id);
 
     const business = new Business(id, {
       name,
@@ -67,7 +67,7 @@ export class Business extends AggregateRoot<BusinessProps> {
     sucursales: Omit<Sucursal, 'id' | 'createdAt' | 'updatedAt'>[]
   ): Business {
     const now = new Date();
-    const slug = Business.generateSlug(name.value);
+    const slug = Business.generateSlug(name.value, id);
 
     const createdSucursales = sucursales.map((s, index) => 
       Sucursal.create({ ...s, isMain: index === 0 })
@@ -101,17 +101,24 @@ export class Business extends AggregateRoot<BusinessProps> {
     return new Business(id, props);
   }
 
-  private static generateSlug(name: string): string {
-    return name
+  /** Letters that NFD does not split into a base letter and a mark. */
+  private static readonly SLUG_LETTERS: Record<string, string> = { ø: 'o', ß: 'ss', ł: 'l', æ: 'ae', œ: 'oe', đ: 'd' };
+
+  private static generateSlug(name: string, id: string): string {
+    const slug = name
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // "Café Ñandú" -> "Cafe Nandu"
       .toLowerCase()
+      .replace(/[øßłæœđ]/g, (letter) => Business.SLUG_LETTERS[letter])
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim()
       .substring(0, 50);
+    // A name with no Latin letter or digit ("寿司") would leave an empty or "-" slug, shared by others.
+    return /[a-z0-9]/.test(slug) ? slug : `negocio-${id}`.substring(0, 50);
   }
+
 
   public get name(): BusinessName {
     return this.props.name;
@@ -163,7 +170,7 @@ export class Business extends AggregateRoot<BusinessProps> {
 
   public updateName(newName: BusinessName): void {
     this.props.name = newName;
-    this.props.slug = Business.generateSlug(newName.value);
+    this.props.slug = Business.generateSlug(newName.value, this.id);
     this.props.updatedAt = new Date();
   }
 

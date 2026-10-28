@@ -49,6 +49,22 @@ describe('Shared Auth Schemas', () => {
       }
     });
 
+    it('accepts a business name with accents and ñ, and still rejects other symbols', () => {
+      const data = {
+        name: 'Juan Pérez',
+        phone: '1112345678',
+        email: 'test@example.com',
+        password: 'SecurePass123',
+        confirmPassword: 'SecurePass123',
+        acceptTerms: true,
+      };
+
+      expect(registerRequestSchema.safeParse({ ...data, businessName: 'Café Ñandú' }).success).toBe(true);
+      const rejected = registerRequestSchema.safeParse({ ...data, businessName: 'Café@Ñandú' });
+      expect(rejected.success).toBe(false);
+      expect(rejected.error?.issues.map((i) => i.message)).toEqual(['Solamente caracteres alfanuméricos y los símbolos: &, - y _.']);
+    });
+
     it('should reject short business name', () => {
       const data = {
         businessName: 'Ab',

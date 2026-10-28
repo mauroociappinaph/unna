@@ -31,6 +31,11 @@ describe('BusinessName Value Object', () => {
       expect(() => BusinessName.create('Mi#Restaurante')).toThrow('caracteres alfanuméricos');
     });
 
+    it('accepts Spanish letters with accents, ñ and ü', () => {
+      expect(BusinessName.create('Café Ñandú').value).toBe('Café Ñandú');
+      expect(BusinessName.create('Pingüino & Cía').value).toBe('Pingüino & Cía');
+    });
+
     it('should allow valid special characters & - _', () => {
       expect(BusinessName.create('Mi & Restaurante').value).toBe('Mi & Restaurante');
       expect(BusinessName.create('Mi-Restaurante').value).toBe('Mi-Restaurante');

@@ -23,6 +23,21 @@ describe('auth sessions (S21)', () => {
   });
   afterEach(() => ctx.app.close());
 
+  describe('POST /auth/register business name', () => {
+    const other = { ...OWNER, email: 'cafe@unna.test' };
+
+    it('accepts a business name with accents and ñ', async () => {
+      await http().post('/api/v1/auth/register').send({ ...other, businessName: 'Café Ñandú' }).expect(201);
+    });
+
+    it('still rejects other symbols with the same message', async () => {
+      const res = await http().post('/api/v1/auth/register').send({ ...other, businessName: 'Café@Ñandú' });
+
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body.message)).toContain('Solamente caracteres alfanuméricos y los símbolos: &, - y _.');
+    });
+  });
+
   describe('POST /auth/refresh', () => {
     it('answers a fresh pair with the same shape as login, and the new access token works', async () => {
       const session = await login();

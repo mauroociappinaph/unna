@@ -31,7 +31,7 @@ export class RegisterDto implements RegisterCommand {
   @IsString()
   @MinLength(3, { message: 'El nombre del negocio debe tener más de 3 caracteres.' })
   @MaxLength(45, { message: 'El nombre del negocio debe tener menos de 45 caracteres.' })
-  @Matches(/^[a-zA-Z0-9\s&_-]+$/, { message: 'Solamente caracteres alfanuméricos y los símbolos: &, - y _.' })
+  @Matches(/^[\p{L}\p{N}\s&_-]+$/u, { message: 'Solamente caracteres alfanuméricos y los símbolos: &, - y _.' })
   businessName!: string;
 
   @IsString()

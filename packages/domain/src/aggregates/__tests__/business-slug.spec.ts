@@ -17,6 +17,21 @@ describe('Business slug', () => {
     expect(businessNamed('Café Ñandú').slug).toBe('cafe-nandu');
   });
 
+  it('spells out letters without a decomposed form (ø, ß, ł, æ, œ, đ)', () => {
+    expect(businessNamed('Smørrebrød Straße').slug).toBe('smorrebrod-strasse');
+    expect(businessNamed('Łódź Æble Œuvre Đak').slug).toBe('lodz-aeble-oeuvre-dak');
+  });
+
+  it('falls back to a slug made from the business id when no letter survives', () => {
+    expect(businessNamed('寿司 東京').slug).toBe('negocio-biz-1');
+  });
+
+  it('keeps the id fallback when a name without Latin letters is renamed', () => {
+    const business = businessNamed('Mi Restaurante');
+    business.updateName(BusinessName.create('寿司 東京'));
+    expect(business.slug).toBe('negocio-biz-1');
+  });
+
   it('keeps the slug of plain names unchanged', () => {
     expect(businessNamed('Mi Restaurante & Bar').slug).toBe('mi-restaurante-bar');
   });

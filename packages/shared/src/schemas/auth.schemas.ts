@@ -6,7 +6,7 @@ export const registerRequestSchema = z.object({
     .min(1, 'Este campo es obligatorio')
     .min(3, 'El nombre del negocio debe tener más de 3 caracteres.')
     .max(45, 'El nombre del negocio debe tener menos de 45 caracteres.')
-    .regex(/^[\p{L}\p{N}\s&_-]+$/u, 'Solamente caracteres alfanuméricos y los símbolos: &, - y _.'),
+    .regex(/^(?:\p{L}\p{M}*|[\p{N}\s&_-])+$/u, 'Solamente caracteres alfanuméricos y los símbolos: &, - y _.'),
   name: z
     .string()
     .min(1, 'Este campo es obligatorio')

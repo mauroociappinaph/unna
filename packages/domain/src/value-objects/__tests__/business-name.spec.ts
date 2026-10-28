@@ -36,6 +36,17 @@ describe('BusinessName Value Object', () => {
       expect(BusinessName.create('Pingüino & Cía').value).toBe('Pingüino & Cía');
     });
 
+    it('accepts accents typed as separate marks and stores the name in its composed form', () => {
+      const decomposed = 'Cafe\u0301 N\u0303andu\u0301';
+      const name = BusinessName.create(decomposed);
+      expect(name.value).toBe('Café Ñandú');
+      expect(name.equals(BusinessName.create('Café Ñandú'))).toBe(true);
+    });
+
+    it('still rejects a lone accent mark that has no letter', () => {
+      expect(() => BusinessName.create('\u0301\u0301\u0301')).toThrow('caracteres alfanuméricos');
+    });
+
     it('should allow valid special characters & - _', () => {
       expect(BusinessName.create('Mi & Restaurante').value).toBe('Mi & Restaurante');
       expect(BusinessName.create('Mi-Restaurante').value).toBe('Mi-Restaurante');

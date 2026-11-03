@@ -6,7 +6,7 @@ Con esta guía levantás UNNA completo para que otra persona lo pruebe, **sin pa
 |---|---|---|
 | Base de datos (Postgres) | Supabase | Free |
 | API (NestJS) | Render, servicio `unna-api` | Free |
-| Web (Next.js) | Render, servicio `unna-web` | Free |
+| Web (Next.js) | Vercel | Hobby (gratis) |
 
 Tardás unos 30 minutos. Los recursos los creás vos desde tu cuenta; nada se crea solo.
 
@@ -14,8 +14,8 @@ Tardás unos 30 minutos. Los recursos los creás vos desde tu cuenta; nada se cr
 
 ## Antes de empezar
 
-- [ ] Cuenta en [Supabase](https://supabase.com) y en [Render](https://render.com).
-- [ ] El repo en GitHub, con acceso desde tu cuenta de Render.
+- [ ] Cuenta en [Supabase](https://supabase.com), en [Render](https://render.com) y en [Vercel](https://vercel.com).
+- [ ] El repo en GitHub, con acceso desde tus cuentas de Render y de Vercel.
 - [ ] `openssl` en tu máquina (viene en macOS y Linux) para generar los secretos.
 - [ ] Una API key de [Resend](https://resend.com) (plan gratis). **La API no arranca sin `RESEND_API_KEY`**; ver el paso 3.
 
@@ -70,17 +70,29 @@ Si en cambio apuntás a una base **que ya existía** (creada con `prisma db push
 
 ---
 
-## 2. Crear los servicios en Render con el blueprint
+## 2. Crear la API en Render con el blueprint
 
-El archivo [`render.yaml`](../../render.yaml) del repo define los dos servicios (`unna-api` y `unna-web`), en plan gratis, construidos con Docker desde la raíz del monorepo.
+El archivo [`render.yaml`](../../render.yaml) del repo define el servicio `unna-api`, en plan gratis, construido con Docker desde la raíz del monorepo. La web no va en Render: va en Vercel (paso 2b).
 
 1. En Render: **New → Blueprint**.
 2. Conectá GitHub si todavía no lo hiciste y elegí el repo.
-3. Elegí la rama a desplegar. Render encuentra `render.yaml` en la raíz.
-4. Revisá que la lista muestre `unna-api` y `unna-web`, los dos **Free**.
+3. Elegí la rama a desplegar (`develop`). Render encuentra `render.yaml` en la raíz.
+4. Revisá que la lista muestre `unna-api`, **Free**.
 5. Completá los secretos (paso 3) y tocá **Apply**.
 
-> Render pide los secretos (`sync: false`) **solo la primera vez** que aplicás el blueprint. Después, cualquier cambio se hace a mano en **Environment** de cada servicio.
+> Render pide los secretos (`sync: false`) **solo la primera vez** que aplicás el blueprint. Después, cualquier cambio se hace a mano en **Environment** del servicio.
+
+> Si ya habías aplicado una versión anterior del blueprint que creaba `unna-web` en Render, borrá ese servicio a mano: las 750 horas gratis del mes se comparten entre todos los servicios del workspace.
+
+## 2b. Crear la web en Vercel
+
+El archivo [`apps/web/vercel.json`](../../apps/web/vercel.json) le dice a Vercel cómo instalar y compilar el monorepo: instala desde la raíz y compila `packages/domain`, `packages/shared` y la web con Turborepo.
+
+1. En Vercel: **Add New… → Project** e importá el repo.
+2. **Root Directory**: `apps/web`. Vercel detecta Next.js solo.
+3. En **Environment Variables** cargá las dos de la web (paso 3) **antes** de desplegar.
+4. En **Settings → Git → Production Branch** elegí `develop`, así cada push a `develop` actualiza la demo.
+5. Tocá **Deploy**. La URL de producción queda `https://<proyecto>.vercel.app`.
 
 ---
 
@@ -88,7 +100,7 @@ El archivo [`render.yaml`](../../render.yaml) del repo define los dos servicios 
 
 ### Las URLs públicas
 
-Cada servicio queda en `https://<nombre>.onrender.com`. Si el nombre ya está tomado, Render le agrega un sufijo (por ejemplo `https://unna-api-x1y2.onrender.com`). Escribí lo que esperás ahora y, si cambió, corregilo después (ver [Si una URL salió distinta](#si-una-url-salió-distinta)).
+La API queda en `https://unna-api.onrender.com` y la web en `https://<proyecto>.vercel.app`. Si el nombre ya está tomado, Render le agrega un sufijo (por ejemplo `https://unna-api-x1y2.onrender.com`) y Vercel también. Escribí lo que esperás ahora y, si cambió, corregilo después (ver [Si una URL salió distinta](#si-una-url-salió-distinta)).
 
 ### Generar los secretos
 
@@ -115,16 +127,19 @@ Pegalos directo en Render. No los guardes en el repo, ni en un `.env` commiteado
 | `JWT_REFRESH_SECRET` | Otro generado con `openssl rand -base64 48` |
 | `JWT_RESET_SECRET` | Lo genera Render al aplicar el blueprint. Si no aparece en **Environment** (por ejemplo, en un servicio creado antes), agregalo a mano con otro `openssl rand -base64 48` |
 | `MP_TOKEN_ENCRYPTION_KEY` | Generado con `openssl rand -base64 32` |
-| `FRONTEND_URL` | URL de la web: `https://unna-web.onrender.com`. Obligatoria: sin ella la API no arranca |
+| `FRONTEND_URL` | URL de producción de la web en Vercel: `https://<proyecto>.vercel.app`, sin barra final. Obligatoria: sin ella la API no arranca |
 | `RESEND_API_KEY` | Tu API key de Resend (`re_...`) |
 
-**Servicio `unna-web`**
+**Proyecto de Vercel (web)**
 
 | Variable | Valor |
 |---|---|
 | `NEXT_PUBLIC_API_URL` | URL de la API, sin `/api/v1` y sin barra final: `https://unna-api.onrender.com` |
+| `NEXT_PUBLIC_UNNA_ENV` | `staging` (muestra el aviso "Ambiente de prueba") |
 
-Ya vienen fijas en el blueprint, no las toques: `NODE_ENV=production`, `UNNA_ENV=staging`, `TRUST_PROXY=1` (API) y `NEXT_PUBLIC_UNNA_ENV=staging` (web).
+Cargalas para **Production** y **Preview**. Vercel no las toma de ningún archivo del repo.
+
+Ya vienen fijas en el blueprint de la API, no las toques: `NODE_ENV=production`, `UNNA_ENV=staging` y `TRUST_PROXY=1`.
 
 Sobre `RESEND_API_KEY`: la API no arranca sin un valor. Con una key real de Resend se mandan los mails (por ejemplo, recuperar contraseña). Con un valor de relleno que empiece con `re_`, la API arranca pero esos mails fallan.
 
@@ -136,8 +151,9 @@ Cada refresh token sirve **una sola vez**: al renovar la sesión, la API lo marc
 
 ### Si una URL salió distinta
 
-- **Cambió la URL de la API:** en `unna-web` corregí `NEXT_PUBLIC_API_URL` y guardá con **Save, rebuild, and deploy**. La web necesita reconstruirse porque ese valor queda fijo al compilar.
+- **Cambió la URL de la API:** en Vercel corregí `NEXT_PUBLIC_API_URL` y después **Deployments → ⋯ → Redeploy**. La web necesita recompilarse porque ese valor queda fijo al compilar.
 - **Cambió la URL de la web:** en `unna-api` corregí `FRONTEND_URL` y guardá. Si no coincide, el navegador bloquea las llamadas a la API (CORS).
+- **Las previews de Vercel** (una URL por rama o commit) no coinciden con `FRONTEND_URL`, así que ahí el login falla por CORS. Probá la demo siempre en la URL de producción.
 
 ---
 
@@ -146,7 +162,7 @@ Cada refresh token sirve **una sola vez**: al renovar la sesión, la API lo marc
 1. En `unna-api` → **Logs**, tiene que aparecer `All migrations have been successfully applied.` (la primera vez) o `No pending migrations to apply.`, y después `API running`.
 2. Abrí `https://<tu-api>.onrender.com/api/v1/health`: tiene que responder `{"status":"ok"}`. Render usa esa ruta como health check; no consulta la base, así que solo dice que la API está escuchando.
 3. Abrí `https://<tu-api>.onrender.com/api/docs`: tiene que verse Swagger. En staging (`UNNA_ENV=staging`) está prendido; en producción sin esa variable no se publica.
-4. Abrí `https://<tu-web>.onrender.com`: abajo a la izquierda tiene que verse **"Ambiente de prueba"**.
+4. Abrí `https://<proyecto>.vercel.app`: abajo a la izquierda tiene que verse **"Ambiente de prueba"**.
 5. Creá una cuenta y hacé un pedido de punta a punta.
 
 ---
@@ -155,13 +171,14 @@ Cada refresh token sirve **una sola vez**: al renovar la sesión, la API lo marc
 
 | Servicio | Límite | Qué significa para vos |
 |---|---|---|
-| Render | Se apaga tras **15 minutos sin tráfico** | La primera visita después tarda **~1 minuto** en despertar. Avisale a quien prueba. |
+| Render | La API se apaga tras **15 minutos sin tráfico** | La web carga al instante, pero el primer login después tarda **~1 minuto**. Antes de mostrar la demo abrí `/api/v1/health` para despertarla. |
+| Vercel | Plan Hobby: **solo uso no comercial** | Sirve para la demo; no para cobrarle a clientes reales. |
 | Render | Disco efímero | Las imágenes de productos que se suben **se pierden** en cada deploy, reinicio o apagado. |
 | Render | 750 horas gratis por mes y por workspace | Un servicio apagado no consume horas. Si se agotan, Render suspende los servicios gratis hasta el mes siguiente. |
 | Render | Sin shell ni pre-deploy | Por eso las migraciones corren al arrancar la API. |
 | Supabase | Se pausa tras **~7 días sin actividad** | Reactivalo desde el panel de Supabase (**Restore**). Mientras está pausado, la API no arranca. |
 
-Fuentes: [Render free](https://render.com/docs/free), [Render deploys](https://render.com/docs/deploys).
+Fuentes: [Render free](https://render.com/docs/free), [Render deploys](https://render.com/docs/deploys), [Vercel Hobby](https://vercel.com/docs/plans/hobby).
 
 ---
 
@@ -209,5 +226,5 @@ docker build -f apps/web/Dockerfile \
 | `... el simulador ... no puede usarse en producción` | Falta `UNNA_ENV=staging` | Cargá `UNNA_ENV` con el valor exacto `staging`. |
 | `Falta FRONTEND_URL: en producción es obligatoria la URL de la web ...` | Falta `FRONTEND_URL` en `unna-api` | Cargala con la URL de la web (paso 3). |
 | La web carga pero el login falla (CORS en la consola) | `FRONTEND_URL` no coincide con la URL de la web | Corregila, sin barra final. |
-| La web llama a `localhost:3001` | `NEXT_PUBLIC_API_URL` vacía al compilar | Cargala y usá **Save, rebuild, and deploy**. |
-| La primera carga tarda ~1 minuto | El servicio gratis estaba dormido | Es normal en el plan gratis. |
+| La web llama a `localhost:3001` | `NEXT_PUBLIC_API_URL` vacía al compilar | Cargala en Vercel y hacé **Redeploy**. |
+| El primer login tarda ~1 minuto | La API gratis estaba dormida | Es normal en el plan gratis de Render. |

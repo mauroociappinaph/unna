@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 248 64" role="img" aria-labelledby="title">
+  <title id="title">UNNA</title>
+  <!-- For green or dark backgrounds (#15803d, #14532d, #111827). -->
+  <g fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round">
+    <path d="M16 28 V34 A16 16 0 0 0 48 34 V28" />
+  </g>
+  <circle cx="16" cy="14" r="5.5" fill="#ffffff" />
+  <circle cx="48" cy="14" r="5.5" fill="#ffffff" />
+  <text x="72" y="46" font-family="Inter, system-ui, sans-serif" font-size="40" font-weight="800" letter-spacing="3" fill="#ffffff">UNNA</text>
+</svg>

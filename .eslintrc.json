@@ -1,0 +1,11 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "env": { "node": true, "es2022": true, "jest": true },
+  "ignorePatterns": ["dist", "node_modules", ".next", "coverage"],
+  "overrides": [
+    { "files": ["apps/web/**"], "extends": ["next/core-web-vitals"] }
+  ]
+}

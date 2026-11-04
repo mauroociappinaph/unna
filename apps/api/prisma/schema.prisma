@@ -1,0 +1,648 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  phone         String
+  businessName  String
+  isActive      Boolean  @default(true)
+  emailVerified Boolean  @default(false)
+  roles         String[] @default(["owner"])
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  businesses    Business[]
+  refreshSessions RefreshSession[]
+
+  @@map("users")
+}
+
+// Single-use refresh tokens (S21): one row per refresh token, keyed by its jti (the token itself is
+// never stored). familyId is the id of the login's first session; expiresAt is the family deadline
+// (SESSION_MAX_DAYS after the login). A second use of a spent row revokes the whole family.
+model RefreshSession {
+  id           String    @id
+  userId       String
+  familyId     String
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  usedAt       DateTime?
+  revokedAt    DateTime?
+  replacedById String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_sessions")
+}
+
+model Business {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  cuit      String   @unique
+  address   Json
+  schedule  Json
+  settings  Json
+  ownerId   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner         User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sucursales    Sucursal[]
+  categories    Category[]
+  products      Product[]
+  modifierGroups ModifierGroup[]
+  priceLists    PriceList[]
+  stockLevels   StockLevel[]
+  stockMovements StockMovement[]
+  orders        Order[]
+  payments      Payment[]
+  receipts      Receipt[]
+  cashSessions  CashSession[]
+  mercadoPagoConnection    MercadoPagoConnection?
+  mercadoPagoOAuthAttempts MercadoPagoOAuthAttempt[]
+  qrCharges     QrCharge[]
+  onlineCheckouts OnlineCheckout[]
+
+  @@map("businesses")
+}
+
+model Sucursal {
+  id        String   @id @default(uuid())
+  name      String
+  address   Json
+  phone     String
+  email     String
+  schedule  Json
+  isMain    Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  // Public order board (S13): only the SHA-256 of the display token is stored; null = disabled.
+  displayTokenHash      String?   @unique
+  displayTokenCreatedAt DateTime?
+  // Mercado Pago store and cash register (S15); the QR URLs are the POS's printed static QR.
+  mpStoreId       String?
+  mpPosId         String?
+  mpPosExternalId String?   @unique
+  qrImageUrl      String?
+  qrTemplateUrl   String?
+  // Claim of the store + POS provisioning in progress, so concurrent requests create one store.
+  mpProvisioningAt DateTime?
+  // Pedido anticipado (S20): public slug of the menu link. Kept when disabled, so enabling again
+  // gives the same link.
+  preorderSlug    String?   @unique
+  preorderEnabled Boolean   @default(false)
+  businessId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  receipts  Receipt[]
+  cashSessions CashSession[]
+  qrCharges    QrCharge[]
+  onlineCheckouts OnlineCheckout[]
+
+  @@map("sucursales")
+}
+
+// ============ T23: Productos / Carta ============
+
+model Category {
+  id          String   @id @default(uuid())
+  businessId  String
+  name        String
+  description String?
+  type        String   // plato, bebida, postre, extra, combo
+  displayOrder Int     @default(0)
+  isActive    Boolean  @default(true)
+  parentId    String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+
+  @@index([businessId, isActive])
+  @@map("categories")
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  businessId      String
+  categoryId      String
+  name            String
+  description     String?
+  type            String   // simple, composite, combo
+  status          String   @default("draft") // draft, active, archived
+  basePrice       Int      // stored in cents
+  currency        String   @default("ARS")
+  costPrice       Int?
+  taxRate         Float    @default(21)
+  sku             String?  @unique
+  barcode         String?  @unique
+  displayOrder    Int      @default(0)
+  isActive        Boolean  @default(true)
+  isFavorite      Boolean  @default(false) // pinned to the POS favorites strip (S13)
+  images          String[] @default([])
+  modifierGroupIds String[] @default([])
+  components      Json     @default("[]") // [{ productId, quantity }]
+  preparationTimeMinutes Int?
+  calories        Int?
+  allergens       String[] @default([])
+  tags            String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category        Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  modifierGroups  ModifierGroup[] @relation("ProductModifierGroups")
+  priceListEntries PriceListEntry[]
+  stockLevel      StockLevel?
+  stockMovements  StockMovement[]
+  orderItems      OrderItem[] @relation("ProductOrderItems")
+
+  @@index([businessId, isActive])
+  @@index([businessId, categoryId])
+  @@index([businessId, status])
+  @@map("products")
+}
+
+model ModifierOption {
+  id           String   @id @default(uuid())
+  modifierGroupId String
+  name         String
+  priceDelta   Int      @default(0) // in cents
+  isDefault    Boolean  @default(false)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  modifierGroup ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@map("modifier_options")
+}
+
+model ModifierGroup {
+  id            String   @id @default(uuid())
+  businessId    String
+  name          String
+  description   String?
+  minSelection  Int      @default(0)
+  maxSelection  Int      @default(0) // 0 = unlimited
+  isRequired    Boolean  @default(false)
+  displayOrder  Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business      Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  options       ModifierOption[]
+  products      Product[] @relation("ProductModifierGroups")
+
+  @@index([businessId, isActive])
+  @@map("modifier_groups")
+}
+
+model PriceList {
+  id          String   @id @default(uuid())
+  businessId  String
+  name        String
+  description String?
+  type        String   // standard, delivery, takeaway, happy-hour, event, custom
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  validFrom   DateTime?
+  validTo     DateTime?
+  validDays   Int[]    // 0=Sun, 1=Mon, etc.
+  validFromTime String? // HH:mm
+  validToTime   String? // HH:mm
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  entries     PriceListEntry[]
+
+  @@index([businessId, isActive])
+  @@map("price_lists")
+}
+
+model PriceListEntry {
+  id          String   @id @default(uuid())
+  priceListId String
+  productId   String
+  price       Int      // in cents
+  costPrice   Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  priceList   PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([priceListId, productId])
+  @@map("price_list_entries")
+}
+
+// ============ Stock / Inventory ============
+
+model StockMovement {
+  id            String   @id @default(uuid())
+  productId     String
+  businessId    String
+  type          String   // in, out, adjustment, waste, transfer, sale, return
+  quantity      Int      // positive for in, negative for out
+  reason        String
+  referenceId   String?
+  referenceType String?
+  unitCost      Int?
+  totalCost     Int?
+  performedBy   String
+  createdAt     DateTime @default(now())
+
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, productId, createdAt])
+  @@index([businessId, createdAt])
+  @@index([productId, createdAt])
+  @@map("stock_movements")
+}
+
+model StockLevel {
+  id               String   @id @default(uuid())
+  productId        String   @unique
+  businessId       String
+  currentQuantity  Int      @default(0)
+  reservedQuantity Int      @default(0)
+  minThreshold     Int      @default(10)
+  maxThreshold     Int?
+  reorderPoint     Int      @default(5)
+  reorderQuantity  Int      @default(20)
+  lastCountedAt    DateTime?
+  lastMovementAt   DateTime?
+  updatedAt        DateTime @updatedAt
+
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  business         Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("stock_levels")
+}
+
+// ============ T24: Ventas / POS ============
+
+model Order {
+  id              String   @id @default(uuid())
+  businessId      String
+  sucursalId      String
+  orderNumber     String
+  type            String   // dine_in, takeaway, delivery, pickup
+  status          String   @default("pending") // pending, confirmed, preparing, ready, delivered, cancelled, refunded
+  tableNumber     String?
+  customerName    String?
+  customerPhone   String?
+  customerEmail   String?
+  deliveryAddress Json?
+  items           OrderItem[]
+  subtotal        Int      // in cents
+  taxAmount       Int      // in cents
+  discountAmount  Int      @default(0) // in cents
+  totalAmount     Int      // in cents
+  paymentStatus   String   @default("pending") // pending, processing, completed, failed, refunded, cancelled
+  paymentMethod   String?  // cash, card, mercado_pago, transfer, qr, split
+  paymentReference String?
+  notes           String?
+  sucursalName    String
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelledReason String?
+  payments        Payment[]
+  receipts        Receipt[]
+  qrCharges       QrCharge[]
+  onlineCheckout  OnlineCheckout?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sucursal        Sucursal   @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId, status])
+  @@index([businessId, sucursalId, createdAt])
+  @@index([businessId, paymentStatus, createdAt])
+  @@index([businessId, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  productId       String
+  productName     String
+  productSku      String?
+  quantity        Int
+  unitPrice       Int      // in cents
+  totalPrice      Int      // in cents
+  taxRate         Float    @default(21)
+  taxAmount       Int      // in cents
+  notes           String?
+  modifiers       Json     @default("[]") // [{ modifierGroupId, optionId, name, priceDelta }]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict, name: "ProductOrderItems")
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  orderId         String
+  businessId      String
+  amount          Int      // in cents
+  method          String   // cash, card, mercado_pago, transfer, qr, split
+  status          String   @default("pending") // pending, processing, completed, failed, refunded, cancelled
+  reference       String?  // transaction ID, authorization code, etc.
+  metadata        Json?    // gateway response, etc.
+  processedAt     DateTime?
+  cashSessionId   String?  // shift the payment was taken in (required for new payments, see S12)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  cashSession     CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
+  qrCharge        QrCharge?
+  onlineCheckout  OnlineCheckout?
+
+  @@index([orderId])
+  @@index([cashSessionId])
+  @@index([businessId, status, createdAt])
+  @@map("payments")
+}
+
+model Receipt {
+  id              String   @id @default(uuid())
+  businessId      String
+  sucursalId      String
+  receiptNumber   String   // e.g. B-0003-00000042, unique per business
+  invoiceNumber   Int?     // sequential number within (pointOfSale, receiptType)
+  type            String   // A, B, C, ticket, proforma, credit_note, debit_note
+  status          String   @default("draft") // draft, issued, cancelled, voided
+  orderId         String?
+  orderNumber     String?
+  cae             String?
+  caeExpiration   DateTime?
+  pointOfSale     String   // 4 digits
+  receiptType     String   // A, B, C, ticket, proforma, credit_note, debit_note
+  subtotal        Int      // in cents
+  taxAmount       Int      // in cents
+  discountAmount  Int      @default(0)
+  totalAmount     Int      // in cents
+  paymentMethod   String
+  paymentReference String?
+  customerName    String?
+  customerTaxId   String?
+  customerAddress Json?
+  customerCondition String? // IVA condition
+  docType         Int?     // ARCA document type: 80 CUIT, 96 DNI, 99 consumidor final
+  docNumber       String?
+  ivaBreakdown    Json?    // [{ rate, base, amount }] in cents
+  authorizationError String? // last ARCA rejection or failure, while the receipt stays draft
+  caeRequest      String?
+  caeResponse     String?
+  pdfUrl          String?
+  qrCode          String?
+  items           ReceiptItem[]
+  notes           String?
+  cancelledAt     DateTime?
+  cancelledReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  issuedAt        DateTime?
+
+  business        Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sucursal        Sucursal   @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+  order           Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, receiptNumber])
+  @@index([businessId, status, createdAt])
+  @@index([businessId, orderId])
+  @@index([orderId])
+  @@index([businessId, createdAt])
+  @@map("receipts")
+}
+
+model ReceiptItem {
+  id              String   @id @default(uuid())
+  receiptId       String
+  productId       String
+  productName     String
+  productSku      String?
+  quantity        Int
+  unitPrice       Int      // in cents
+  totalPrice      Int      // in cents
+  taxRate         Float    @default(21)
+  taxAmount       Int      // in cents
+  modifiers       Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  receipt         Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
+  @@map("receipt_items")
+}
+
+// ============ Stock / Inventory ============
+
+/// A cash register shift for one sucursal. At most one open session per sucursal (enforced in the use case under a lock).
+model CashSession {
+  id             String   @id @default(uuid())
+  businessId     String
+  sucursalId     String
+  status         String   @default("open") // open, closed
+  openedBy       String   // user id
+  openedAt       DateTime @default(now())
+  openingAmount  Int      // cash float, in cents
+  closedBy       String?
+  closedAt       DateTime?
+  expected       Json?    // { cash, card, mercado_pago, transfer, qr } in cents, computed at close
+  declared       Json?    // same keys, counted by the cashier
+  difference     Json?    // declared - expected per method
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sucursal       Sucursal       @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+  movements      CashMovement[]
+  payments       Payment[]
+
+  @@index([businessId, sucursalId, status])
+  @@index([businessId, createdAt])
+  @@map("cash_sessions")
+}
+
+/// Cash put into (in) or taken out of (out) the register during a session.
+model CashMovement {
+  id          String   @id @default(uuid())
+  sessionId   String
+  businessId  String
+  type        String   // in, out
+  amount      Int      // cents, > 0
+  reason      String
+  createdBy   String   // user id
+  createdAt   DateTime @default(now())
+
+  session     CashSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  @@index([sessionId])
+  @@map("cash_movements")
+}
+
+/// Last number used per (business, point of sale, receipt type). Locked while numbering a receipt.
+model ReceiptSequence {
+  businessId   String
+  pointOfSale  String   // 4 digits
+  receiptType  String   // A, B, C, ticket
+  lastNumber   Int      @default(0)
+  // Issue lease (S18): the receipt whose ARCA authorization is in flight, so one ARCA call per
+  // sequence runs at a time without holding a lock. Expired leases belong to crashed requests.
+  issuingReceiptId String?
+  issuingUntil     DateTime?
+  updatedAt    DateTime @updatedAt
+
+  @@id([businessId, pointOfSale, receiptType])
+  @@map("receipt_sequences")
+}
+
+// ============ S15: Mercado Pago QR ============
+
+/// The café's Mercado Pago account, connected with OAuth. Tokens are AES-256-GCM ciphertext
+/// (MP_TOKEN_ENCRYPTION_KEY) and are never returned by the API nor logged.
+model MercadoPagoConnection {
+  id                    String   @id @default(uuid())
+  businessId            String   @unique
+  mpUserId              String
+  liveMode              Boolean
+  scope                 String
+  encryptedAccessToken  String
+  encryptedRefreshToken String
+  accessTokenExpiresAt  DateTime
+  connectedAt           DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("mercadopago_connections")
+}
+
+/// A started "Conectar con Mercado Pago": single use, valid 10 minutes. Only the SHA-256 of the
+/// state is stored; the PKCE verifier is encrypted like the tokens.
+model MercadoPagoOAuthAttempt {
+  id                    String   @id @default(uuid())
+  stateHash             String   @unique
+  businessId            String
+  ownerId               String
+  encryptedCodeVerifier String
+  expiresAt             DateTime
+  createdAt             DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("mercadopago_oauth_attempts")
+}
+
+/// A Mercado Pago QR order (hybrid) for the pending balance of an order. The payment is registered
+/// once, from the order read from Mercado Pago, under the order lock (unique mpOrderId and paymentId).
+model QrCharge {
+  id          String    @id @default(uuid())
+  businessId  String
+  orderId     String
+  sucursalId  String
+  amount      Int // in cents
+  // creating (reserved while Mercado Pago creates its order, S18), pending, paid, expired, cancelled
+  status      String    @default("pending")
+  // Null while creating; a reservation cancelled before Mercado Pago answered keeps them null.
+  mpOrderId   String?   @unique
+  mpPaymentId String?
+  qrData      String?
+  expiresAt   DateTime
+  paidAt      DateTime?
+  paymentId   String?   @unique
+  // Paid in Mercado Pago but not registered (caja closed, balance exceeded...): why, for the owner.
+  paymentError String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sucursal Sucursal @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, orderId, status])
+  @@map("qr_charges")
+}
+
+// ============ S20: Pedido anticipado ============
+
+/// A pedido anticipado cart with server prices, paid online with Mercado Pago (Checkout Pro through
+/// the Orders API). The UNNA order is created only once the payment is approved, exactly once per
+/// checkout (under a lock on this row; unique orderId and paymentId as second guard).
+model OnlineCheckout {
+  id                String    @id @default(uuid())
+  businessId        String
+  sucursalId        String
+  sucursalName      String
+  // SHA-256 of the tracking token (32 random bytes); the token is only returned on creation.
+  trackingTokenHash String    @unique
+  // awaiting_payment, paid, payment_failed, expired, cancelled
+  status            String    @default("awaiting_payment")
+  customerName      String
+  // [{ productId, productName, productSku, quantity, unitPrice, totalPrice, taxRate, taxAmount, notes, modifiers, preparationTimeMinutes }]
+  lines             Json
+  total             Int // in cents
+  // Null until Mercado Pago created the online order.
+  mpOrderId         String?   @unique
+  checkoutUrl       String?
+  expiresAt         DateTime
+  paidAt            DateTime?
+  orderId           String?   @unique
+  paymentId         String?   @unique
+  mpPaymentId       String?
+  // Paid in Mercado Pago but not registered (caja closed...): why, for the owner.
+  paymentError      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sucursal Sucursal @relation(fields: [sucursalId], references: [id], onDelete: Restrict)
+  order    Order?   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, status, createdAt])
+  @@map("online_checkouts")
+}

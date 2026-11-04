@@ -1,0 +1,20 @@
+# Local development image used by docker-compose.yml (dev server with bind mounts).
+# The production image is apps/api/Dockerfile, built from the repo root.
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache openssl
+
+COPY package*.json ./
+COPY prisma ./prisma/
+
+RUN npm install
+
+COPY . .
+
+RUN npm run db:generate
+
+EXPOSE 3001
+
+CMD ["npm", "run", "start:dev"]

@@ -1,8 +1,17 @@
-# Render Blueprint for the UNNA staging API (free plan). The web runs on Vercel (apps/web/vercel.json).
-# Guide: docs/deploy/README.md. Spec: https://render.com/docs/blueprint-spec
-# Values with `sync: false` are secrets: Render asks for them only when the Blueprint is first applied.
+# Render Blueprint for the UNNA staging API and its database (free plan). The web runs on Vercel
+# (apps/web/vercel.json). Guide: docs/deploy/README.md. Spec: https://render.com/docs/blueprint-spec
+# Render generates every token secret (generateValue: random base64, 256 bits), so nobody copies them.
+# Values with `sync: false` are asked for only when the Blueprint is first applied.
 # Render passes every env var to the Docker build as a build arg (https://render.com/docs/docker);
 # the API Dockerfile declares no ARG, so secrets never reach the image.
+databases:
+  # Free Render Postgres: expires 30 days after creation (https://render.com/docs/free).
+  - name: unna-db
+    plan: free
+    region: virginia
+    databaseName: unna
+    user: unna
+
 services:
   - type: web
     name: unna-api
@@ -20,18 +29,24 @@ services:
         value: staging
       - key: TRUST_PROXY
         value: "1"
+      # Private network URL of unna-db (same region, no public exposure).
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: unna-db
+          property: connectionString
+      # One secret per token type (S21); 256-bit values, so each one is well above the 32-character minimum.
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: JWT_REFRESH_SECRET
-        sync: false
-      # Secret of the password reset links; Render generates a random value (S21: one secret per token type).
+        generateValue: true
       - key: JWT_RESET_SECRET
         generateValue: true
+      # generateValue yields exactly 32 bytes in base64, the size this key requires.
       - key: MP_TOKEN_ENCRYPTION_KEY
-        sync: false
+        generateValue: true
+      # Production URL of the Vercel web project (CORS, email links). No trailing slash.
       - key: FRONTEND_URL
-        sync: false
+        value: https://unna-lovat.vercel.app
+      # Any value starting with re_ lets the API start; emails only go out with a real Resend key.
       - key: RESEND_API_KEY
         sync: false

@@ -4,7 +4,7 @@ Con esta guía levantás UNNA completo para que otra persona lo pruebe, **sin pa
 
 | Pieza | Dónde | Plan |
 |---|---|---|
-| Base de datos (Postgres) | Render, base `unna-db` (o Supabase, ver abajo) | Free |
+| Base de datos (Postgres) | Supabase | Free |
 | API (NestJS) | Render, servicio `unna-api` | Free |
 | Web (Next.js) | Vercel | Hobby (gratis) |
 
@@ -14,26 +14,21 @@ Tardás unos 30 minutos. Los recursos los creás vos desde tu cuenta; nada se cr
 
 ## Antes de empezar
 
-- [ ] Cuenta en [Render](https://render.com) y en [Vercel](https://vercel.com). Supabase solo si elegís esa base.
+- [ ] Cuenta en [Supabase](https://supabase.com), en [Render](https://render.com) y en [Vercel](https://vercel.com).
 - [ ] El repo en GitHub, con acceso desde tus cuentas de Render y de Vercel.
 - [ ] Opcional: una API key de [Resend](https://resend.com) (plan gratis) para que salgan los mails. Sin ella alcanza un valor de relleno que empiece con `re_`; ver el paso 3.
 
 ---
 
-## 1. La base de datos
+## 1. Crear la base en Supabase
 
-**Por defecto no tenés que hacer nada:** el blueprint crea `unna-db`, un Postgres gratis de Render en la misma región que la API, y le pasa su URL privada a la API (`DATABASE_URL` con `fromDatabase`). Nadie copia la contraseña.
+Usamos Supabase y no el Postgres gratis de Render porque el de Render **vence a los 30 días** y se borra con sus datos ([Render free](https://render.com/docs/free)); el de Supabase solo se pausa si no se usa.
 
-> **La base gratis de Render vence a los 30 días de creada** ([Render free](https://render.com/docs/free)). Al vencer se borra con sus datos: hay que crear otra y la API vuelve a aplicar las migraciones sobre la base vacía. Si querés una base que no venza, usá Supabase (abajo).
-
-### Alternativa: Supabase (no vence)
-
-Para usarla, borrá el bloque `databases:` de `render.yaml` y en `DATABASE_URL` poné `sync: false` en lugar de `fromDatabase`; Render te va a pedir la URL al aplicar el blueprint.
-
+Al crear el proyecto, **destildá "Enable Data API"**. La API accede a la base directo con Prisma; la Data API publicaría las tablas del esquema `public` (usuarios, pedidos) por la API REST de Supabase.
 
 1. En Supabase: **New project**.
 2. **Region**: `East US (North Virginia)`. El blueprint pone la API en Render `virginia`; si están en la misma zona, cada consulta tarda menos.
-3. **Database password**: generá una fuerte y guardala en tu gestor de contraseñas. La vas a necesitar en el paso 1.5.
+3. **Database password**: generá una fuerte y guardala en tu gestor de contraseñas. La vas a necesitar en el paso 5.
 4. Esperá a que el proyecto termine de crearse.
 5. Tocá **Connect** y copiá la URL de **Session pooler**. Tiene esta forma:
 
@@ -49,7 +44,7 @@ Para usarla, borrá el bloque `databases:` de `render.yaml` y en `DATABASE_URL` 
 
    `connection_limit=5` evita que la API se quede con las pocas conexiones que da el plan gratis de Supabase (una sola instancia en Render no necesita más), y `pool_timeout=10` hace que una consulta espere hasta 10 segundos por una conexión libre antes de fallar.
 
-#### Qué conexión usar y por qué
+### Qué conexión usar y por qué
 
 | Conexión de Supabase | ¿Sirve? | Motivo |
 |---|---|---|
@@ -57,7 +52,7 @@ Para usarla, borrá el bloque `databases:` de `render.yaml` y en `DATABASE_URL` 
 | Direct connection (`db.<ref>.supabase.co:5432`) | ⚠️ Solo si tenés IPv4 | En el plan gratis es solo IPv6 y Render no siempre llega por IPv6. |
 | Transaction pooler (puerto 6543) | ❌ No | No soporta bien las migraciones de Prisma (`migrate deploy`). |
 
-#### TLS (Prisma + Supabase)
+### TLS (Prisma + Supabase)
 
 - Supabase exige conexión cifrada. `sslmode=require` hace que Prisma cifre la conexión.
 - **No bajes la seguridad**: nada de `sslmode=disable` ni `sslaccept=accept_invalid_certs`.
@@ -120,10 +115,10 @@ La API queda en `https://unna-api.onrender.com` y la web en `https://<proyecto>.
 
 | Variable | Valor |
 |---|---|
-| `DATABASE_URL` | La pone el blueprint desde `unna-db`. Con Supabase: la URL del Session pooler, con `?sslmode=require&connection_limit=5&pool_timeout=10` |
+| `DATABASE_URL` | La URL del Session pooler del paso 1.6, con `?sslmode=require&connection_limit=5&pool_timeout=10` |
 | `JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_RESET_SECRET`, `MP_TOKEN_ENCRYPTION_KEY` | Los genera Render (`generateValue`) |
 | `FRONTEND_URL` | Fija en el blueprint: `https://unna-lovat.vercel.app`, la URL de producción de la web. Si cambia, corregila en `render.yaml`. Obligatoria: sin ella la API no arranca |
-| `RESEND_API_KEY` | Lo único que te pide Render: tu API key de Resend (`re_...`) o, para la demo, un relleno como `re_demo` |
+| `RESEND_API_KEY` | Tu API key de Resend (`re_...`) o, para la demo, un relleno como `re_demo` |
 
 **Proyecto de Vercel (web)**
 
@@ -171,8 +166,7 @@ Cada refresh token sirve **una sola vez**: al renovar la sesión, la API lo marc
 | Render | Disco efímero | Las imágenes de productos que se suben **se pierden** en cada deploy, reinicio o apagado. |
 | Render | 750 horas gratis por mes y por workspace | Un servicio apagado no consume horas. Si se agotan, Render suspende los servicios gratis hasta el mes siguiente. |
 | Render | Sin shell ni pre-deploy | Por eso las migraciones corren al arrancar la API. |
-| Render | La base gratis **vence a los 30 días** | Se borra con sus datos; recreala desde el blueprint. |
-| Supabase (si la usás) | Se pausa tras **~7 días sin actividad** | Reactivalo desde el panel de Supabase (**Restore**). Mientras está pausado, la API no arranca. |
+| Supabase | Se pausa tras **~7 días sin actividad** | Reactivalo desde el panel de Supabase (**Restore**). Mientras está pausado, la API no arranca. |
 
 Fuentes: [Render free](https://render.com/docs/free), [Render deploys](https://render.com/docs/deploys), [Vercel Hobby](https://vercel.com/docs/plans/hobby).
 
